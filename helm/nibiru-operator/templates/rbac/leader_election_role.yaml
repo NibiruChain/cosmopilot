@@ -2,14 +2,10 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  name: {{ .Release.Name }}-leader-election
+  namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: role
-    app.kubernetes.io/instance: leader-election-role
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: nibiru-operator
-    app.kubernetes.io/part-of: nibiru-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: leader-election-role
+    {{- include "operator.labels" . | indent 4 }}
 rules:
 - apiGroups:
   - ""

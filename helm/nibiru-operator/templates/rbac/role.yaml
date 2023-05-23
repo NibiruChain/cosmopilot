@@ -1,0 +1,33 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: {{ .Release.Name }}
+rules:
+- apiGroups:
+  - apps.k8s.nibiru.org
+  resources:
+  - chainnodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps.k8s.nibiru.org
+  resources:
+  - chainnodes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps.k8s.nibiru.org
+  resources:
+  - chainnodes/status
+  verbs:
+  - get
+  - patch
+  - update

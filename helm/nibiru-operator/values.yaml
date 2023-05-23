@@ -1,0 +1,3 @@
+image: gcr.io/nibiruchain/nibiru-operator
+replicas: 1
+serviceMonitorEnabled: true
