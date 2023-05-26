@@ -11,9 +11,6 @@ spec:
     version: 0.19.3
     app: nibid
 
-  persistence:
-    size: 50Gi
-
   config:
     override:
       app.toml:
@@ -22,4 +19,9 @@ spec:
       config.toml:
         p2p:
           addr_book_strict: false
-          seeds: f6c4429af0c199f579d55b3b12b760e431db21d4@34.139.52.143:26656,613e133355a43be28b31d33d13c8814d6ea0c99f@34.75.8.154:26656,96542db3df6f535bcc4fb6508d3679450dcc50ff@34.23.0.207:26656
+          persistent_peers: 04c7b4c7b1ca40e04e767925c08846d2951f5425@34.23.168.27:26656
+        statesync:
+          enable: true
+          rpc_servers: https://rpc.itn-1.nibiru.fi:443,https://rpc.itn-1.nibiru.fi:443
+          trust_height: 3177500
+          trust_hash: 3E22B8B680948A9E3F942B4CCD0EEDF831AEA545F0832001DC269BECC6652C5D
