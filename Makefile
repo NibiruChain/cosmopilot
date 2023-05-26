@@ -36,6 +36,11 @@ all: build
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
+.PHONY: docs
+docs: crd-to-markdown
+	@mkdir -p ./docs/api
+	@$(CRD_TO_MARKDOWN) -f ./api/v1/chainnode_types.go -n ChainNode > ./docs/api/01-chainnode.md
+
 ##@ Development
 
 .PHONY: manifests
@@ -126,11 +131,13 @@ KUBECTL ?= $(LOCALBIN)/kubectl
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 HELM ?= $(LOCALBIN)/helm
+CRD_TO_MARKDOWN ?= $(LOCALBIN)/crd-to-markdown
 
 ## Tool Versions
 KUBECTL_VERSION ?= v1.27.2
 CONTROLLER_TOOLS_VERSION ?= v0.11.3
 HELM_VERSION ?= v3.12.0
+CRD_TO_MARKDOWN_VERSION ?= 0.0.3
 
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -168,4 +175,11 @@ $(HELM): $(LOCALBIN)
   		mv $(OS_NAME)-$(ARCH_NAME)/helm $(LOCALBIN)/helm; \
   		rm -rf $(OS_NAME)-$(ARCH_NAME) helm.tar.gz; \
   		chmod a+x $(LOCALBIN)/helm; \
+  	}
+
+.PHONY: crd-to-markdown
+crd-to-markdown: $(CRD_TO_MARKDOWN) ## Download crd-to-markdown locally if necessary.
+$(CRD_TO_MARKDOWN): $(LOCALBIN)
+	@test -s $(LOCALBIN)/crd-to-markdown || { \
+  		GOBIN=$(LOCALBIN) go install github.com/clamoriniere/crd-to-markdown@v$(CRD_TO_MARKDOWN_VERSION); \
   	}
