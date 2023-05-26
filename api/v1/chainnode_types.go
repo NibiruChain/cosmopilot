@@ -78,7 +78,7 @@ type AppSpec struct {
 	// +kubebuilder:validation:MinLength=1
 	Image string `json:"image"`
 
-	// Version is the image tag to be used
+	// Version is the image tag to be used. Defaults to `latest`.
 	// +optional
 	// +default=latest
 	Version *string `json:"version,omitempty"`
@@ -104,7 +104,6 @@ type Config struct {
 // Persistence configuration for this node
 type Persistence struct {
 	// Size of the persistent volume for storing data. Defaults to `50Gi`.
-	// Ignored  if autoresize is enabled.
 	// +optional
 	// +default="50Gi"
 	// +kubebuilder:validation:MinLength=1
