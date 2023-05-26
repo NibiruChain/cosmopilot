@@ -3,9 +3,10 @@ package chainnode
 import (
 	"context"
 	"fmt"
+	"sort"
 
+	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,11 +20,14 @@ import (
 func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
-	currentPod := &corev1.Pod{}
+	// Prepare pod spec
 	updatedPod, err := r.getPodSpec(ctx, chainNode)
 	if err != nil {
 		return err
 	}
+
+	// Get current pod. If it does not exist create it and exit.
+	currentPod := &corev1.Pod{}
 	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), currentPod)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -34,12 +38,15 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode)
 	}
 
 	// Re-create pod if spec changes
-	if !equality.Semantic.DeepDerivative(updatedPod.Spec, currentPod.Spec) {
-		logger.Info("recreating pod")
-		if err := r.Delete(ctx, currentPod); err != nil {
-			return err
-		}
-		return r.Create(ctx, updatedPod)
+	if podSpecChanged(currentPod, updatedPod) {
+		logger.Info("pod spec changed")
+		return r.recreatePod(ctx, updatedPod)
+	}
+
+	// Recreate pod if it is in failed state
+	if currentPod.Status.Phase == corev1.PodFailed {
+		logger.Info("pod is in failed state")
+		return r.recreatePod(ctx, updatedPod)
 	}
 
 	return nil
@@ -70,6 +77,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Namespace: chainNode.GetNamespace(),
 		},
 		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
 			Volumes: []corev1.Volume{
 				{
 					Name: "data",
@@ -119,18 +127,22 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						{
 							Name:          chainutils.P2pPortName,
 							ContainerPort: chainutils.P2pPort,
+							Protocol:      corev1.ProtocolTCP,
 						},
 						{
 							Name:          chainutils.RpcPortName,
 							ContainerPort: chainutils.Rpcport,
+							Protocol:      corev1.ProtocolTCP,
 						},
 						{
 							Name:          chainutils.LcdPortName,
 							ContainerPort: chainutils.LcdPort,
+							Protocol:      corev1.ProtocolTCP,
 						},
 						{
 							Name:          chainutils.GrpcPortName,
 							ContainerPort: chainutils.GrpcPort,
+							Protocol:      corev1.ProtocolTCP,
 						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
@@ -156,4 +168,60 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	}
 
 	return pod, nil
+}
+
+func (r *Reconciler) recreatePod(ctx context.Context, pod *corev1.Pod) error {
+	logger := log.FromContext(ctx)
+
+	logger.Info("recreating pod")
+	if err := r.Delete(ctx, pod); err != nil {
+		return err
+	}
+	return r.Create(ctx, pod)
+}
+
+func podSpecChanged(existing, new *corev1.Pod) bool {
+	// make copies
+	existingCopy := existing.DeepCopy()
+	newCopy := new.DeepCopy()
+
+	// remove fields populated by kubernetes
+	removeFieldsForComparison(existingCopy)
+
+	// order volume mounts
+	orderVolumeMounts(existingCopy)
+	orderVolumeMounts(newCopy)
+
+	patchResult, err := patch.DefaultPatchMaker.Calculate(existingCopy, newCopy,
+		patch.IgnoreStatusFields(),
+		patch.IgnoreVolumeClaimTemplateTypeMetaAndStatus(),
+	)
+	if err != nil {
+		return false
+	}
+	fmt.Println(string(patchResult.Patch))
+	return !patchResult.IsEmpty()
+}
+
+func orderVolumeMounts(pod *corev1.Pod) {
+	for _, c := range pod.Spec.Containers {
+		sort.Slice(c.VolumeMounts, func(i, j int) bool {
+			return c.VolumeMounts[i].MountPath < c.VolumeMounts[j].MountPath
+		})
+	}
+}
+
+func removeFieldsForComparison(pod *corev1.Pod) {
+	// remove service account volume mount
+	for i, c := range pod.Spec.Containers {
+		volumeMounts := c.VolumeMounts[:0]
+		j := 0
+		for _, m := range c.VolumeMounts {
+			if m.MountPath != "/var/run/secrets/kubernetes.io/serviceaccount" {
+				volumeMounts = append(volumeMounts, m)
+				j++
+			}
+		}
+		pod.Spec.Containers[i].VolumeMounts = volumeMounts
+	}
 }
