@@ -163,11 +163,36 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			},
 		},
 	}
-	if err := controllerutil.SetControllerReference(chainNode, pod, r.Scheme); err != nil {
-		return nil, err
+
+	if chainNode.Spec.Config != nil {
+		pod.Spec.ImagePullSecrets = chainNode.Spec.Config.ImagePullSecrets
 	}
 
-	return pod, nil
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Sidecars != nil {
+		for _, c := range chainNode.Spec.Config.Sidecars {
+			container := corev1.Container{
+				Name:            c.Name,
+				Image:           c.Image,
+				ImagePullPolicy: chainNode.GetSidecarImagePullPolicy(c.Name),
+				Command:         c.Command,
+				Args:            c.Args,
+				Env:             c.Env,
+			}
+
+			if c.MountDataVolume != nil {
+				container.VolumeMounts = []corev1.VolumeMount{
+					{
+						Name:      "data",
+						MountPath: *c.MountDataVolume,
+					},
+				}
+			}
+
+			pod.Spec.Containers = append(pod.Spec.Containers, container)
+		}
+	}
+
+	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
 }
 
 func (r *Reconciler) recreatePod(ctx context.Context, pod *corev1.Pod) error {
