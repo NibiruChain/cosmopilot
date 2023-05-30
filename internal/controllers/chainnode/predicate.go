@@ -73,7 +73,7 @@ func (p GenerationChangedPredicate) Update(e event.UpdateEvent) bool {
 		}
 
 		// Ignore updates on data-init pod events
-		if strings.HasSuffix(o.Name, "config-generator") {
+		if strings.HasSuffix(o.Name, "data-init") {
 			return false
 		}
 
