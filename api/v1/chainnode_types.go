@@ -99,6 +99,14 @@ type Config struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Override *map[string]runtime.RawExtension `json:"override,omitempty"`
+
+	// Sidecars allow configuring additional containers to run alongside the node
+	// +optional
+	Sidecars []SidecarSpec `json:"sidecars,omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // Persistence configuration for this node
@@ -113,4 +121,36 @@ type Persistence struct {
 	// to create persistent volumes.
 	// +optional
 	StorageClassName *string `json:"storageClass,omitempty"`
+}
+
+// SidecarSpec allow configuring additional containers to run alongside the node
+type SidecarSpec struct {
+	// Name refers to the name to be assigned to the container
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// Image refers to the docker image to be used by the container
+	// +kubebuilder:validation:MinLength=1
+	Image string `json:"image"`
+
+	// ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
+	// is `latest` and `IfNotPresent` otherwise.
+	// +optional
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// MountDataVolume indicates where data volume will be mounted on this container. It is not mounted if not specified.
+	// +optional
+	MountDataVolume *string `json:"mountDataVolume,omitempty"`
+
+	// Command to be run by this container. Defaults to entrypoint defined in image.
+	// +optional
+	Command []string `json:"command,omitempty"`
+
+	// Args to be passed to this container. Defaults to cmd defined in image.
+	// +optional
+	Args []string `json:"args,omitempty"`
+
+	// Env sets environment variables to be passed to this container.
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }

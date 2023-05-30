@@ -12,6 +12,7 @@
 * [Config](#config)
 * [GenesisConfig](#genesisconfig)
 * [Persistence](#persistence)
+* [SidecarSpec](#sidecarspec)
 
 #### AppSpec
 
@@ -81,6 +82,8 @@ Config allows setting specific configurations for this node such has overrides t
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | override | Override allows overriding configs on toml configuration files | *map[string]runtime.RawExtension | false |
+| sidecars | Sidecars allow configuring additional containers to run alongside the node | [][SidecarSpec](#sidecarspec) | false |
+| imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -102,5 +105,21 @@ Persistence configuration for this node
 | ----- | ----------- | ------ | -------- |
 | size | Size of the persistent volume for storing data. Defaults to `50Gi`. | *string | false |
 | storageClass | StorageClassName specifies the name of the storage class to use to create persistent volumes. | *string | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### SidecarSpec
+
+SidecarSpec allow configuring additional containers to run alongside the node
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name refers to the name to be assigned to the container | string | true |
+| image | Image refers to the docker image to be used by the container | string | true |
+| imagePullPolicy | ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
+| mountDataVolume | MountDataVolume indicates where data volume will be mounted on this container. It is not mounted if not specified. | *string | false |
+| command | Command to be run by this container. Defaults to entrypoint defined in image. | []string | false |
+| args | Args to be passed to this container. Defaults to cmd defined in image. | []string | false |
+| env | Env sets environment variables to be passed to this container. | []corev1.EnvVar | false |
 
 [Back to Custom Resources](#custom-resources)

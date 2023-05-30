@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -42,6 +43,29 @@ func (chainNode *ChainNode) GetImagePullPolicy() corev1.PullPolicy {
 	}
 	if chainNode.Spec.App.Version != nil && *chainNode.Spec.App.Version == defaultImageVersion {
 		return corev1.PullAlways
+	}
+	return corev1.PullIfNotPresent
+}
+
+// GetSidecarImagePullPolicy returns the pull policy to be used for the sidecar container image
+func (chainNode *ChainNode) GetSidecarImagePullPolicy(name string) corev1.PullPolicy {
+	if chainNode.Spec.Config == nil || chainNode.Spec.Config.Sidecars == nil {
+		return corev1.PullIfNotPresent
+	}
+
+	for _, c := range chainNode.Spec.Config.Sidecars {
+		if c.Name == name {
+			if c.ImagePullPolicy != "" {
+				return c.ImagePullPolicy
+			}
+			parts := strings.Split(c.Image, ":")
+
+			if len(parts) == 1 || parts[1] == defaultImageVersion {
+				return corev1.PullAlways
+			}
+
+			return corev1.PullIfNotPresent
+		}
 	}
 	return corev1.PullIfNotPresent
 }

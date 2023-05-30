@@ -72,12 +72,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Create/update PVC
 	if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	// Ensure pod is running
 	if err := r.ensurePod(ctx, chainNode); err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
