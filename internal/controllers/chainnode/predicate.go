@@ -15,20 +15,19 @@ type GenerationChangedPredicate struct {
 	predicate.Funcs
 }
 
+var ignoreSuffixes = []string{"config-generator", "data-init", "genesis-init"}
+
 // Create implements default CreateEvent filter
 func (p GenerationChangedPredicate) Create(e event.CreateEvent) bool {
 	if e.Object == nil {
 		return false
 	}
 
-	// Ignore updates on config-generator pod events
-	if strings.HasSuffix(e.Object.(metav1.Object).GetName(), "config-generator") {
-		return false
-	}
-
-	// Ignore updates on data-init pod events
-	if strings.HasSuffix(e.Object.(metav1.Object).GetName(), "data-init") {
-		return false
+	// Ignore events from temporary pods
+	for _, suffix := range ignoreSuffixes {
+		if strings.HasSuffix(e.Object.(metav1.Object).GetName(), suffix) {
+			return false
+		}
 	}
 
 	return p.Funcs.Create(e)
@@ -40,14 +39,11 @@ func (p GenerationChangedPredicate) Delete(e event.DeleteEvent) bool {
 		return false
 	}
 
-	// Ignore updates on config-generator pod events
-	if strings.HasSuffix(e.Object.(metav1.Object).GetName(), "config-generator") {
-		return false
-	}
-
-	// Ignore updates on data-init pod events
-	if strings.HasSuffix(e.Object.(metav1.Object).GetName(), "data-init") {
-		return false
+	// Ignore events from temporary pods
+	for _, suffix := range ignoreSuffixes {
+		if strings.HasSuffix(e.Object.(metav1.Object).GetName(), suffix) {
+			return false
+		}
 	}
 
 	return p.Funcs.Delete(e)
@@ -67,16 +63,12 @@ func (p GenerationChangedPredicate) Update(e event.UpdateEvent) bool {
 		return e.ObjectNew.GetGeneration() != e.ObjectOld.GetGeneration()
 
 	case *corev1.Pod:
-		// Ignore updates on config-generator pod events
-		if strings.HasSuffix(o.Name, "config-generator") {
-			return false
+		// Ignore events from temporary pods
+		for _, suffix := range ignoreSuffixes {
+			if strings.HasSuffix(o.Name, suffix) {
+				return false
+			}
 		}
-
-		// Ignore updates on data-init pod events
-		if strings.HasSuffix(o.Name, "data-init") {
-			return false
-		}
-
 		return p.Funcs.Update(e)
 
 	default:

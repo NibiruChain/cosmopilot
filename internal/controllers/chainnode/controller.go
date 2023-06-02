@@ -65,8 +65,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	// Get genesis
-	if err := r.ensureGenesis(ctx, chainNode); err != nil {
+	// Create a private key for signing and an account for this node if it is a validator
+	if chainNode.IsValidator() {
+		if err := r.ensureSigningKey(ctx, chainNode); err != nil {
+			return ctrl.Result{}, err
+		}
+		if err := r.ensureAccount(ctx, chainNode); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Get or initialize a genesis
+	if err := r.ensureGenesis(ctx, app, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 

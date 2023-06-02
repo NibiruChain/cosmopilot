@@ -1,0 +1,62 @@
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNode
+metadata:
+  name: nibiru-0
+spec:
+  app:
+    image: ghcr.io/nibiruchain/nibiru
+    version: 0.21.0-alpha.1
+    app: nibid
+
+  validator:
+    info:
+      moniker: nibiru
+      website: https://nibiru.fi
+    init:
+      chainID: nibiru-devnet-0
+      assets: [ "1000000000000000unibi" ]
+      stakeAmount: 100000000unibi
+      unbondingTime: 86400s
+      votingPeriod: 7200s
+      additionalInitCommands:
+        - image: curlimages/curl
+          args: [ "-s", "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd", "-o", "/temp/coingecko.json" ]
+
+        - image: apteno/alpine-jq
+          command: [ "sh" , "-c" ]
+          args:
+            - jq '.bitcoin.usd' /temp/coingecko.json > /temp/bitcoin
+
+        - command: [ "sh" , "-c" ]
+          args:
+            - >
+              nibid add-genesis-perp-market
+              --pair=ubtc:unusd
+              --sqrt-depth=40000000000000
+              --price-multiplier=$(cat /temp/bitcoin)
+              --max-leverage=10
+              --price-fluct-lim=0.1
+              --mmr=0.05
+              --home=/home/app
+
+        - image: apteno/alpine-jq
+          command: [ "sh" , "-c" ]
+          args:
+            - jq '.ethereum.usd' /temp/coingecko.json > /temp/ethereum
+
+        - command: [ "sh" , "-c" ]
+          args:
+            - >
+              nibid add-genesis-perp-market
+              --pair=ueth:unusd
+              --sqrt-depth=40000000000000
+              --price-multiplier=$(cat /temp/ethereum)
+              --max-leverage=15
+              --price-fluct-lim=0.1
+              --mmr=0.05
+              --home=/home/app
+
+  config:
+    override:
+      app.toml:
+        minimum-gas-prices: 0.025unibi

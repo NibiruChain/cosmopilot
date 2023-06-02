@@ -108,7 +108,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					},
 				},
 				{
-					Name: "secret",
+					Name: "node-key",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: chainNode.GetName(),
@@ -155,8 +155,9 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 							MountPath: "/genesis",
 						},
 						{
-							Name:      "secret",
-							MountPath: "/secret",
+							Name:      "node-key",
+							MountPath: "/secret/" + nodeKeyFilename,
+							SubPath:   nodeKeyFilename,
 						},
 					}, configFilesMounts...),
 				},
@@ -190,6 +191,22 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 
 			pod.Spec.Containers = append(pod.Spec.Containers, container)
 		}
+	}
+
+	if chainNode.IsValidator() {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: "priv-key",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: chainNode.GetValidatorPrivKeySecretName(),
+				},
+			},
+		})
+		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "priv-key",
+			MountPath: "/secret/" + privKeyFilename,
+			SubPath:   privKeyFilename,
+		})
 	}
 
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)

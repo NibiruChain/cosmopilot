@@ -20,7 +20,7 @@ func GenerateNodeKey() (string, []byte, error) {
 
 func GetNodeID(key []byte) (string, error) {
 	var nodeKey p2p.NodeKey
-	if err := json.Unmarshal([]byte(key), &nodeKey); err != nil {
+	if err := json.Unmarshal(key, &nodeKey); err != nil {
 		return "", err
 	}
 	return string(p2p.PubKeyToID(nodeKey.PubKey())), nil

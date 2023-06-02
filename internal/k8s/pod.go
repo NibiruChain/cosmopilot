@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -96,6 +97,60 @@ func (p *PodHelper) WaitForPodCondition(ctx context.Context, timeout time.Durati
 	return nil
 }
 
+func (p *PodHelper) WaitForInitContainerRunning(ctx context.Context, container string, timeout time.Duration) error {
+	return p.WaitForInitContainerCondition(ctx, timeout, container, corev1.PodRunning)
+}
+
+func (p *PodHelper) WaitForInitContainerCondition(ctx context.Context, timeout time.Duration, container string, phase corev1.PodPhase) error {
+	fs := fields.SelectorFromSet(map[string]string{
+		"metadata.namespace": p.pod.Namespace,
+		"metadata.name":      p.pod.Name,
+	})
+
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watchapi.Interface, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).Watch(ctx, options)
+		},
+	}
+
+	ctx, cfn := context.WithTimeout(ctx, timeout)
+	defer cfn()
+
+	last, err := watch.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watchapi.Event) (bool, error) {
+		switch event.Type {
+		case watchapi.Error:
+			return false, fmt.Errorf("error watching pod")
+
+		case watchapi.Deleted:
+			return false, fmt.Errorf("pod %s/%s was deleted", p.pod.Namespace, p.pod.Name)
+
+		default:
+			p.pod = event.Object.(*corev1.Pod)
+			if p.pod.Status.Phase == corev1.PodFailed {
+				return false, fmt.Errorf("pod failed")
+			}
+			for _, c := range p.pod.Status.InitContainerStatuses {
+				if c.Name == container {
+					return c.State.Running != nil, nil
+				}
+			}
+			return false, nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+	if last == nil {
+		return fmt.Errorf("no events received for pod %s/%s", p.pod.Namespace, p.pod.Name)
+	}
+	return nil
+}
+
 func (p *PodHelper) Exec(ctx context.Context, container string, cmd []string) (string, string, error) {
 	req := p.client.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -128,4 +183,32 @@ func (p *PodHelper) Exec(ctx context.Context, container string, cmd []string) (s
 		return "", "", fmt.Errorf("error executing command on pod: %s: %v", execErr.String(), err)
 	}
 	return execOut.String(), execErr.String(), nil
+}
+
+func (p *PodHelper) Attach(ctx context.Context, container string, stdin io.Reader) (string, string, error) {
+	req := p.client.CoreV1().RESTClient().Post().Resource("pods").Name(p.pod.Name).Namespace(p.pod.Namespace).SubResource("attach")
+	req.VersionedParams(
+		&corev1.PodAttachOptions{
+			Stdin:     true,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+			Container: container,
+		},
+		scheme.ParameterCodec,
+	)
+
+	exec, err := remotecommand.NewSPDYExecutor(p.restConfig, "POST", req.URL())
+	if err != nil {
+		return "", "", err
+	}
+
+	var execOut, execErr bytes.Buffer
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  stdin,
+		Stdout: &execOut,
+		Stderr: &execErr,
+	})
+
+	return execOut.String(), execErr.String(), err
 }

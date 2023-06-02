@@ -19,6 +19,9 @@ spec:
     - jsonPath: .status.chainID
       name: ChainID
       type: string
+    - jsonPath: .status.validator
+      name: Validator
+      type: boolean
     name: v1
     schema:
       openAPIV3Schema:
@@ -68,6 +71,21 @@ spec:
                 description: Config allows setting specific configurations for this
                   node
                 properties:
+                  imagePullSecrets:
+                    description: ImagePullSecrets is an optional list of references
+                      to secrets in the same namespace to use for pulling any of the
+                      images used by this node.
+                    items:
+                      description: LocalObjectReference contains enough information
+                        to let you locate the referenced object inside the same namespace.
+                      properties:
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    type: array
                   override:
                     description: Override allows overriding configs on toml configuration
                       files
@@ -239,7 +257,7 @@ spec:
                 type: object
               genesis:
                 description: Genesis indicates where this node will get the genesis
-                  from
+                  from. Can be omitted when .spec.validator.init is specified.
                 properties:
                   url:
                     description: URL to download the genesis from.
@@ -259,13 +277,133 @@ spec:
                       class to use to create persistent volumes.
                     type: string
                 type: object
+              validator:
+                description: Validator configures this node as a validator and configures
+                  it.
+                properties:
+                  info:
+                    description: Info contains information details about this validator.
+                    properties:
+                      details:
+                        description: Details of this validator.
+                        type: string
+                      identity:
+                        description: Identity signature of this validator.
+                        type: string
+                      moniker:
+                        description: Moniker to be used by this validator. Defaults
+                          to the ChainNode name.
+                        type: string
+                      website:
+                        description: Website indicates this validator's website.
+                        type: string
+                    type: object
+                  init:
+                    description: Init specifies configs and initialization commands
+                      for creating a new chain and its genesis.
+                    properties:
+                      accountHDPath:
+                        description: AccountHDPath is the HD path for the validator
+                          account. Defaults to `m/44'/118'/0'/0/0`.
+                        type: string
+                      accountMnemonicSecret:
+                        description: AccountMnemonicSecret is the name of the secret
+                          containing the mnemonic of the account to be used by this
+                          validator. Defaults to `<chainnode>-account`. Will be created
+                          if does not exist.
+                        type: string
+                      accountPrefix:
+                        description: AccountPrefix is the prefix for accounts. Defaults
+                          to `nibi`.
+                        type: string
+                      accounts:
+                        description: Accounts specify additional accounts and respective
+                          assets to be added to this chain.
+                        items:
+                          properties:
+                            address:
+                              description: Address of the account.
+                              type: string
+                            assets:
+                              description: Assets to be assigned to this account.
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - address
+                          - assets
+                          type: object
+                        type: array
+                      additionalInitCommands:
+                        description: AdditionalInitCommands are additional commands
+                          to run on genesis initialization. App home is at `/home/app`
+                          and `/temp` is a temporary volume shared by all init containers.
+                        items:
+                          properties:
+                            args:
+                              description: Args to be passed to this command.
+                              items:
+                                type: string
+                              type: array
+                            command:
+                              description: Command to be used. Defaults to image entrypoint.
+                              items:
+                                type: string
+                              type: array
+                            image:
+                              description: Image to be used to run this command. Defaults
+                                to app image.
+                              type: string
+                          required:
+                          - args
+                          type: object
+                        type: array
+                      assets:
+                        description: Assets is the list of tokens and their amounts
+                          to be assigned to this validators account.
+                        items:
+                          type: string
+                        type: array
+                      chainID:
+                        description: ChainID of the chain to initialize.
+                        type: string
+                      stakeAmount:
+                        description: StakeAmount represents the amount to be staked
+                          by this validator.
+                        type: string
+                      unbondingTime:
+                        description: UnbondingTime is the time that takes to unbond
+                          delegations. Defaults to `1814400s`.
+                        type: string
+                      valPrefix:
+                        description: ValPrefix is the prefix for validator accounts.
+                          Defaults to `nibivaloper`.
+                        type: string
+                      votingPeriod:
+                        description: VotingPeriod indicates the voting period for
+                          this chain. Defaults to `120h`.
+                        type: string
+                    required:
+                    - assets
+                    - chainID
+                    - stakeAmount
+                    type: object
+                  privateKeySecret:
+                    description: PrivateKeySecret indicates the secret containing
+                      the private key to be use by this validator. Defaults to `<chainnode>-priv-key`.
+                      Will be created if it does not exist.
+                    type: string
+                type: object
             required:
             - app
-            - genesis
             type: object
           status:
             description: ChainNodeStatus defines the observed state of ChainNode
             properties:
+              accountAddress:
+                description: AccountAddress is the account address of this validator.
+                  Omitted when not a validator
+                type: string
               chainID:
                 description: ChainID shows the chain ID
                 type: string
@@ -275,6 +413,15 @@ spec:
               pvcSize:
                 description: PvcSize shows the current size of the pvc of this node
                 type: string
+              validator:
+                description: Validator indicates if this node is a validator.
+                type: boolean
+              validatorAddress:
+                description: ValidatorAddress is the valoper address of this validator.
+                  Omitted when not a validator
+                type: string
+            required:
+            - validator
             type: object
         type: object
     served: true

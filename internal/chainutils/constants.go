@@ -12,4 +12,6 @@ const (
 
 	GrpcPortName = "grpc"
 	GrpcPort     = 9090
+
+	mnemonicKey = "mnemonic"
 )

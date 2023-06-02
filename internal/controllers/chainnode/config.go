@@ -18,8 +18,9 @@ import (
 
 var (
 	defaultConfigToml = map[string]interface{}{
-		"node_key_file": "/secret/" + nodeKeyFilename,
-		"genesis_file":  "/genesis/" + genesisFilename,
+		"node_key_file":           "/secret/" + nodeKeyFilename,
+		"priv_validator_key_file": "/secret/" + privKeyFilename,
+		"genesis_file":            "/genesis/" + genesisFilename,
 		"rpc": map[string]interface{}{
 			"laddr": "tcp://0.0.0.0:26657",
 		},

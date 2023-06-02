@@ -10,6 +10,11 @@ import (
 const (
 	defaultPersistenceSize = "50Gi"
 	defaultImageVersion    = "latest"
+	defaultUnbondingTime   = "1814400s"
+	defaultVotingPeriod    = "120h"
+	DefaultHDPath          = "m/44'/118'/0'/0/0"
+	DefaultAccountPrefix   = "nibi"
+	DefaultValPrefix       = "nibivaloper"
 )
 
 func (chainNode *ChainNode) GetPersistenceSize() string {
@@ -68,4 +73,81 @@ func (chainNode *ChainNode) GetSidecarImagePullPolicy(name string) corev1.PullPo
 		}
 	}
 	return corev1.PullIfNotPresent
+}
+
+func (chainNode *ChainNode) IsValidator() bool {
+	return chainNode.Spec.Validator != nil
+}
+
+func (chainNode *ChainNode) ShouldInitGenesis() bool {
+	return chainNode.Spec.Validator != nil && chainNode.Spec.Validator.Init != nil
+}
+
+func (chainNode *ChainNode) GetValidatorPrivKeySecretName() string {
+	if chainNode.Spec.Validator == nil {
+		return ""
+	}
+
+	if chainNode.Spec.Validator.PrivateKeySecret != nil {
+		return *chainNode.Spec.Validator.PrivateKeySecret
+	}
+
+	return fmt.Sprintf("%s-priv-key", chainNode.GetName())
+}
+
+func (chainNode *ChainNode) GetValidatorAccountHDPath() string {
+	if chainNode.Spec.Validator != nil &&
+		chainNode.Spec.Validator.Init != nil &&
+		chainNode.Spec.Validator.Init.AccountHDPath != nil {
+		return *chainNode.Spec.Validator.Init.AccountHDPath
+	}
+	return DefaultHDPath
+}
+
+func (chainNode *ChainNode) GetValidatorAccountSecretName() string {
+	if chainNode.Spec.Validator == nil {
+		return ""
+	}
+
+	if chainNode.Spec.Validator.Init != nil && chainNode.Spec.Validator.Init.AccountMnemonicSecret != nil {
+		return *chainNode.Spec.Validator.Init.AccountMnemonicSecret
+	}
+
+	return fmt.Sprintf("%s-account", chainNode.GetName())
+}
+
+func (chainNode *ChainNode) GetValidatorAccountPrefix() string {
+	if chainNode.Spec.Validator != nil &&
+		chainNode.Spec.Validator.Init != nil &&
+		chainNode.Spec.Validator.Init.AccountPrefix != nil {
+		return *chainNode.Spec.Validator.Init.AccountPrefix
+	}
+	return DefaultAccountPrefix
+}
+
+func (chainNode *ChainNode) GetValidatorValPrefix() string {
+	if chainNode.Spec.Validator != nil &&
+		chainNode.Spec.Validator.Init != nil &&
+		chainNode.Spec.Validator.Init.ValPrefix != nil {
+		return *chainNode.Spec.Validator.Init.ValPrefix
+	}
+	return DefaultValPrefix
+}
+
+func (chainNode *ChainNode) GetInitUnbondingTime() string {
+	if chainNode.Spec.Validator != nil &&
+		chainNode.Spec.Validator.Init != nil &&
+		chainNode.Spec.Validator.Init.UnbondingTime != nil {
+		return *chainNode.Spec.Validator.Init.UnbondingTime
+	}
+	return defaultUnbondingTime
+}
+
+func (chainNode *ChainNode) GetInitVotingPeriod() string {
+	if chainNode.Spec.Validator != nil &&
+		chainNode.Spec.Validator.Init != nil &&
+		chainNode.Spec.Validator.Init.VotingPeriod != nil {
+		return *chainNode.Spec.Validator.Init.VotingPeriod
+	}
+	return defaultVotingPeriod
 }

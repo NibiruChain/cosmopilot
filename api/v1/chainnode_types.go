@@ -21,7 +21,8 @@ type ChainNodeList struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
+//+kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
+//+kubebuilder:printcolumn:name="Validator",type=boolean,JSONPath=`.status.validator`
 
 // ChainNode is the Schema for the chainnodes API
 type ChainNode struct {
@@ -34,8 +35,9 @@ type ChainNode struct {
 
 // ChainNodeSpec defines the desired state of ChainNode
 type ChainNodeSpec struct {
-	// Genesis indicates where this node will get the genesis from
-	Genesis GenesisConfig `json:"genesis"`
+	// Genesis indicates where this node will get the genesis from. Can be omitted when .spec.validator.init is specified.
+	// +optional
+	Genesis *GenesisConfig `json:"genesis"`
 
 	// App specifies image and binary name of the chain application to run
 	App AppSpec `json:"app"`
@@ -47,6 +49,10 @@ type ChainNodeSpec struct {
 	// Persistence configures pvc for persisting data on nodes
 	// +optional
 	Persistence *Persistence `json:"persistence,omitempty"`
+
+	// Validator configures this node as a validator and configures it.
+	// +optional
+	Validator *ValidatorConfig `json:"validator,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode
@@ -62,6 +68,18 @@ type ChainNodeStatus struct {
 	// PvcSize shows the current size of the pvc of this node
 	// +optional
 	PvcSize string `json:"pvcSize,omitempty"`
+
+	// Validator indicates if this node is a validator.
+	// +default=false
+	Validator bool `json:"validator"`
+
+	// AccountAddress is the account address of this validator. Omitted when not a validator
+	// +optional
+	AccountAddress string `json:"accountAddress,omitempty"`
+
+	// ValidatorAddress is the valoper address of this validator. Omitted when not a validator
+	// +optional
+	ValidatorAddress string `json:"validatorAddress,omitempty"`
 }
 
 // GenesisConfig specifies how genesis will be retrieved
@@ -153,4 +171,105 @@ type SidecarSpec struct {
 	// Env sets environment variables to be passed to this container.
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+}
+
+// ValidatorConfig turns this node into a validator and specifies how it will do it.
+type ValidatorConfig struct {
+	// PrivateKeySecret indicates the secret containing the private key to be use by this validator.
+	// Defaults to `<chainnode>-priv-key`. Will be created if it does not exist.
+	// +optional
+	PrivateKeySecret *string `json:"privateKeySecret,omitempty"`
+
+	// Info contains information details about this validator.
+	// +optional
+	Info *ValidatorInfo `json:"info,omitempty"`
+
+	// Init specifies configs and initialization commands for creating a new chain and its genesis.
+	// +optional
+	Init *GenesisInitConfig `json:"init,omitempty"`
+}
+
+// ValidatorInfo contains information about this validator.
+type ValidatorInfo struct {
+	// Moniker to be used by this validator. Defaults to the ChainNode name.
+	// +optional
+	Moniker *string `json:"moniker,omitempty"`
+
+	// Details of this validator.
+	// +optional
+	Details *string `json:"details,omitempty"`
+
+	// Website indicates this validator's website.
+	// +optional
+	Website *string `json:"website,omitempty"`
+
+	// Identity signature of this validator.
+	// +optional
+	Identity *string `json:"identity,omitempty"`
+}
+
+// GenesisInitConfig specifies configs and initialization commands for creating a new chain and its genesis
+type GenesisInitConfig struct {
+	// ChainID of the chain to initialize.
+	ChainID string `json:"chainID"`
+
+	// AccountMnemonicSecret is the name of the secret containing the mnemonic of the account to be used by
+	// this validator. Defaults to `<chainnode>-account`. Will be created if does not exist.
+	AccountMnemonicSecret *string `json:"accountMnemonicSecret,omitempty"`
+
+	// AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`.
+	// +optional
+	AccountHDPath *string `json:"accountHDPath,omitempty"`
+
+	// AccountPrefix is the prefix for accounts. Defaults to `nibi`.
+	// +optional
+	AccountPrefix *string `json:"accountPrefix,omitempty"`
+
+	// ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`.
+	// +optional
+	ValPrefix *string `json:"valPrefix,omitempty"`
+
+	// Assets is the list of tokens and their amounts to be assigned to this validators account.
+	Assets []string `json:"assets"`
+
+	// StakeAmount represents the amount to be staked by this validator.
+	StakeAmount string `json:"stakeAmount"`
+
+	// Accounts specify additional accounts and respective assets to be added to this chain.
+	// +optional
+	Accounts []AccountAssets `json:"accounts,omitempty"`
+
+	// UnbondingTime is the time that takes to unbond delegations. Defaults to `1814400s`.
+	// +optional
+	UnbondingTime *string `json:"unbondingTime,omitempty"`
+
+	// VotingPeriod indicates the voting period for this chain. Defaults to `120h`.
+	// +optional
+	VotingPeriod *string `json:"votingPeriod,omitempty"`
+
+	// AdditionalInitCommands are additional commands to run on genesis initialization.
+	// App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers.
+	// +optional
+	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
+}
+
+type AccountAssets struct {
+	// Address of the account.
+	Address string `json:"address"`
+
+	// Assets to be assigned to this account.
+	Assets []string `json:"assets"`
+}
+
+type InitCommand struct {
+	// Image to be used to run this command. Defaults to app image.
+	// +optional
+	Image *string `json:"image,omitempty"`
+
+	// Command to be used. Defaults to image entrypoint.
+	// +optional
+	Command []string `json:"command,omitempty"`
+
+	// Args to be passed to this command.
+	Args []string `json:"args"`
 }
