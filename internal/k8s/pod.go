@@ -48,6 +48,48 @@ func (p *PodHelper) WaitForPodRunning(ctx context.Context, timeout time.Duration
 	return p.WaitForPodCondition(ctx, timeout, corev1.PodRunning)
 }
 
+func (p *PodHelper) WaitForPodDeleted(ctx context.Context, timeout time.Duration) error {
+	fs := fields.SelectorFromSet(map[string]string{
+		"metadata.namespace": p.pod.Namespace,
+		"metadata.name":      p.pod.Name,
+	})
+
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watchapi.Interface, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).Watch(ctx, options)
+		},
+	}
+
+	ctx, cfn := context.WithTimeout(ctx, timeout)
+	defer cfn()
+
+	last, err := watch.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watchapi.Event) (bool, error) {
+		switch event.Type {
+		case watchapi.Error:
+			return false, fmt.Errorf("error watching pod")
+
+		case watchapi.Deleted:
+			return true, nil
+
+		default:
+			p.pod = event.Object.(*corev1.Pod)
+			return false, nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+	if last == nil {
+		return fmt.Errorf("no events received for pod %s/%s", p.pod.Namespace, p.pod.Name)
+	}
+	return nil
+}
+
 func (p *PodHelper) WaitForPodSucceeded(ctx context.Context, timeout time.Duration) error {
 	return p.WaitForPodCondition(ctx, timeout, corev1.PodSucceeded)
 }

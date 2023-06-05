@@ -67,6 +67,10 @@ spec:
                 - app
                 - image
                 type: object
+              autoDiscoverPeers:
+                description: AutoDiscoverPeers ensures peers with same chain ID are
+                  connected with each other. By default, it is enabled.
+                type: boolean
               config:
                 description: Config allows setting specific configurations for this
                   node
@@ -259,11 +263,40 @@ spec:
                 description: Genesis indicates where this node will get the genesis
                   from. Can be omitted when .spec.validator.init is specified.
                 properties:
+                  configMap:
+                    description: ConfigMap specifies a configmap to load the genesis
+                      from
+                    type: string
                   url:
                     description: URL to download the genesis from.
                     minLength: 1
                     type: string
                 type: object
+              peers:
+                description: Peers are additional persistent peers that should be
+                  added to this node.
+                items:
+                  properties:
+                    address:
+                      description: Address is the hostname or IP address of this peer
+                      type: string
+                    id:
+                      description: ID refers to tendermint node ID for this node
+                      type: string
+                    port:
+                      description: Port is the P2P port to be used. Defaults to `26656`.
+                      type: integer
+                    private:
+                      description: Private marks this peer as private.
+                      type: boolean
+                    unconditional:
+                      description: Unconditional marks this peer as unconditional.
+                      type: boolean
+                  required:
+                  - address
+                  - id
+                  type: object
+                type: array
               persistence:
                 description: Persistence configures pvc for persisting data on nodes
                 properties:

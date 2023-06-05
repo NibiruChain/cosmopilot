@@ -15,6 +15,7 @@ const (
 	DefaultHDPath          = "m/44'/118'/0'/0/0"
 	DefaultAccountPrefix   = "nibi"
 	DefaultValPrefix       = "nibivaloper"
+	defaultP2pPort         = 26656
 )
 
 func (chainNode *ChainNode) GetPersistenceSize() string {
@@ -150,4 +151,34 @@ func (chainNode *ChainNode) GetInitVotingPeriod() string {
 		return *chainNode.Spec.Validator.Init.VotingPeriod
 	}
 	return defaultVotingPeriod
+}
+
+func (chainNode *ChainNode) AutoDiscoverPeersEnabled() bool {
+	if chainNode.Spec.AutoDiscoverPeers != nil {
+		return *chainNode.Spec.AutoDiscoverPeers
+	}
+	return true
+}
+
+// Peer helper methods
+
+func (peer *Peer) GetPort() int {
+	if peer.Port != nil {
+		return *peer.Port
+	}
+	return defaultP2pPort
+}
+
+func (peer *Peer) IsUnconditional() bool {
+	if peer.Unconditional != nil {
+		return *peer.Unconditional
+	}
+	return false
+}
+
+func (peer *Peer) IsPrivate() bool {
+	if peer.Private != nil {
+		return *peer.Private
+	}
+	return false
 }

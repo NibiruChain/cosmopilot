@@ -31,6 +31,31 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
+	if chainNode.Spec.Genesis.ConfigMap != nil {
+		cm := &corev1.ConfigMap{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name:      *chainNode.Spec.Genesis.ConfigMap,
+			Namespace: chainNode.GetNamespace(),
+		}, cm); err != nil {
+			return err
+		}
+
+		genesis, ok := cm.Data[genesisFilename]
+		if !ok {
+			return fmt.Errorf("%q not found in specified configmap", genesisFilename)
+		}
+
+		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
+		if err != nil {
+			return err
+		}
+
+		// update chainID in status
+		logger.Info("updating status with chain id")
+		chainNode.Status.ChainID = chainID
+		return r.Status().Update(ctx, chainNode)
+	}
+
 	genesis := ""
 	chainID := ""
 	var err error
@@ -79,6 +104,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
+	logger.Info("initializing new genesis")
 	genesisParams := &chainutils.GenesisParams{
 		ChainID:       chainNode.Spec.Validator.Init.ChainID,
 		Assets:        chainNode.Spec.Validator.Init.Assets,

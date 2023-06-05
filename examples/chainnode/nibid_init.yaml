@@ -1,7 +1,7 @@
 apiVersion: apps.k8s.nibiru.org/v1
 kind: ChainNode
 metadata:
-  name: nibiru-0
+  name: nibiru-validator
 spec:
   app:
     image: ghcr.io/nibiruchain/nibiru
@@ -19,7 +19,7 @@ spec:
       unbondingTime: 86400s
       votingPeriod: 7200s
       additionalInitCommands:
-        - image: curlimages/curl
+        - image: curlimages/curl:8.1.1
           args: [ "-s", "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd", "-o", "/temp/coingecko.json" ]
 
         - image: apteno/alpine-jq

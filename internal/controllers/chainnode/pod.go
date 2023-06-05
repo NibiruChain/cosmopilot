@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	corev1 "k8s.io/api/core/v1"
@@ -15,13 +16,14 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
-func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode) error {
+func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) error {
 	logger := log.FromContext(ctx)
 
 	// Prepare pod spec
-	updatedPod, err := r.getPodSpec(ctx, chainNode)
+	pod, err := r.getPodSpec(ctx, chainNode, configHash)
 	if err != nil {
 		return err
 	}
@@ -32,27 +34,37 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("creating pod")
-			return r.Create(ctx, updatedPod)
+			ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
+			if err := ph.Create(ctx); err != nil {
+				return err
+			}
+			return ph.WaitForPodRunning(ctx, timeoutPodRunning)
 		}
 		return err
 	}
 
+	// Re-create pod if config changed
+	if currentPod.Annotations[annotationConfigHash] != configHash {
+		logger.Info("config changed")
+		return r.recreatePod(ctx, pod)
+	}
+
 	// Re-create pod if spec changes
-	if podSpecChanged(currentPod, updatedPod) {
+	if podSpecChanged(currentPod, pod) {
 		logger.Info("pod spec changed")
-		return r.recreatePod(ctx, updatedPod)
+		return r.recreatePod(ctx, pod)
 	}
 
 	// Recreate pod if it is in failed state
 	if currentPod.Status.Phase == corev1.PodFailed {
 		logger.Info("pod is in failed state")
-		return r.recreatePod(ctx, updatedPod)
+		return r.recreatePod(ctx, pod)
 	}
 
 	return nil
 }
 
-func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.Pod, error) {
+func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) (*corev1.Pod, error) {
 	// Load configmap to have config file names. We will mount them individually to allow the config
 	// dir to be writable. When ConfigMap is mounted as whole, the directory is read only.
 	config := &corev1.ConfigMap{}
@@ -75,6 +87,14 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      chainNode.GetName(),
 			Namespace: chainNode.GetNamespace(),
+			Annotations: map[string]string{
+				annotationConfigHash: configHash,
+			},
+			Labels: map[string]string{
+				labelNodeID:    chainNode.Status.NodeID,
+				labelChainID:   chainNode.Status.ChainID,
+				labelValidator: strconv.FormatBool(chainNode.IsValidator()),
+			},
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
@@ -216,10 +236,22 @@ func (r *Reconciler) recreatePod(ctx context.Context, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("recreating pod")
-	if err := r.Delete(ctx, pod); err != nil {
+
+	deletePod := pod.DeepCopy()
+	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, deletePod)
+	if err := ph.Delete(ctx); err != nil {
 		return err
 	}
-	return r.Create(ctx, pod)
+	if err := ph.WaitForPodDeleted(ctx, timeoutPodDeleted); err != nil {
+		return err
+	}
+
+	ph = k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
+	if err := ph.Create(ctx); err != nil {
+		return err
+	}
+
+	return ph.WaitForPodRunning(ctx, timeoutPodRunning)
 }
 
 func podSpecChanged(existing, new *corev1.Pod) bool {

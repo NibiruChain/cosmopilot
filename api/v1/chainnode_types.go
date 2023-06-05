@@ -53,6 +53,14 @@ type ChainNodeSpec struct {
 	// Validator configures this node as a validator and configures it.
 	// +optional
 	Validator *ValidatorConfig `json:"validator,omitempty"`
+
+	// AutoDiscoverPeers ensures peers with same chain ID are connected with each other. By default, it is enabled.
+	// +optional
+	AutoDiscoverPeers *bool `json:"autoDiscoverPeers,omitempty"`
+
+	// Peers are additional persistent peers that should be added to this node.
+	// +optional
+	Peers []Peer `json:"peers,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode
@@ -88,6 +96,10 @@ type GenesisConfig struct {
 	// +optional
 	// +kubebuilder:validation:MinLength=1
 	Url *string `json:"url,omitempty"`
+
+	// ConfigMap specifies a configmap to load the genesis from
+	// +optional
+	ConfigMap *string `json:"configMap,omitempty"`
 }
 
 // AppSpec specifies the source image and binary name of the app to run
@@ -272,4 +284,24 @@ type InitCommand struct {
 
 	// Args to be passed to this command.
 	Args []string `json:"args"`
+}
+
+type Peer struct {
+	// ID refers to tendermint node ID for this node
+	ID string `json:"id"`
+
+	// Address is the hostname or IP address of this peer
+	Address string `json:"address"`
+
+	// Port is the P2P port to be used. Defaults to `26656`.
+	// +optional
+	Port *int `json:"port,omitempty"`
+
+	// Unconditional marks this peer as unconditional.
+	// +optional
+	Unconditional *bool `json:"unconditional,omitempty"`
+
+	// Private marks this peer as private.
+	// +optional
+	Private *bool `json:"private,omitempty"`
 }

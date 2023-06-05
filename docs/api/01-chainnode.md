@@ -14,6 +14,7 @@
 * [GenesisConfig](#genesisconfig)
 * [GenesisInitConfig](#genesisinitconfig)
 * [InitCommand](#initcommand)
+* [Peer](#peer)
 * [Persistence](#persistence)
 * [SidecarSpec](#sidecarspec)
 * [ValidatorConfig](#validatorconfig)
@@ -77,6 +78,8 @@ ChainNodeSpec defines the desired state of ChainNode
 | config | Config allows setting specific configurations for this node | *[Config](#config) | false |
 | persistence | Persistence configures pvc for persisting data on nodes | *[Persistence](#persistence) | false |
 | validator | Validator configures this node as a validator and configures it. | *[ValidatorConfig](#validatorconfig) | false |
+| autoDiscoverPeers | AutoDiscoverPeers ensures peers with same chain ID are connected with each other. By default, it is enabled. | *bool | false |
+| peers | Peers are additional persistent peers that should be added to this node. | [][Peer](#peer) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -114,6 +117,7 @@ GenesisConfig specifies how genesis will be retrieved
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | url | URL to download the genesis from. | *string | false |
+| configMap | ConfigMap specifies a configmap to load the genesis from | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -146,6 +150,20 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | image | Image to be used to run this command. Defaults to app image. | *string | false |
 | command | Command to be used. Defaults to image entrypoint. | []string | false |
 | args | Args to be passed to this command. | []string | true |
+
+[Back to Custom Resources](#custom-resources)
+
+#### Peer
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| id | ID refers to tendermint node ID for this node | string | true |
+| address | Address is the hostname or IP address of this peer | string | true |
+| port | Port is the P2P port to be used. Defaults to `26656`. | *int | false |
+| unconditional | Unconditional marks this peer as unconditional. | *bool | false |
+| private | Private marks this peer as private. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -2,7 +2,9 @@ package chainnode
 
 import (
 	"context"
+	"time"
 
+	"github.com/jellydator/ttlcache/v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,12 +23,27 @@ import (
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet  *kubernetes.Clientset
-	RestConfig *rest.Config
-	Scheme     *runtime.Scheme
+	ClientSet   *kubernetes.Clientset
+	RestConfig  *rest.Config
+	Scheme      *runtime.Scheme
+	configCache *ttlcache.Cache[string, map[string]interface{}]
 }
 
-//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes;pods;persistentvolumeclaims;configmaps;secrets,verbs=get;list;watch;create;update;patch;delete
+func NewReconciler(client client.Client, clientSet *kubernetes.Clientset, cfg *rest.Config, scheme *runtime.Scheme) *Reconciler {
+	cfgCache := ttlcache.New(
+		ttlcache.WithTTL[string, map[string]interface{}](24 * time.Hour),
+	)
+	go cfgCache.Start()
+	return &Reconciler{
+		Client:      client,
+		ClientSet:   clientSet,
+		RestConfig:  cfg,
+		Scheme:      scheme,
+		configCache: cfgCache,
+	}
+}
+
+//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes;pods;persistentvolumeclaims;configmaps;secrets;services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=pods/exec;pods/attach,verbs=create
@@ -60,11 +77,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		chainutils.WithBinary(chainNode.Spec.App.App),
 	)
 
-	// Create/update configmap with config files
-	if err := r.ensureConfig(ctx, app, chainNode); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	// Create a private key for signing and an account for this node if it is a validator
 	if chainNode.IsValidator() {
 		if err := r.ensureSigningKey(ctx, chainNode); err != nil {
@@ -80,13 +92,24 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	// Create/update service for this node
+	if err := r.ensureService(ctx, chainNode); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Create/update configmap with config files
+	configHash, err := r.ensureConfig(ctx, app, chainNode)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// Create/update PVC
 	if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Ensure pod is running
-	if err := r.ensurePod(ctx, chainNode); err != nil {
+	if err := r.ensurePod(ctx, chainNode, configHash); err != nil {
 		return ctrl.Result{}, err
 	}
 

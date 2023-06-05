@@ -80,12 +80,8 @@ func main() {
 		log.Fatalf("unable to create clientset: %v", err)
 	}
 
-	if err = (&chainnode.Reconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		ClientSet:  clientset,
-		RestConfig: mgr.GetConfig(),
-	}).SetupWithManager(mgr); err != nil {
+	chainNodeReconciler := chainnode.NewReconciler(mgr.GetClient(), clientset, mgr.GetConfig(), mgr.GetScheme())
+	if err = chainNodeReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ChainNode")
 		os.Exit(1)
 	}

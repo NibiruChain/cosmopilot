@@ -1,0 +1,17 @@
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNode
+metadata:
+  name: nibiru-node
+spec:
+  app:
+    image: ghcr.io/nibiruchain/nibiru
+    version: 0.21.0-alpha.1
+    app: nibid
+
+  genesis:
+    configMap: nibiru-devnet-0-genesis
+
+  config:
+    override:
+      app.toml:
+        minimum-gas-prices: 0.025unibi
