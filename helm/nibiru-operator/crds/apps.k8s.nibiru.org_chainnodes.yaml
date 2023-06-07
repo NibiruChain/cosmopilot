@@ -16,12 +16,24 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Status
+      type: string
+    - jsonPath: .status.ip
+      name: IP
+      type: string
     - jsonPath: .status.chainID
       name: ChainID
       type: string
     - jsonPath: .status.validator
       name: Validator
       type: boolean
+    - jsonPath: .status.jailed
+      name: Jailed
+      type: boolean
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1
     schema:
       openAPIV3Schema:
@@ -440,8 +452,18 @@ spec:
               chainID:
                 description: ChainID shows the chain ID
                 type: string
+              ip:
+                description: IP of this node.
+                type: string
+              jailed:
+                description: Jailed indicates if this validator is jailed. Always
+                  false if not a validator node.
+                type: boolean
               nodeID:
                 description: NodeID show this node's ID
+                type: string
+              phase:
+                description: Jailed indicates the current phase for this ChainNode.
                 type: string
               pvcSize:
                 description: PvcSize shows the current size of the pvc of this node
@@ -454,6 +476,7 @@ spec:
                   Omitted when not a validator
                 type: string
             required:
+            - jailed
             - validator
             type: object
         type: object

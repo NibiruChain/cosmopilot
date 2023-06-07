@@ -113,7 +113,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	// Update jailed status
+	if chainNode.IsValidator() {
+		if err := r.updateJailedStatus(ctx, chainNode); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r *Reconciler) updatePhase(ctx context.Context, chainNode *appsv1.ChainNode, phase appsv1.ChainNodePhase) error {
+	chainNode.Status.Phase = phase
+	return r.Status().Update(ctx, chainNode)
 }
 
 // SetupWithManager sets up the controller with the Manager.

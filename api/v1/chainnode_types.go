@@ -10,6 +10,17 @@ func init() {
 	SchemeBuilder.Register(&ChainNode{}, &ChainNodeList{})
 }
 
+// ChainNodePhase is a label for the condition of a node at the current time.
+type ChainNodePhase string
+
+// These are the valid phases for nodes.
+const (
+	PhaseInitData    ChainNodePhase = "InitializingData"
+	PhaseInitGenesis ChainNodePhase = "InitGenesis"
+	PhaseRunning     ChainNodePhase = "Running"
+	PhaseRestarting  ChainNodePhase = "Restarting"
+)
+
 //+kubebuilder:object:root=true
 
 // ChainNodeList contains a list of ChainNode
@@ -21,8 +32,12 @@ type ChainNodeList struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`
+//+kubebuilder:printcolumn:name="IP",type=string,JSONPath=`.status.ip`
 //+kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
 //+kubebuilder:printcolumn:name="Validator",type=boolean,JSONPath=`.status.validator`
+//+kubebuilder:printcolumn:name="Jailed",type=boolean,JSONPath=`.status.jailed`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // ChainNode is the Schema for the chainnodes API
 type ChainNode struct {
@@ -65,9 +80,17 @@ type ChainNodeSpec struct {
 
 // ChainNodeStatus defines the observed state of ChainNode
 type ChainNodeStatus struct {
+	// Jailed indicates the current phase for this ChainNode.
+	// +optional
+	Phase ChainNodePhase `json:"phase,omitempty"`
+
 	// NodeID show this node's ID
 	// +optional
 	NodeID string `json:"nodeID,omitempty"`
+
+	// IP of this node.
+	// +optional
+	IP string `json:"ip,omitempty"`
 
 	// ChainID shows the chain ID
 	// +optional
@@ -78,7 +101,6 @@ type ChainNodeStatus struct {
 	PvcSize string `json:"pvcSize,omitempty"`
 
 	// Validator indicates if this node is a validator.
-	// +default=false
 	Validator bool `json:"validator"`
 
 	// AccountAddress is the account address of this validator. Omitted when not a validator
@@ -88,6 +110,9 @@ type ChainNodeStatus struct {
 	// ValidatorAddress is the valoper address of this validator. Omitted when not a validator
 	// +optional
 	ValidatorAddress string `json:"validatorAddress,omitempty"`
+
+	// Jailed indicates if this validator is jailed. Always false if not a validator node.
+	Jailed bool `json:"jailed"`
 }
 
 // GenesisConfig specifies how genesis will be retrieved

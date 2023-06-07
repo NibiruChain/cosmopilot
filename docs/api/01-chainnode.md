@@ -89,12 +89,15 @@ ChainNodeStatus defines the observed state of ChainNode
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
+| phase | Jailed indicates the current phase for this ChainNode. | ChainNodePhase | false |
 | nodeID | NodeID show this node's ID | string | false |
+| ip | IP of this node. | string | false |
 | chainID | ChainID shows the chain ID | string | false |
 | pvcSize | PvcSize shows the current size of the pvc of this node | string | false |
 | validator | Validator indicates if this node is a validator. | bool | true |
 | accountAddress | AccountAddress is the account address of this validator. Omitted when not a validator | string | false |
 | validatorAddress | ValidatorAddress is the valoper address of this validator. Omitted when not a validator | string | false |
+| jailed | Jailed indicates if this validator is jailed. Always false if not a validator node. | bool | true |
 
 [Back to Custom Resources](#custom-resources)
 

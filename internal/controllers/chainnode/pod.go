@@ -38,7 +38,10 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 			if err := ph.Create(ctx); err != nil {
 				return err
 			}
-			return ph.WaitForPodRunning(ctx, timeoutPodRunning)
+			if err := ph.WaitForPodRunning(ctx, timeoutPodRunning); err != nil {
+				return err
+			}
+			return r.updatePhase(ctx, chainNode, appsv1.PhaseRunning)
 		}
 		return err
 	}
@@ -46,19 +49,19 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 	// Re-create pod if config changed
 	if currentPod.Annotations[annotationConfigHash] != configHash {
 		logger.Info("config changed")
-		return r.recreatePod(ctx, pod)
+		return r.recreatePod(ctx, chainNode, pod)
 	}
 
 	// Re-create pod if spec changes
 	if podSpecChanged(currentPod, pod) {
 		logger.Info("pod spec changed")
-		return r.recreatePod(ctx, pod)
+		return r.recreatePod(ctx, chainNode, pod)
 	}
 
 	// Recreate pod if it is in failed state
 	if currentPod.Status.Phase == corev1.PodFailed {
 		logger.Info("pod is in failed state")
-		return r.recreatePod(ctx, pod)
+		return r.recreatePod(ctx, chainNode, pod)
 	}
 
 	return nil
@@ -232,10 +235,14 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
 }
 
-func (r *Reconciler) recreatePod(ctx context.Context, pod *corev1.Pod) error {
+func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("recreating pod")
+
+	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseRestarting); err != nil {
+		return err
+	}
 
 	deletePod := pod.DeepCopy()
 	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, deletePod)
@@ -251,7 +258,10 @@ func (r *Reconciler) recreatePod(ctx context.Context, pod *corev1.Pod) error {
 		return err
 	}
 
-	return ph.WaitForPodRunning(ctx, timeoutPodRunning)
+	if err := ph.WaitForPodRunning(ctx, timeoutPodRunning); err != nil {
+		return err
+	}
+	return r.updatePhase(ctx, chainNode, appsv1.PhaseRunning)
 }
 
 func podSpecChanged(existing, new *corev1.Pod) bool {

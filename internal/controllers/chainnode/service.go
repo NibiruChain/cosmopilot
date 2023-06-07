@@ -31,7 +31,11 @@ func (r *Reconciler) ensureService(ctx context.Context, chainNode *appsv1.ChainN
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("creating service")
-			return r.Create(ctx, svc)
+			if err := r.Create(ctx, svc); err != nil {
+				return err
+			}
+			chainNode.Status.IP = svc.Spec.ClusterIP
+			return r.Status().Update(ctx, chainNode)
 		}
 		return err
 	}
@@ -47,7 +51,14 @@ func (r *Reconciler) ensureService(ctx context.Context, chainNode *appsv1.ChainN
 		svc.ObjectMeta.ResourceVersion = currentSvc.ObjectMeta.ResourceVersion
 		svc.Spec.ClusterIP = currentSvc.Spec.ClusterIP
 
-		return r.Update(ctx, svc)
+		if err := r.Update(ctx, svc); err != nil {
+			return err
+		}
+	}
+
+	if chainNode.Status.IP != currentSvc.Spec.ClusterIP {
+		chainNode.Status.IP = currentSvc.Spec.ClusterIP
+		return r.Status().Update(ctx, chainNode)
 	}
 
 	return nil

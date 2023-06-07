@@ -24,6 +24,9 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 
 	if chainNode.Status.PvcSize == "" {
 		logger.Info("initializing data on pvc and updating status")
+		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseInitData); err != nil {
+			return err
+		}
 		if err := app.InitPvcData(ctx, pvc); err != nil {
 			return err
 		}

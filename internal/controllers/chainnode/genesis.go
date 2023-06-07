@@ -23,6 +23,9 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 	}
 
 	if chainNode.ShouldInitGenesis() {
+		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseInitGenesis); err != nil {
+			return err
+		}
 		return r.initGenesis(ctx, app, chainNode)
 	}
 	return r.getGenesis(ctx, chainNode)
