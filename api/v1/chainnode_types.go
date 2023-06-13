@@ -17,7 +17,9 @@ type ChainNodePhase string
 const (
 	PhaseInitData    ChainNodePhase = "InitializingData"
 	PhaseInitGenesis ChainNodePhase = "InitGenesis"
+	PhaseStarting    ChainNodePhase = "Starting"
 	PhaseRunning     ChainNodePhase = "Running"
+	PhaseSyncing     ChainNodePhase = "Syncing"
 	PhaseRestarting  ChainNodePhase = "Restarting"
 )
 
@@ -162,6 +164,10 @@ type Config struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// BlockThreshold specifies the time to wait for a block before considering node unhealthy
+	// +optional
+	BlockThreshold *string `json:"blockThreshold,omitempty"`
 }
 
 // Persistence configuration for this node

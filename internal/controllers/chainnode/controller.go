@@ -2,6 +2,7 @@ package chainnode
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -23,23 +24,27 @@ import (
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet   *kubernetes.Clientset
-	RestConfig  *rest.Config
-	Scheme      *runtime.Scheme
-	configCache *ttlcache.Cache[string, map[string]interface{}]
+	ClientSet      *kubernetes.Clientset
+	RestConfig     *rest.Config
+	Scheme         *runtime.Scheme
+	configCache    *ttlcache.Cache[string, map[string]interface{}]
+	nodeUtilsImage string
+	queryClients   map[string]*chainutils.QueryClient
 }
 
-func NewReconciler(client client.Client, clientSet *kubernetes.Clientset, cfg *rest.Config, scheme *runtime.Scheme) *Reconciler {
+func NewReconciler(client client.Client, clientSet *kubernetes.Clientset, cfg *rest.Config, scheme *runtime.Scheme, nodeUtilsImage string) *Reconciler {
 	cfgCache := ttlcache.New(
 		ttlcache.WithTTL[string, map[string]interface{}](24 * time.Hour),
 	)
 	go cfgCache.Start()
 	return &Reconciler{
-		Client:      client,
-		ClientSet:   clientSet,
-		RestConfig:  cfg,
-		Scheme:      scheme,
-		configCache: cfgCache,
+		Client:         client,
+		ClientSet:      clientSet,
+		RestConfig:     cfg,
+		Scheme:         scheme,
+		configCache:    cfgCache,
+		nodeUtilsImage: nodeUtilsImage,
+		queryClients:   make(map[string]*chainutils.QueryClient),
 	}
 }
 
@@ -92,8 +97,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	// Create/update service for this node
-	if err := r.ensureService(ctx, chainNode); err != nil {
+	// Create/update services for this node
+	if err := r.ensureServices(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -111,6 +116,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Ensure pod is running
 	if err := r.ensurePod(ctx, chainNode, configHash); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	// Wait for node to be synced before continuing
+	if chainNode.Status.Phase == appsv1.PhaseSyncing {
+		return ctrl.Result{}, nil
 	}
 
 	// Update jailed status
@@ -137,4 +147,22 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, &handler.EnqueueRequestForOwner{OwnerType: &appsv1.ChainNode{}}).
 		WithEventFilter(GenerationChangedPredicate{}).
 		Complete(r)
+}
+
+func (r *Reconciler) getQueryClient(chainNode *appsv1.ChainNode) (*chainutils.QueryClient, error) {
+	address := fmt.Sprintf("%s-headless.%s.svc.cluster.local:%d",
+		chainNode.GetName(),
+		chainNode.GetNamespace(),
+		chainutils.GrpcPort,
+	)
+
+	if _, ok := r.queryClients[address]; ok {
+		return r.queryClients[address], nil
+	}
+	c, err := chainutils.NewQueryClient(address)
+	if err != nil {
+		return nil, err
+	}
+	r.queryClients[address] = c
+	return r.queryClients[address], nil
 }

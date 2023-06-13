@@ -16,6 +16,7 @@ const (
 	DefaultAccountPrefix   = "nibi"
 	DefaultValPrefix       = "nibivaloper"
 	defaultP2pPort         = 26656
+	defaultBlockThreshold  = "30s"
 )
 
 func (chainNode *ChainNode) GetPersistenceSize() string {
@@ -158,6 +159,13 @@ func (chainNode *ChainNode) AutoDiscoverPeersEnabled() bool {
 		return *chainNode.Spec.AutoDiscoverPeers
 	}
 	return true
+}
+
+func (chainNode *ChainNode) GetBlockThreshold() string {
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.BlockThreshold != nil {
+		return *chainNode.Spec.Config.BlockThreshold
+	}
+	return defaultBlockThreshold
 }
 
 // Peer helper methods

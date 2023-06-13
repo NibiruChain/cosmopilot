@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cometbft/cometbft/proto/tendermint/p2p"
+	tmtypes "github.com/cometbft/cometbft/proto/tendermint/types"
+	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/codec"
 	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"google.golang.org/grpc"
@@ -13,6 +16,7 @@ import (
 type QueryClient struct {
 	grpcConn      *grpc.ClientConn
 	stakingClient stakingTypes.QueryClient
+	nodeClient    tmservice.ServiceClient
 }
 
 func NewQueryClient(grpcAddress string) (*QueryClient, error) {
@@ -27,6 +31,7 @@ func NewQueryClient(grpcAddress string) (*QueryClient, error) {
 	return &QueryClient{
 		grpcConn:      grpcConn,
 		stakingClient: stakingTypes.NewQueryClient(grpcConn),
+		nodeClient:    tmservice.NewServiceClient(grpcConn),
 	}, nil
 }
 
@@ -42,4 +47,28 @@ func (c *QueryClient) QueryValidator(ctx context.Context, address string) (*stak
 		return nil, err
 	}
 	return &response.Validator, nil
+}
+
+func (c *QueryClient) GetLatestBlock(ctx context.Context) (*tmtypes.Block, error) {
+	response, err := c.nodeClient.GetLatestBlock(ctx, &tmservice.GetLatestBlockRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return response.Block, nil
+}
+
+func (c *QueryClient) IsNodeSyncing(ctx context.Context) (bool, error) {
+	response, err := c.nodeClient.GetSyncing(ctx, &tmservice.GetSyncingRequest{})
+	if err != nil {
+		return false, err
+	}
+	return response.Syncing, nil
+}
+
+func (c *QueryClient) NodeInfo(ctx context.Context) (*p2p.DefaultNodeInfo, error) {
+	response, err := c.nodeClient.GetNodeInfo(ctx, &tmservice.GetNodeInfoRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return response.DefaultNodeInfo, nil
 }

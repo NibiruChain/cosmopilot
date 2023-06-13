@@ -29,6 +29,9 @@ spec:
             - --leader-elect
           image: {{ .Values.image }}:{{- if .Values.imageTag }}{{ .Values.imageTag }}{{- else }}{{ .Chart.AppVersion }}{{ end }}
           name: manager
+          env:
+            - name: NODE_UTILS_IMAGE
+              value: {{ .Values.nodeToolsImage }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

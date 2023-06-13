@@ -1,3 +1,4 @@
-image: gcr.io/nibiruchain/nibiru-operator
+image: ghcr.io/nibiruchain/nibiru-operator
+nodeToolsImage: ghcr.io/nibiruchain/node-utils
 replicas: 1
 serviceMonitorEnabled: true

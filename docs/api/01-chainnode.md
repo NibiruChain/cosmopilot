@@ -110,6 +110,7 @@ Config allows setting specific configurations for this node such has overrides t
 | override | Override allows overriding configs on toml configuration files | *map[string]runtime.RawExtension | false |
 | sidecars | Sidecars allow configuring additional containers to run alongside the node | [][SidecarSpec](#sidecarspec) | false |
 | imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
+| blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 

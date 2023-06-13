@@ -5,7 +5,7 @@ const (
 	P2pPort     = 26656
 
 	RpcPortName = "rpc"
-	Rpcport     = 26657
+	RpcPort     = 26657
 
 	LcdPortName = "lcd"
 	LcdPort     = 1317

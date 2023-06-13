@@ -2,6 +2,7 @@ package chainnode
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/banzaicloud/k8s-objectmatcher/patch"
@@ -17,25 +18,43 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 )
 
-func (r *Reconciler) ensureService(ctx context.Context, chainNode *appsv1.ChainNode) error {
-	logger := log.FromContext(ctx)
-
-	// Prepare service spec
+func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	// Ensure service
 	svc, err := r.getServiceSpec(chainNode)
 	if err != nil {
 		return err
 	}
 
+	if err := r.ensureService(ctx, svc); err != nil {
+		return err
+	}
+
+	// Update ChainNode IP address
+	if chainNode.Status.IP != svc.Spec.ClusterIP {
+		chainNode.Status.IP = svc.Spec.ClusterIP
+		if err := r.Status().Update(ctx, chainNode); err != nil {
+			return err
+		}
+	}
+
+	// Ensure headless service
+	headless, err := r.getHeadlessServiceSpec(chainNode)
+	if err != nil {
+		return err
+	}
+
+	return r.ensureService(ctx, headless)
+}
+
+func (r *Reconciler) ensureService(ctx context.Context, svc *corev1.Service) error {
+	logger := log.FromContext(ctx)
+
 	currentSvc := &corev1.Service{}
-	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), currentSvc)
+	err := r.Get(ctx, client.ObjectKeyFromObject(svc), currentSvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("creating service")
-			if err := r.Create(ctx, svc); err != nil {
-				return err
-			}
-			chainNode.Status.IP = svc.Spec.ClusterIP
-			return r.Status().Update(ctx, chainNode)
+			logger.Info("creating service", "name", svc.GetName())
+			return r.Create(ctx, svc)
 		}
 		return err
 	}
@@ -46,21 +65,15 @@ func (r *Reconciler) ensureService(ctx context.Context, chainNode *appsv1.ChainN
 	}
 
 	if !patchResult.IsEmpty() {
-		logger.Info("updating service")
+		logger.Info("updating service", "name", svc.GetName())
 
 		svc.ObjectMeta.ResourceVersion = currentSvc.ObjectMeta.ResourceVersion
-		svc.Spec.ClusterIP = currentSvc.Spec.ClusterIP
-
 		if err := r.Update(ctx, svc); err != nil {
 			return err
 		}
 	}
 
-	if chainNode.Status.IP != currentSvc.Spec.ClusterIP {
-		chainNode.Status.IP = currentSvc.Spec.ClusterIP
-		return r.Status().Update(ctx, chainNode)
-	}
-
+	*svc = *currentSvc
 	return nil
 }
 
@@ -86,8 +99,8 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 				{
 					Name:       chainutils.RpcPortName,
 					Protocol:   corev1.ProtocolTCP,
-					Port:       chainutils.Rpcport,
-					TargetPort: intstr.FromInt(chainutils.Rpcport),
+					Port:       chainutils.RpcPort,
+					TargetPort: intstr.FromInt(chainutils.RpcPort),
 				},
 				{
 					Name:       chainutils.LcdPortName,
@@ -100,6 +113,62 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 					Protocol:   corev1.ProtocolTCP,
 					Port:       chainutils.GrpcPort,
 					TargetPort: intstr.FromInt(chainutils.GrpcPort),
+				},
+				{
+					Name:       nodeUtilsPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       nodeUtilsPort,
+					TargetPort: intstr.FromInt(nodeUtilsPort),
+				},
+			},
+			Selector: map[string]string{
+				labelNodeID:  chainNode.Status.NodeID,
+				labelChainID: chainNode.Status.ChainID,
+			},
+		},
+	}
+	return svc, controllerutil.SetControllerReference(chainNode, svc, r.Scheme)
+}
+
+func (r *Reconciler) getHeadlessServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Service, error) {
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-headless", chainNode.GetName()),
+			Namespace: chainNode.GetNamespace(),
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP:                corev1.ClusterIPNone,
+			PublishNotReadyAddresses: true,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       chainutils.P2pPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.P2pPort,
+					TargetPort: intstr.FromInt(chainutils.P2pPort),
+				},
+				{
+					Name:       chainutils.RpcPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.RpcPort,
+					TargetPort: intstr.FromInt(chainutils.RpcPort),
+				},
+				{
+					Name:       chainutils.LcdPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.LcdPort,
+					TargetPort: intstr.FromInt(chainutils.LcdPort),
+				},
+				{
+					Name:       chainutils.GrpcPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.GrpcPort,
+					TargetPort: intstr.FromInt(chainutils.GrpcPort),
+				},
+				{
+					Name:       nodeUtilsPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       nodeUtilsPort,
+					TargetPort: intstr.FromInt(nodeUtilsPort),
 				},
 			},
 			Selector: map[string]string{

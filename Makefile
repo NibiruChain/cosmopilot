@@ -2,6 +2,10 @@ NAME 	?= gcr.io/nibiruchain/nibiru-operator
 VERSION ?= latest
 IMG 	?= $(NAME):$(VERSION:v%=%)
 
+NODE_UTILS_NAME    ?= gcr.io/nibiruchain/node-utils
+NODE_UTILS_VERSION ?= latest
+NODE_UTILS_IMG 	   ?= $(NODE_UTILS_NAME):$(NODE_UTILS_VERSION:v%=%)
+
 ENVTEST_K8S_VERSION = 1.26.1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -71,19 +75,27 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+	go build -o bin/manager cmd/manager
 
 .PHONY: run
 run: manifests generate ## Run a controller from your host.
-	go run ./cmd/main.go
+	go run ./cmd/manager
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build --platform linux/amd64 -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+.PHONY: docker-build-utils
+docker-build-utils: test ## Build docker image with the manager.
+	docker build --platform linux/amd64 -f Dockerfile.utils -t ${NODE_UTILS_IMG} .
+
+.PHONY: docker-push-utils
+docker-push-utils: ## Push docker image with the manager.
+	docker push ${NODE_UTILS_IMG}
 
 ##@ Deployment
 

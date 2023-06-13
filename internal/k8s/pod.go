@@ -254,3 +254,113 @@ func (p *PodHelper) Attach(ctx context.Context, container string, stdin io.Reade
 
 	return execOut.String(), execErr.String(), err
 }
+
+func (p *PodHelper) WaitForContainerReady(ctx context.Context, timeout time.Duration, container string) error {
+	fs := fields.SelectorFromSet(map[string]string{
+		"metadata.namespace": p.pod.Namespace,
+		"metadata.name":      p.pod.Name,
+	})
+
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watchapi.Interface, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).Watch(ctx, options)
+		},
+	}
+
+	ctx, cfn := context.WithTimeout(ctx, timeout)
+	defer cfn()
+
+	last, err := watch.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watchapi.Event) (bool, error) {
+		switch event.Type {
+		case watchapi.Error:
+			return false, fmt.Errorf("error watching pod")
+
+		case watchapi.Deleted:
+			return false, fmt.Errorf("pod %s/%s was deleted", p.pod.Namespace, p.pod.Name)
+
+		default:
+			p.pod = event.Object.(*corev1.Pod)
+			if p.pod.Status.Phase == corev1.PodFailed {
+				return false, fmt.Errorf("pod failed")
+			}
+
+			if p.pod.Status.Phase != corev1.PodRunning {
+				return false, nil
+			}
+
+			for _, c := range p.pod.Status.ContainerStatuses {
+				if c.Name == container {
+					return c.Ready, nil
+				}
+			}
+			return false, nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+	if last == nil {
+		return fmt.Errorf("no events received for pod %s/%s", p.pod.Namespace, p.pod.Name)
+	}
+	return nil
+}
+
+func (p *PodHelper) WaitForContainerStarted(ctx context.Context, timeout time.Duration, container string) error {
+	fs := fields.SelectorFromSet(map[string]string{
+		"metadata.namespace": p.pod.Namespace,
+		"metadata.name":      p.pod.Name,
+	})
+
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).List(ctx, options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watchapi.Interface, error) {
+			options.FieldSelector = fs.String()
+			return p.client.CoreV1().Pods(p.pod.Namespace).Watch(ctx, options)
+		},
+	}
+
+	ctx, cfn := context.WithTimeout(ctx, timeout)
+	defer cfn()
+
+	last, err := watch.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watchapi.Event) (bool, error) {
+		switch event.Type {
+		case watchapi.Error:
+			return false, fmt.Errorf("error watching pod")
+
+		case watchapi.Deleted:
+			return false, fmt.Errorf("pod %s/%s was deleted", p.pod.Namespace, p.pod.Name)
+
+		default:
+			p.pod = event.Object.(*corev1.Pod)
+			if p.pod.Status.Phase == corev1.PodFailed {
+				return false, fmt.Errorf("pod failed")
+			}
+
+			if p.pod.Status.Phase != corev1.PodRunning {
+				return false, nil
+			}
+
+			for _, c := range p.pod.Status.ContainerStatuses {
+				if c.Name == container && c.Started != nil {
+					return *c.Started, nil
+				}
+			}
+			return false, nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+	if last == nil {
+		return fmt.Errorf("no events received for pod %s/%s", p.pod.Namespace, p.pod.Name)
+	}
+	return nil
+}
