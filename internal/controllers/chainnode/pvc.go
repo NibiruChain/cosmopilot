@@ -30,7 +30,18 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseInitData); err != nil {
 			return err
 		}
-		if err := app.InitPvcData(ctx, pvc); err != nil {
+
+		initCommands := make([]*chainutils.InitCommand, len(chainNode.GetPersistenceInitCommands()))
+		for i, c := range chainNode.GetPersistenceInitCommands() {
+			initCommands[i] = &chainutils.InitCommand{Args: c.Args, Command: c.Command}
+			if c.Image != nil {
+				initCommands[i].Image = *c.Image
+			} else {
+				initCommands[i].Image = chainNode.GetImage()
+			}
+		}
+
+		if err := app.InitPvcData(ctx, pvc, initCommands...); err != nil {
 			return err
 		}
 		// Get the updated PVC for updating annotation

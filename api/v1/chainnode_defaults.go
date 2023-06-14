@@ -83,6 +83,13 @@ func (chainNode *ChainNode) GetPersistenceAutoResizeMaxSize() string {
 	return defaultAutoResizeMaxSize
 }
 
+func (chainNode *ChainNode) GetPersistenceInitCommands() []InitCommand {
+	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.AdditionalInitCommands != nil {
+		return chainNode.Spec.Persistence.AdditionalInitCommands
+	}
+	return []InitCommand{}
+}
+
 // GetImage returns the versioned image to be used
 func (chainNode *ChainNode) GetImage() string {
 	version := defaultImageVersion

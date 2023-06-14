@@ -154,6 +154,12 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						},
 					},
 				},
+				{
+					Name: "secret",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
 			},
 			Containers: []corev1.Container{
 				{
@@ -192,6 +198,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						{
 							Name:      "genesis",
 							MountPath: "/genesis",
+						},
+						{
+							Name:      "secret",
+							MountPath: "/secret",
 						},
 						{
 							Name:      "node-key",

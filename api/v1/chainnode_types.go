@@ -241,6 +241,13 @@ type Persistence struct {
 	// +optional
 	// +default=2Ti
 	AutoResizeMaxSize *string `json:"autoResizeMaxSize,omitempty"`
+
+	// AdditionalInitCommands are additional commands to run on data initialization. Useful for downloading and
+	// extracting snapshots.
+	// App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume
+	// shared by all init containers.
+	// +optional
+	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
 }
 
 // SidecarSpec allow configuring additional containers to run alongside the node

@@ -22,9 +22,20 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:  pointer.Int64(nonRootId),
+				RunAsGroup: pointer.Int64(nonRootId),
+				FSGroup:    pointer.Int64(nonRootId),
+			},
 			Volumes: []corev1.Volume{
 				{
 					Name: "config",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "home",
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
@@ -38,6 +49,10 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 					Command:         []string{a.binary},
 					Args:            []string{"init", "test", "--home", "/home/app"},
 					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "home",
+							MountPath: "/home/app",
+						},
 						{
 							Name:      "config",
 							MountPath: "/home/app/config",
