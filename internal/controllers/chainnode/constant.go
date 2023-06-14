@@ -18,7 +18,8 @@ const (
 	labelChainID   = "chain-id"
 	labelValidator = "validator"
 
-	annotationConfigHash = "apps.k8s.nibiru.org/config-hash"
+	annotationConfigHash      = "apps.k8s.nibiru.org/config-hash"
+	annotationDataInitialized = "apps.k8s.nibiru.org/data-initialized"
 
 	timeoutPodRunning = 5 * time.Minute
 	timeoutPodDeleted = 30 * time.Second
@@ -32,6 +33,7 @@ const (
 	nodeUtilsPort          = 8000
 
 	startupTimeout = 5 * time.Minute
+	nonRootId      = 1000
 )
 
 var (

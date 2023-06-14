@@ -2,6 +2,8 @@ package chainnode
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -12,6 +14,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/pkg/nodeutils"
 )
 
 func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
@@ -22,7 +25,7 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 		return err
 	}
 
-	if chainNode.Status.PvcSize == "" {
+	if pvc.Annotations[annotationDataInitialized] != "true" {
 		logger.Info("initializing data on pvc and updating status")
 		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseInitData); err != nil {
 			return err
@@ -30,7 +33,18 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 		if err := app.InitPvcData(ctx, pvc); err != nil {
 			return err
 		}
-		chainNode.Status.PvcSize = pvc.Status.Capacity.Storage().String()
+		// Get the updated PVC for updating annotation
+		if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
+			return err
+		}
+		pvc.Annotations[annotationDataInitialized] = strconv.FormatBool(true)
+		if err := r.Update(ctx, pvc); err != nil {
+			return err
+		}
+	}
+
+	if chainNode.Status.PvcSize != pvc.Spec.Resources.Requests.Storage().String() {
+		chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
 		return r.Status().Update(ctx, chainNode)
 	}
 
@@ -40,7 +54,7 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.PersistentVolumeClaim, error) {
 	logger := log.FromContext(ctx)
 
-	storageSize, err := resource.ParseQuantity(chainNode.GetPersistenceSize())
+	storageSize, err := r.getStorageSize(ctx, chainNode)
 	if err != nil {
 		return nil, err
 	}
@@ -50,10 +64,13 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("creating pvc", "size", storageSize)
-			pvc = &corev1.PersistentVolumeClaim{
+			pvc := &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      chainNode.GetName(),
 					Namespace: chainNode.GetNamespace(),
+					Annotations: map[string]string{
+						annotationDataInitialized: strconv.FormatBool(false),
+					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -82,4 +99,85 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 
 	logger.Info("updating pvc size", "size", storageSize)
 	return pvc, r.Update(ctx, pvc)
+}
+
+func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.ChainNode) (resource.Quantity, error) {
+	logger := log.FromContext(ctx)
+
+	// Get current size of data
+	dataSizeBytes, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetDataSize()
+	if err != nil {
+		return resource.Quantity{}, err
+	}
+
+	// If there is no PVC size yet or auto-resize is disabled, return size specified in .spec.persistence.size
+	if !chainNode.GetPersistenceAutoResizeEnabled() || chainNode.Status.PvcSize == "" {
+		size, err := resource.ParseQuantity(chainNode.GetPersistenceSize())
+		if err != nil {
+			return resource.Quantity{}, err
+		}
+
+		sizeBytes, ok := size.AsInt64()
+		if !ok {
+			return resource.Quantity{}, fmt.Errorf("could not convert quantity to bytes")
+		}
+
+		dataUsage := int(float64(dataSizeBytes) / float64(sizeBytes) * 100.0)
+		dataUsageStr := fmt.Sprintf("%d%%", dataUsage)
+		if chainNode.Status.DataUsage != dataUsageStr {
+			chainNode.Status.DataUsage = dataUsageStr
+			if err := r.Status().Update(ctx, chainNode); err != nil {
+				return resource.Quantity{}, err
+			}
+		}
+
+		return size, nil
+	}
+
+	// Get current size of PVC
+	currentSize, err := resource.ParseQuantity(chainNode.Status.PvcSize)
+	if err != nil {
+		return resource.Quantity{}, err
+	}
+	currentSizeBytes, ok := currentSize.AsInt64()
+	if !ok {
+		return resource.Quantity{}, fmt.Errorf("could not convert quantity to bytes")
+	}
+
+	dataUsage := int(float64(dataSizeBytes) / float64(currentSizeBytes) * 100.0)
+	dataUsageStr := fmt.Sprintf("%d%%", dataUsage)
+	if chainNode.Status.DataUsage != dataUsageStr {
+		chainNode.Status.DataUsage = dataUsageStr
+		if err := r.Status().Update(ctx, chainNode); err != nil {
+			return resource.Quantity{}, err
+		}
+	}
+
+	// If we are below threshold, lets just return current size
+	if dataUsage <= chainNode.GetPersistenceAutoResizeThreshold() {
+		return currentSize, nil
+	}
+
+	// We need to increase pvc size
+	logger.Info("incrementing pvc size", "usage", dataUsageStr)
+
+	increment, err := resource.ParseQuantity(chainNode.GetPersistenceAutoResizeIncrement())
+	if err != nil {
+		return resource.Quantity{}, err
+	}
+
+	max, err := resource.ParseQuantity(chainNode.GetPersistenceAutoResizeMaxSize())
+	if err != nil {
+		return resource.Quantity{}, err
+	}
+
+	newSize := currentSize.DeepCopy()
+	newSize.Add(increment)
+
+	if newSize.Cmp(max) == 1 {
+		logger.Info("pvc reached maximum size")
+		return max, nil
+	}
+
+	return newSize, nil
 }

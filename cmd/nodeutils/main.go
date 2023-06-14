@@ -19,7 +19,7 @@ var (
 func main() {
 	flag.Parse()
 
-	nodeUtilsServer, err := nodeutils.New(
+	nodeUtilsServer, err := nodeutils.NewServer(
 		nodeutils.WithHost(host),
 		nodeutils.WithPort(port),
 		nodeutils.WithBlockThreshold(blockThreshold),

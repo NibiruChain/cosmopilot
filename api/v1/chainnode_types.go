@@ -39,6 +39,7 @@ type ChainNodeList struct {
 //+kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
 //+kubebuilder:printcolumn:name="Validator",type=boolean,JSONPath=`.status.validator`
 //+kubebuilder:printcolumn:name="Jailed",type=boolean,JSONPath=`.status.jailed`
+//+kubebuilder:printcolumn:name="DataUsage",type=string,JSONPath=`.status.dataUsage`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // ChainNode is the Schema for the chainnodes API
@@ -101,6 +102,10 @@ type ChainNodeStatus struct {
 	// PvcSize shows the current size of the pvc of this node
 	// +optional
 	PvcSize string `json:"pvcSize,omitempty"`
+
+	// DataUsage shows the percentage of data usage.
+	// +optional
+	DataUsage string `json:"dataUsage,omitempty"`
 
 	// Validator indicates if this node is a validator.
 	Validator bool `json:"validator"`
@@ -168,11 +173,18 @@ type Config struct {
 	// BlockThreshold specifies the time to wait for a block before considering node unhealthy
 	// +optional
 	BlockThreshold *string `json:"blockThreshold,omitempty"`
+
+	// ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode.
+	// Defaults to `1m`.
+	// +optional
+	// +default=1m
+	ReconcilePeriod *string `json:"reconcilePeriod,omitempty"`
 }
 
 // Persistence configuration for this node
 type Persistence struct {
-	// Size of the persistent volume for storing data. Defaults to `50Gi`.
+	// Size of the persistent volume for storing data. Can't be updated when autoResize is enabled.
+	// Defaults to `50Gi`.
 	// +optional
 	// +default="50Gi"
 	// +kubebuilder:validation:MinLength=1
@@ -182,6 +194,30 @@ type Persistence struct {
 	// to create persistent volumes.
 	// +optional
 	StorageClassName *string `json:"storageClass,omitempty"`
+
+	// AutoResize specifies configurations to automatically resize PVC.
+	// Defaults to `true`.
+	// +optional
+	// +default=true
+	AutoResize *bool `json:"autoResize,omitempty"`
+
+	// AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur.
+	// Defaults to `80`.
+	// +optional
+	// +default=80
+	AutoResizeThreshold *int `json:"autoResizeThreshold,omitempty"`
+
+	// AutoResizeIncrement specifies the size increment on each auto-resize event.
+	// Defaults to `50Gi`.
+	// +optional
+	// +default=50Gi
+	AutoResizeIncrement *string `json:"autoResizeIncrement,omitempty"`
+
+	// AutoResizeMaxSize specifies the maximum size the PVC can have.
+	// Defaults to `2Ti`.
+	// +optional
+	// +default=2Ti
+	AutoResizeMaxSize *string `json:"autoResizeMaxSize,omitempty"`
 }
 
 // SidecarSpec allow configuring additional containers to run alongside the node

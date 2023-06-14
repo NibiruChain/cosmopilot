@@ -31,6 +31,9 @@ spec:
     - jsonPath: .status.jailed
       name: Jailed
       type: boolean
+    - jsonPath: .status.dataUsage
+      name: DataUsage
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -110,6 +113,10 @@ spec:
                     description: Override allows overriding configs on toml configuration
                       files
                     x-kubernetes-preserve-unknown-fields: true
+                  reconcilePeriod:
+                    description: ReconcilePeriod is the period at which a reconcile
+                      loop will happen for this ChainNode. Defaults to `1m`.
+                    type: string
                   sidecars:
                     description: Sidecars allow configuring additional containers
                       to run alongside the node
@@ -316,9 +323,25 @@ spec:
               persistence:
                 description: Persistence configures pvc for persisting data on nodes
                 properties:
+                  autoResize:
+                    description: AutoResize specifies configurations to automatically
+                      resize PVC. Defaults to `true`.
+                    type: boolean
+                  autoResizeIncrement:
+                    description: AutoResizeIncrement specifies the size increment
+                      on each auto-resize event. Defaults to `50Gi`.
+                    type: string
+                  autoResizeMaxSize:
+                    description: AutoResizeMaxSize specifies the maximum size the
+                      PVC can have. Defaults to `2Ti`.
+                    type: string
+                  autoResizeThreshold:
+                    description: AutoResizeThreshold is the percentage of data usage
+                      at which an auto-resize event should occur. Defaults to `80`.
+                    type: integer
                   size:
-                    description: Size of the persistent volume for storing data. Defaults
-                      to `50Gi`.
+                    description: Size of the persistent volume for storing data. Can't
+                      be updated when autoResize is enabled. Defaults to `50Gi`.
                     minLength: 1
                     type: string
                   storageClass:
@@ -455,6 +478,9 @@ spec:
                 type: string
               chainID:
                 description: ChainID shows the chain ID
+                type: string
+              dataUsage:
+                description: DataUsage shows the percentage of data usage.
                 type: string
               ip:
                 description: IP of this node.

@@ -94,6 +94,7 @@ ChainNodeStatus defines the observed state of ChainNode
 | ip | IP of this node. | string | false |
 | chainID | ChainID shows the chain ID | string | false |
 | pvcSize | PvcSize shows the current size of the pvc of this node | string | false |
+| dataUsage | DataUsage shows the percentage of data usage. | string | false |
 | validator | Validator indicates if this node is a validator. | bool | true |
 | accountAddress | AccountAddress is the account address of this validator. Omitted when not a validator | string | false |
 | validatorAddress | ValidatorAddress is the valoper address of this validator. Omitted when not a validator | string | false |
@@ -111,6 +112,7 @@ Config allows setting specific configurations for this node such has overrides t
 | sidecars | Sidecars allow configuring additional containers to run alongside the node | [][SidecarSpec](#sidecarspec) | false |
 | imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
 | blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy | *string | false |
+| reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `1m`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -177,8 +179,12 @@ Persistence configuration for this node
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| size | Size of the persistent volume for storing data. Defaults to `50Gi`. | *string | false |
+| size | Size of the persistent volume for storing data. Can't be updated when autoResize is enabled. Defaults to `50Gi`. | *string | false |
 | storageClass | StorageClassName specifies the name of the storage class to use to create persistent volumes. | *string | false |
+| autoResize | AutoResize specifies configurations to automatically resize PVC. Defaults to `true`. | *bool | false |
+| autoResizeThreshold | AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur. Defaults to `80`. | *int | false |
+| autoResizeIncrement | AutoResizeIncrement specifies the size increment on each auto-resize event. Defaults to `50Gi`. | *string | false |
+| autoResizeMaxSize | AutoResizeMaxSize specifies the maximum size the PVC can have. Defaults to `2Ti`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 

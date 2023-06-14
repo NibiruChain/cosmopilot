@@ -3,11 +3,14 @@ package v1
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
+	defaultReconcilePeriod = time.Minute
+
 	defaultPersistenceSize = "50Gi"
 	defaultImageVersion    = "latest"
 	defaultUnbondingTime   = "1814400s"
@@ -17,7 +20,25 @@ const (
 	DefaultValPrefix       = "nibivaloper"
 	defaultP2pPort         = 26656
 	defaultBlockThreshold  = "30s"
+
+	defaultAutoResize          = true
+	defaultAutoResizeThreshold = 80
+	defaultAutoResizeIncrement = "50Gi"
+	defaultAutoResizeMaxSize   = "2Ti"
 )
+
+func (chainNode *ChainNode) GetReconcilePeriod() time.Duration {
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.ReconcilePeriod != nil {
+		if d, err := time.ParseDuration(*chainNode.Spec.Config.ReconcilePeriod); err == nil {
+			return d
+		}
+	}
+	return defaultReconcilePeriod
+}
+
+func (chainNode *ChainNode) GetNodeFQDN() string {
+	return fmt.Sprintf("%s-headless.%s.svc.cluster.local", chainNode.GetName(), chainNode.GetNamespace())
+}
 
 func (chainNode *ChainNode) GetPersistenceSize() string {
 	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.Size != nil {
@@ -32,6 +53,34 @@ func (chainNode *ChainNode) GetPersistenceStorageClass() *string {
 		return nil
 	}
 	return chainNode.Spec.Persistence.StorageClassName
+}
+
+func (chainNode *ChainNode) GetPersistenceAutoResizeEnabled() bool {
+	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.AutoResize != nil {
+		return *chainNode.Spec.Persistence.AutoResize
+	}
+	return defaultAutoResize
+}
+
+func (chainNode *ChainNode) GetPersistenceAutoResizeThreshold() int {
+	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.AutoResizeThreshold != nil {
+		return *chainNode.Spec.Persistence.AutoResizeThreshold
+	}
+	return defaultAutoResizeThreshold
+}
+
+func (chainNode *ChainNode) GetPersistenceAutoResizeIncrement() string {
+	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.AutoResizeIncrement != nil {
+		return *chainNode.Spec.Persistence.AutoResizeIncrement
+	}
+	return defaultAutoResizeIncrement
+}
+
+func (chainNode *ChainNode) GetPersistenceAutoResizeMaxSize() string {
+	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.AutoResizeMaxSize != nil {
+		return *chainNode.Spec.Persistence.AutoResizeMaxSize
+	}
+	return defaultAutoResizeMaxSize
 }
 
 // GetImage returns the versioned image to be used

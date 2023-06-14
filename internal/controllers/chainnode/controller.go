@@ -120,7 +120,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Wait for node to be synced before continuing
 	if chainNode.Status.Phase == appsv1.PhaseSyncing {
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: chainNode.GetReconcilePeriod()}, nil
 	}
 
 	// Update jailed status
@@ -130,7 +130,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: chainNode.GetReconcilePeriod()}, nil
 }
 
 func (r *Reconciler) updatePhase(ctx context.Context, chainNode *appsv1.ChainNode, phase appsv1.ChainNodePhase) error {
@@ -150,12 +150,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) getQueryClient(chainNode *appsv1.ChainNode) (*chainutils.QueryClient, error) {
-	address := fmt.Sprintf("%s-headless.%s.svc.cluster.local:%d",
-		chainNode.GetName(),
-		chainNode.GetNamespace(),
-		chainutils.GrpcPort,
-	)
-
+	address := fmt.Sprintf("%s:%d", chainNode.GetNodeFQDN(), chainutils.GrpcPort)
 	if _, ok := r.queryClients[address]; ok {
 		return r.queryClients[address], nil
 	}

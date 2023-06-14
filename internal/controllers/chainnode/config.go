@@ -97,8 +97,6 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 		return "", err
 	}
 
-	logger.Info("config hash", "hash", hash)
-
 	// Apply peer configuration
 	peerConfig, err := r.getPeerConfiguration(ctx, chainNode)
 	if err != nil {

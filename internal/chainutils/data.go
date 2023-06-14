@@ -21,6 +21,11 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsUser:  pointer.Int64(nonRootId),
+				RunAsGroup: pointer.Int64(nonRootId),
+				FSGroup:    pointer.Int64(nonRootId),
+			},
 			Volumes: []corev1.Volume{
 				{
 					Name: "data",
@@ -28,6 +33,12 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: pvc.GetName(),
 						},
+					},
+				},
+				{
+					Name: "home",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 			},
@@ -39,6 +50,10 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 					Command:         []string{a.binary},
 					Args:            []string{"init", "test", "--home", "/home/app"},
 					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "home",
+							MountPath: "/home/app",
+						},
 						{
 							Name:      "data",
 							MountPath: "/home/app/data",

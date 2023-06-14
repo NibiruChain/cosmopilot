@@ -16,7 +16,7 @@ type Server struct {
 	client *chainutils.QueryClient
 }
 
-func New(opts ...Option) (*Server, error) {
+func NewServer(opts ...Option) (*Server, error) {
 	options := defaultOptions()
 	for _, opt := range opts {
 		opt(options)
@@ -43,4 +43,5 @@ func (s *Server) StartServer() error {
 func (s *Server) registerRoutes() {
 	s.router.HandleFunc("/ready", s.ready).Methods(http.MethodGet)
 	s.router.HandleFunc("/health", s.health).Methods(http.MethodGet)
+	s.router.HandleFunc("/data_size", s.dataSize).Methods(http.MethodGet)
 }
