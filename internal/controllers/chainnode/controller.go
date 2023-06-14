@@ -116,14 +116,24 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	// Create/update PVC
-	if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
-		return ctrl.Result{}, err
+	// If we don't have a PVC yet, lets create it before deploying the pod. But for any updates to the PVC
+	// we want to do it after the pod deployment because auto-resize feature requires the node running.
+	if chainNode.Status.PvcSize == "" {
+		if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Ensure pod is running
 	if err := r.ensurePod(ctx, chainNode, configHash); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	// For updating the PVC we want to do it after the pod deployment because auto-resize feature requires the node running.
+	if chainNode.Status.PvcSize != "" {
+		if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Wait for node to be synced before continuing
