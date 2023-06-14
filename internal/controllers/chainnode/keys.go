@@ -58,6 +58,13 @@ func (r *Reconciler) ensureNodeKey(ctx context.Context, chainNode *appsv1.ChainN
 		if err != nil {
 			return err
 		}
+		if chainNode.Status.NodeID == "" {
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeNormal,
+				appsv1.ReasonNodeKeyImported,
+				"Node key imported from Secret",
+			)
+		}
 	}
 
 	if mustCreate {
@@ -65,6 +72,11 @@ func (r *Reconciler) ensureNodeKey(ctx context.Context, chainNode *appsv1.ChainN
 		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonNodeKeyCreated,
+			"Node key created",
+		)
 	} else if mustUpdate {
 		logger.Info("updating secret with node-key")
 		if err := r.Update(ctx, secret); err != nil {
@@ -119,6 +131,12 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 			return err
 		}
 		secret.Data[privKeyFilename] = key
+	} else if !chainNode.Status.Validator {
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonPrivateKeyImported,
+			"Private key imported from Secret",
+		)
 	}
 
 	if mustCreate {
@@ -126,6 +144,11 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonPrivateKeyCreated,
+			"Private key created for validating",
+		)
 	} else if mustUpdate {
 		logger.Info("updating secret with priv-key")
 		if err := r.Update(ctx, secret); err != nil {

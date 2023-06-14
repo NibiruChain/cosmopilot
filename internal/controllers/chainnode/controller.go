@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -30,22 +31,29 @@ type Reconciler struct {
 	configCache    *ttlcache.Cache[string, map[string]interface{}]
 	nodeUtilsImage string
 	queryClients   map[string]*chainutils.QueryClient
+	recorder       record.EventRecorder
 }
 
-func NewReconciler(client client.Client, clientSet *kubernetes.Clientset, cfg *rest.Config, scheme *runtime.Scheme, nodeUtilsImage string) *Reconciler {
+func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, nodeUtilsImage string) (*Reconciler, error) {
 	cfgCache := ttlcache.New(
 		ttlcache.WithTTL[string, map[string]interface{}](24 * time.Hour),
 	)
-	go cfgCache.Start()
-	return &Reconciler{
-		Client:         client,
+
+	r := &Reconciler{
+		Client:         mgr.GetClient(),
 		ClientSet:      clientSet,
-		RestConfig:     cfg,
-		Scheme:         scheme,
+		RestConfig:     mgr.GetConfig(),
+		Scheme:         mgr.GetScheme(),
 		configCache:    cfgCache,
 		nodeUtilsImage: nodeUtilsImage,
 		queryClients:   make(map[string]*chainutils.QueryClient),
+		recorder:       mgr.GetEventRecorderFor("chainnode-controller"),
 	}
+	if err := r.setupWithManager(mgr); err != nil {
+		return nil, err
+	}
+	go cfgCache.Start()
+	return r, nil
 }
 
 //+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes;pods;persistentvolumeclaims;configmaps;secrets;services,verbs=get;list;watch;create;update;patch;delete
@@ -138,8 +146,8 @@ func (r *Reconciler) updatePhase(ctx context.Context, chainNode *appsv1.ChainNod
 	return r.Status().Update(ctx, chainNode)
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+// setupWithManager sets up the controller with the Manager.
+func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.ChainNode{}).
 		Watches(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{OwnerType: &appsv1.ChainNode{}}).

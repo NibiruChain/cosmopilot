@@ -132,10 +132,18 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 				},
 				Data: cmData,
 			}
-			if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
+			if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 				return "", err
 			}
-			return hash, r.Create(ctx, cm)
+			if err = r.Create(ctx, cm); err != nil {
+				return "", err
+			}
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeNormal,
+				appsv1.ReasonConfigsCreated,
+				"Configuration files successfully created",
+			)
+			return hash, nil
 		}
 		return "", err
 	}
@@ -151,7 +159,15 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 		logger.Info("updating configs configmap")
 		cm.Annotations[annotationConfigHash] = hash
 		cm.Data = cmData
-		return hash, r.Update(ctx, cm)
+		if err := r.Update(ctx, cm); err != nil {
+			return "", err
+		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonConfigsUpdated,
+			"Configuration files updated",
+		)
+		return hash, nil
 	}
 	return hash, nil
 }

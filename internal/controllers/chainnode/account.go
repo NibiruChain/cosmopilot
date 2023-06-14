@@ -75,6 +75,11 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 		}
 		validatorAddress = account.ValidatorAddress
 		accountAddress = account.Address
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonAccountImported,
+			"Validator account imported from Secret",
+		)
 	}
 
 	if mustCreate {
@@ -82,6 +87,11 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonAccountCreated,
+			"Validator account created",
+		)
 	} else if mustUpdate {
 		logger.Info("updating secret with account mnemonic")
 		if err := r.Update(ctx, secret); err != nil {

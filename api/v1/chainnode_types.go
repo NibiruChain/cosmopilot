@@ -23,6 +23,29 @@ const (
 	PhaseRestarting  ChainNodePhase = "Restarting"
 )
 
+// ChainNode events
+const (
+	ReasonPvcResized         = "PvcResized"
+	ReasonPvcMaxReached      = "PvcMaxSizeReached"
+	ReasonDataInitialized    = "DataInitialized"
+	ReasonNodeKeyCreated     = "NodeKeyCreated"
+	ReasonNodeKeyImported    = "NodeKeyImported"
+	ReasonPrivateKeyCreated  = "PrivateKeyCreated"
+	ReasonPrivateKeyImported = "PrivateKeyImported"
+	ReasonAccountCreated     = "AccountCreated"
+	ReasonAccountImported    = "AccountImported"
+	ReasonGenesisInitialized = "GenesisCreated"
+	ReasonGenesisImported    = "GenesisImported"
+	ReasonConfigsCreated     = "ConfigsCreated"
+	ReasonConfigsUpdated     = "ConfigsUpdated"
+	ReasonNodeStarted        = "NodeStarted"
+	ReasonNodeRestarted      = "NodeRestarted"
+	ReasonNodeSyncing        = "NodeSyncing"
+	ReasonNodeRunning        = "NodeRunning"
+	ReasonValidatorJailed    = "ValidatorJailed"
+	ReasonValidatorUnjailed  = "ValidatorUnjailed"
+)
+
 //+kubebuilder:object:root=true
 
 // ChainNodeList contains a list of ChainNode

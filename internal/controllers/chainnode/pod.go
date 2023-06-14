@@ -47,6 +47,11 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 			if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, appContainerName); err != nil {
 				return err
 			}
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeNormal,
+				appsv1.ReasonNodeStarted,
+				"Node successfully started",
+			)
 			return r.setPhaseRunningOrSyncing(ctx, chainNode)
 		}
 		return err
@@ -350,6 +355,11 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 	if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, appContainerName); err != nil {
 		return err
 	}
+	r.recorder.Eventf(chainNode,
+		corev1.EventTypeNormal,
+		appsv1.ReasonNodeRestarted,
+		"Node restarted",
+	)
 	return r.setPhaseRunningOrSyncing(ctx, chainNode)
 }
 
@@ -412,12 +422,22 @@ func (r *Reconciler) setPhaseRunningOrSyncing(ctx context.Context, chainNode *ap
 
 	if syncing {
 		if chainNode.Status.Phase != appsv1.PhaseSyncing {
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeNormal,
+				appsv1.ReasonNodeSyncing,
+				"Node is syncing",
+			)
 			return r.updatePhase(ctx, chainNode, appsv1.PhaseSyncing)
 		}
 		return nil
 	}
 
 	if chainNode.Status.Phase != appsv1.PhaseRunning {
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonNodeRunning,
+			"Node is synced and running",
+		)
 		return r.updatePhase(ctx, chainNode, appsv1.PhaseRunning)
 	}
 

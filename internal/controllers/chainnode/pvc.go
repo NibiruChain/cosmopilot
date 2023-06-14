@@ -41,11 +41,25 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 		if err := r.Update(ctx, pvc); err != nil {
 			return err
 		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonDataInitialized,
+			"Data volume was successfully initialized",
+		)
+		chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
+		return r.Status().Update(ctx, chainNode)
 	}
 
 	if chainNode.Status.PvcSize != pvc.Spec.Resources.Requests.Storage().String() {
 		chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
-		return r.Status().Update(ctx, chainNode)
+		if err = r.Status().Update(ctx, chainNode); err != nil {
+			return err
+		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonPvcResized,
+			"Data volume was resized to %v", chainNode.Status.PvcSize,
+		)
 	}
 
 	return nil
@@ -104,20 +118,25 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.ChainNode) (resource.Quantity, error) {
 	logger := log.FromContext(ctx)
 
+	specSize, err := resource.ParseQuantity(chainNode.GetPersistenceSize())
+	if err != nil {
+		return resource.Quantity{}, err
+	}
+
+	// No PVC is available yet. Let's create it with .spec.persistence.size
+	if chainNode.Status.PvcSize == "" {
+		return specSize, nil
+	}
+
 	// Get current size of data
 	dataSizeBytes, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetDataSize()
 	if err != nil {
 		return resource.Quantity{}, err
 	}
 
-	// If there is no PVC size yet or auto-resize is disabled, return size specified in .spec.persistence.size
-	if !chainNode.GetPersistenceAutoResizeEnabled() || chainNode.Status.PvcSize == "" {
-		size, err := resource.ParseQuantity(chainNode.GetPersistenceSize())
-		if err != nil {
-			return resource.Quantity{}, err
-		}
-
-		sizeBytes, ok := size.AsInt64()
+	// If auto-resize is disabled, we should also just return .spec.persistence.size, but we can also update data usage.
+	if !chainNode.GetPersistenceAutoResizeEnabled() {
+		sizeBytes, ok := specSize.AsInt64()
 		if !ok {
 			return resource.Quantity{}, fmt.Errorf("could not convert quantity to bytes")
 		}
@@ -131,7 +150,7 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 			}
 		}
 
-		return size, nil
+		return specSize, nil
 	}
 
 	// Get current size of PVC
@@ -176,6 +195,11 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 
 	if newSize.Cmp(max) == 1 {
 		logger.Info("pvc reached maximum size")
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeWarning,
+			appsv1.ReasonPvcMaxReached,
+			"Data volume reached maximum allowed size (%v)", max.String(),
+		)
 		return max, nil
 	}
 

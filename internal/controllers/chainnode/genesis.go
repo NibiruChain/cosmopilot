@@ -26,7 +26,15 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseInitGenesis); err != nil {
 			return err
 		}
-		return r.initGenesis(ctx, app, chainNode)
+		if err := r.initGenesis(ctx, app, chainNode); err != nil {
+			return err
+		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonGenesisInitialized,
+			"Genesis was successfully initialized",
+		)
+		return nil
 	}
 	return r.getGenesis(ctx, chainNode)
 }
@@ -53,6 +61,12 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 			return err
 		}
 
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonGenesisImported,
+			"Genesis imported from ConfigMap",
+		)
+
 		// update chainID in status
 		logger.Info("updating status with chain id")
 		chainNode.Status.ChainID = chainID
@@ -72,6 +86,11 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 		if err != nil {
 			return err
 		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonGenesisImported,
+			"Genesis downloaded using specified URL",
+		)
 	}
 
 	// TODO: add other methods for retrieving genesis
