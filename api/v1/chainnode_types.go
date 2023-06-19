@@ -102,6 +102,10 @@ type ChainNodeSpec struct {
 	// Peers are additional persistent peers that should be added to this node.
 	// +optional
 	Peers []Peer `json:"peers,omitempty"`
+
+	// Expose specifies which node endpoints are exposed and how they are exposed
+	// +optional
+	Expose *ExposeConfig `json:"expose,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode
@@ -117,6 +121,10 @@ type ChainNodeStatus struct {
 	// IP of this node.
 	// +optional
 	IP string `json:"ip,omitempty"`
+
+	// PublicAddress for p2p when enabled.
+	// +optional
+	PublicAddress string `json:"publicAddress,omitempty"`
 
 	// ChainID shows the chain ID
 	// +optional
@@ -401,4 +409,17 @@ type Peer struct {
 	// Private marks this peer as private.
 	// +optional
 	Private *bool `json:"private,omitempty"`
+}
+
+type ExposeConfig struct {
+	// P2P indicates whether to expose p2p endpoint for this node. Defaults to `false`.
+	// +optional
+	// +default=false
+	P2P *bool `json:"p2p,omitempty"`
+
+	// P2pServiceType indicates how p2p port will be exposed. Either `LoadBalancer` or `NodePort`.
+	// Defaults to `NodePort`.
+	// +optional
+	// +default="NodePort"
+	P2pServiceType *corev1.ServiceType `json:"p2pServiceType,omitempty"`
 }

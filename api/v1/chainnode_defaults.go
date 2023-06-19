@@ -25,6 +25,9 @@ const (
 	defaultAutoResizeThreshold = 80
 	defaultAutoResizeIncrement = "50Gi"
 	defaultAutoResizeMaxSize   = "2Ti"
+
+	defaultP2pExpose      = false
+	defaultP2pServiceType = corev1.ServiceTypeNodePort
 )
 
 func (chainNode *ChainNode) GetReconcilePeriod() time.Duration {
@@ -222,6 +225,20 @@ func (chainNode *ChainNode) GetBlockThreshold() string {
 		return *chainNode.Spec.Config.BlockThreshold
 	}
 	return defaultBlockThreshold
+}
+
+func (chainNode *ChainNode) ExposesP2P() bool {
+	if chainNode.Spec.Expose != nil && chainNode.Spec.Expose.P2P != nil {
+		return *chainNode.Spec.Expose.P2P
+	}
+	return defaultP2pExpose
+}
+
+func (chainNode *ChainNode) GetP2pServiceType() corev1.ServiceType {
+	if chainNode.Spec.Expose != nil && chainNode.Spec.Expose.P2pServiceType != nil {
+		return *chainNode.Spec.Expose.P2pServiceType
+	}
+	return defaultP2pServiceType
 }
 
 // Peer helper methods

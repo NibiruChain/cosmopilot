@@ -61,6 +61,7 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, nodeUtilsImage strin
 //+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=pods/exec;pods/attach,verbs=create
 //+kubebuilder:rbac:groups="",resources=pods/log,verbs=get
+//+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

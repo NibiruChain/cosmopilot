@@ -11,6 +11,7 @@
 * [ChainNodeSpec](#chainnodespec)
 * [ChainNodeStatus](#chainnodestatus)
 * [Config](#config)
+* [ExposeConfig](#exposeconfig)
 * [GenesisConfig](#genesisconfig)
 * [GenesisInitConfig](#genesisinitconfig)
 * [InitCommand](#initcommand)
@@ -80,6 +81,7 @@ ChainNodeSpec defines the desired state of ChainNode
 | validator | Validator configures this node as a validator and configures it. | *[ValidatorConfig](#validatorconfig) | false |
 | autoDiscoverPeers | AutoDiscoverPeers ensures peers with same chain ID are connected with each other. By default, it is enabled. | *bool | false |
 | peers | Peers are additional persistent peers that should be added to this node. | [][Peer](#peer) | false |
+| expose | Expose specifies which node endpoints are exposed and how they are exposed | *[ExposeConfig](#exposeconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -92,6 +94,7 @@ ChainNodeStatus defines the observed state of ChainNode
 | phase | Jailed indicates the current phase for this ChainNode. | ChainNodePhase | false |
 | nodeID | NodeID show this node's ID | string | false |
 | ip | IP of this node. | string | false |
+| publicAddress | PublicAddress for p2p when enabled. | string | false |
 | chainID | ChainID shows the chain ID | string | false |
 | pvcSize | PvcSize shows the current size of the pvc of this node | string | false |
 | dataUsage | DataUsage shows the percentage of data usage. | string | false |
@@ -113,6 +116,17 @@ Config allows setting specific configurations for this node such has overrides t
 | imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
 | blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy | *string | false |
 | reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `1m`. | *string | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### ExposeConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| p2p | P2P indicates whether to expose p2p endpoint for this node. Defaults to `false`. | *bool | false |
+| p2pServiceType | P2pServiceType indicates how p2p port will be exposed. Either `LoadBalancer` or `NodePort`. Defaults to `NodePort`. | *corev1.ServiceType | false |
 
 [Back to Custom Resources](#custom-resources)
 

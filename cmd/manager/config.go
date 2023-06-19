@@ -30,7 +30,7 @@ func init() {
 	)
 
 	flag.StringVar(&nodeUtilsImage, "nodeutils-image",
-		environ.GetString("NODE_UTILS_IMAGE", "gcr.io/nibiruchain/node-utils"),
+		environ.GetString("NODE_UTILS_IMAGE", "ghcr.io/nibiruchain/node-utils"),
 		"nodeutils image to be deployed with nodes.",
 	)
 }

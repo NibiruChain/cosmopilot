@@ -282,6 +282,19 @@ spec:
                       type: object
                     type: array
                 type: object
+              expose:
+                description: Expose specifies which node endpoints are exposed and
+                  how they are exposed
+                properties:
+                  p2p:
+                    description: P2P indicates whether to expose p2p endpoint for
+                      this node. Defaults to `false`.
+                    type: boolean
+                  p2pServiceType:
+                    description: P2pServiceType indicates how p2p port will be exposed.
+                      Either `LoadBalancer` or `NodePort`. Defaults to `NodePort`.
+                    type: string
+                type: object
               genesis:
                 description: Genesis indicates where this node will get the genesis
                   from. Can be omitted when .spec.validator.init is specified.
@@ -520,6 +533,9 @@ spec:
                 type: string
               phase:
                 description: Jailed indicates the current phase for this ChainNode.
+                type: string
+              publicAddress:
+                description: PublicAddress for p2p when enabled.
                 type: string
               pvcSize:
                 description: PvcSize shows the current size of the pvc of this node

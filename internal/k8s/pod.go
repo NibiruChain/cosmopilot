@@ -45,7 +45,7 @@ func (p *PodHelper) Delete(ctx context.Context) error {
 }
 
 func (p *PodHelper) WaitForPodRunning(ctx context.Context, timeout time.Duration) error {
-	return p.WaitForPodCondition(ctx, timeout, corev1.PodRunning)
+	return p.WaitForPodPhase(ctx, timeout, corev1.PodRunning)
 }
 
 func (p *PodHelper) WaitForPodDeleted(ctx context.Context, timeout time.Duration) error {
@@ -91,10 +91,10 @@ func (p *PodHelper) WaitForPodDeleted(ctx context.Context, timeout time.Duration
 }
 
 func (p *PodHelper) WaitForPodSucceeded(ctx context.Context, timeout time.Duration) error {
-	return p.WaitForPodCondition(ctx, timeout, corev1.PodSucceeded)
+	return p.WaitForPodPhase(ctx, timeout, corev1.PodSucceeded)
 }
 
-func (p *PodHelper) WaitForPodCondition(ctx context.Context, timeout time.Duration, phase corev1.PodPhase) error {
+func (p *PodHelper) WaitForPodPhase(ctx context.Context, timeout time.Duration, phase corev1.PodPhase) error {
 	fs := fields.SelectorFromSet(map[string]string{
 		"metadata.namespace": p.pod.Namespace,
 		"metadata.name":      p.pod.Name,
@@ -140,10 +140,6 @@ func (p *PodHelper) WaitForPodCondition(ctx context.Context, timeout time.Durati
 }
 
 func (p *PodHelper) WaitForInitContainerRunning(ctx context.Context, container string, timeout time.Duration) error {
-	return p.WaitForInitContainerCondition(ctx, timeout, container, corev1.PodRunning)
-}
-
-func (p *PodHelper) WaitForInitContainerCondition(ctx context.Context, timeout time.Duration, container string, phase corev1.PodPhase) error {
 	fs := fields.SelectorFromSet(map[string]string{
 		"metadata.namespace": p.pod.Namespace,
 		"metadata.name":      p.pod.Name,

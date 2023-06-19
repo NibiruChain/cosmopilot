@@ -1,8 +1,8 @@
-NAME 	?= gcr.io/nibiruchain/nibiru-operator
+NAME 	?= ghcr.io/nibiruchain/nibiru-operator
 VERSION ?= latest
 IMG 	?= $(NAME):$(VERSION:v%=%)
 
-NODE_UTILS_NAME    ?= gcr.io/nibiruchain/node-utils
+NODE_UTILS_NAME    ?= ghcr.io/nibiruchain/node-utils
 NODE_UTILS_VERSION ?= latest
 NODE_UTILS_IMG 	   ?= $(NODE_UTILS_NAME):$(NODE_UTILS_VERSION:v%=%)
 
