@@ -1,7 +1,7 @@
 apiVersion: apps.k8s.nibiru.org/v1
-kind: ChainNode
+kind: ChainNodeSet
 metadata:
-  name: nibiru-validator
+  name: nibiru-testnet
 spec:
   app:
     image: ghcr.io/nibiruchain/nibiru
@@ -12,6 +12,10 @@ spec:
     info:
       moniker: nibiru
       website: https://nibiru.fi
+    config:
+      override:
+        app.toml:
+          minimum-gas-prices: 0.025unibi
     init:
       chainID: nibiru-devnet-0
       assets: [ "1000000000000000unibi" ]
@@ -54,7 +58,11 @@ spec:
               --mmr=0.05
               --home=/home/app
 
-  config:
-    override:
-      app.toml:
-        minimum-gas-prices: 0.025unibi
+  nodes:
+    fullnodes:
+      instances: 2
+
+      config:
+        override:
+          app.toml:
+            minimum-gas-prices: 0.025unibi

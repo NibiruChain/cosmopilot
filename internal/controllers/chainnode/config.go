@@ -23,11 +23,9 @@ import (
 
 var (
 	defaultConfigToml = map[string]interface{}{
-		"node_key_file":           "/secret/" + nodeKeyFilename,
-		"priv_validator_key_file": "/secret/" + privKeyFilename,
-		"genesis_file":            "/genesis/" + genesisFilename,
 		"rpc": map[string]interface{}{
-			"laddr": "tcp://0.0.0.0:26657",
+			"laddr":                "tcp://0.0.0.0:26657",
+			"cors_allowed_origins": []string{"*"},
 		},
 		"p2p": map[string]interface{}{
 			"addr_book_file":     "/home/app/data/addrbook.json",
@@ -44,7 +42,11 @@ var (
 
 	defaultAppToml = map[string]interface{}{
 		"api": map[string]interface{}{
-			"enable": true,
+			"enable":  true,
+			"address": "tcp://0.0.0.0:1317",
+		},
+		"grpc": map[string]interface{}{
+			"address": "0.0.0.0:9090",
 		},
 	}
 )
@@ -175,7 +177,7 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
 	logger := log.FromContext(ctx)
 
-	configs, err := r.getConfigsFromCache(chainNode.GetImage())
+	configs, err := r.getConfigsFromCache(chainNode.Spec.App.GetImage())
 	if err != nil {
 		return nil, err
 	}
@@ -198,8 +200,8 @@ func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.Ap
 		}
 	}
 
-	r.storeConfigsInCache(chainNode.GetImage(), decodedConfigs)
-	return r.getConfigsFromCache(chainNode.GetImage())
+	r.storeConfigsInCache(chainNode.Spec.App.GetImage(), decodedConfigs)
+	return r.getConfigsFromCache(chainNode.Spec.App.GetImage())
 }
 
 func (r *Reconciler) storeConfigsInCache(key string, configs map[string]interface{}) {

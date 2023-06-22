@@ -100,7 +100,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 	secret := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{
 		Namespace: chainNode.GetNamespace(),
-		Name:      chainNode.GetValidatorPrivKeySecretName(),
+		Name:      chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
 	}, secret)
 
 	mustCreate := false
@@ -110,7 +110,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 			secret = &corev1.Secret{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      chainNode.GetValidatorPrivKeySecretName(),
+					Name:      chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
 					Namespace: chainNode.GetNamespace(),
 				},
 				Data: make(map[string][]byte),

@@ -25,7 +25,7 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 	secret := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{
 		Namespace: chainNode.GetNamespace(),
-		Name:      chainNode.GetValidatorAccountSecretName(),
+		Name:      chainNode.Spec.Validator.GetAccountSecretName(chainNode),
 	}, secret)
 
 	mustCreate := false
@@ -35,7 +35,7 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 			secret = &corev1.Secret{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      chainNode.GetValidatorAccountSecretName(),
+					Name:      chainNode.Spec.Validator.GetAccountSecretName(chainNode),
 					Namespace: chainNode.GetNamespace(),
 				},
 				Data: make(map[string][]byte),
@@ -53,9 +53,9 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 			mustUpdate = true
 		}
 		account, err := chainutils.CreateAccount(
-			chainNode.GetValidatorAccountPrefix(),
-			chainNode.GetValidatorValPrefix(),
-			chainNode.GetValidatorAccountHDPath(),
+			chainNode.Spec.Validator.GetAccountPrefix(),
+			chainNode.Spec.Validator.GetValPrefix(),
+			chainNode.Spec.Validator.GetAccountHDPath(),
 		)
 		if err != nil {
 			return err
@@ -66,9 +66,9 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 	} else {
 		account, err := chainutils.AccountFromMnemonic(
 			string(secret.Data[mnemonicKey]),
-			chainNode.GetValidatorAccountPrefix(),
-			chainNode.GetValidatorValPrefix(),
-			chainNode.GetValidatorAccountHDPath(),
+			chainNode.Spec.Validator.GetAccountPrefix(),
+			chainNode.Spec.Validator.GetValPrefix(),
+			chainNode.Spec.Validator.GetAccountHDPath(),
 		)
 		if err != nil {
 			return err

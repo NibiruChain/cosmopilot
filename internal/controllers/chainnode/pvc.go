@@ -27,7 +27,7 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 
 	if pvc.Annotations[annotationDataInitialized] != "true" {
 		logger.Info("initializing data on pvc and updating status")
-		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseInitData); err != nil {
+		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeInitData); err != nil {
 			return err
 		}
 
@@ -37,7 +37,7 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 			if c.Image != nil {
 				initCommands[i].Image = *c.Image
 			} else {
-				initCommands[i].Image = chainNode.GetImage()
+				initCommands[i].Image = chainNode.Spec.App.GetImage()
 			}
 		}
 

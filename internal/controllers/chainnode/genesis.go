@@ -23,7 +23,7 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 	}
 
 	if chainNode.ShouldInitGenesis() {
-		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseInitGenesis); err != nil {
+		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeInitGenesis); err != nil {
 			return err
 		}
 		if err := r.initGenesis(ctx, app, chainNode); err != nil {
@@ -132,8 +132,8 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		Assets:        chainNode.Spec.Validator.Init.Assets,
 		StakeAmount:   chainNode.Spec.Validator.Init.StakeAmount,
 		Accounts:      make([]chainutils.AccountAssets, len(chainNode.Spec.Validator.Init.Accounts)),
-		UnbondingTime: chainNode.GetInitUnbondingTime(),
-		VotingPeriod:  chainNode.GetInitVotingPeriod(),
+		UnbondingTime: chainNode.Spec.Validator.GetInitUnbondingTime(),
+		VotingPeriod:  chainNode.Spec.Validator.GetInitVotingPeriod(),
 	}
 
 	for i, a := range chainNode.Spec.Validator.Init.Accounts {
@@ -149,19 +149,19 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		if c.Image != nil {
 			initCommands[i].Image = *c.Image
 		} else {
-			initCommands[i].Image = chainNode.GetImage()
+			initCommands[i].Image = chainNode.Spec.App.GetImage()
 		}
 	}
 
 	accountSecret := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Namespace: chainNode.GetNamespace(), Name: chainNode.GetValidatorAccountSecretName()}, accountSecret); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Namespace: chainNode.GetNamespace(), Name: chainNode.Spec.Validator.GetAccountSecretName(chainNode)}, accountSecret); err != nil {
 		return err
 	}
 	account, err := chainutils.AccountFromMnemonic(
 		string(accountSecret.Data[mnemonicKey]),
-		chainNode.GetValidatorAccountPrefix(),
-		chainNode.GetValidatorValPrefix(),
-		chainNode.GetValidatorAccountHDPath(),
+		chainNode.Spec.Validator.GetAccountPrefix(),
+		chainNode.Spec.Validator.GetValPrefix(),
+		chainNode.Spec.Validator.GetAccountHDPath(),
 	)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 
 	genesis, err := app.NewGenesis(
 		ctx,
-		chainNode.GetValidatorPrivKeySecretName(),
+		chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
 		account,
 		nodeInfo,
 		genesisParams,

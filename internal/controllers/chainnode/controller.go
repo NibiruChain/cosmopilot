@@ -86,7 +86,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	app := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
-		chainutils.WithImage(chainNode.GetImage()),
+		chainutils.WithImage(chainNode.Spec.App.GetImage()),
 		chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
 		chainutils.WithBinary(chainNode.Spec.App.App),
 	)
@@ -138,7 +138,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Wait for node to be synced before continuing
-	if chainNode.Status.Phase == appsv1.PhaseSyncing {
+	if chainNode.Status.Phase == appsv1.PhaseChainNodeSyncing {
 		return ctrl.Result{RequeueAfter: chainNode.GetReconcilePeriod()}, nil
 	}
 

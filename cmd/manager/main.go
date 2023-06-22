@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnode"
+	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnodeset"
 )
 
 var (
@@ -54,6 +55,11 @@ func main() {
 
 	if _, err = chainnode.New(mgr, clientset, nodeUtilsImage); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ChainNode")
+		os.Exit(1)
+	}
+
+	if _, err = chainnodeset.New(mgr, clientset); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ChainNodeSet")
 		os.Exit(1)
 	}
 

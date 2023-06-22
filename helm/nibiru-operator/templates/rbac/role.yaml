@@ -29,6 +29,21 @@ rules:
   - apps.k8s.nibiru.org
   resources:
   - chainnodes
+  - chainnodesets
+  - ingresses
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps.k8s.nibiru.org
+  resources:
+  - chainnodes
   - configmaps
   - persistentvolumeclaims
   - pods
@@ -52,6 +67,20 @@ rules:
   - apps.k8s.nibiru.org
   resources:
   - chainnodes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apps.k8s.nibiru.org
+  resources:
+  - chainnodesets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps.k8s.nibiru.org
+  resources:
+  - chainnodesets/status
   verbs:
   - get
   - patch

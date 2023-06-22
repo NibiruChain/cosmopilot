@@ -36,7 +36,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("creating pod")
-			if err := r.updatePhase(ctx, chainNode, appsv1.PhaseStarting); err != nil {
+			if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeStarting); err != nil {
 				return err
 			}
 
@@ -155,7 +155,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					},
 				},
 				{
-					Name: "secret",
+					Name: "config-empty-dir",
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
@@ -164,8 +164,8 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Containers: []corev1.Container{
 				{
 					Name:            appContainerName,
-					Image:           chainNode.GetImage(),
-					ImagePullPolicy: chainNode.GetImagePullPolicy(),
+					Image:           chainNode.Spec.App.GetImage(),
+					ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
 					Command:         []string{chainNode.Spec.App.App},
 					Args:            []string{"start", "--home", "/home/app"},
 					Ports: []corev1.ContainerPort{
@@ -197,16 +197,17 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						},
 						{
 							Name:      "genesis",
-							MountPath: "/genesis",
-						},
-						{
-							Name:      "secret",
-							MountPath: "/secret",
+							MountPath: "/home/app/config/" + genesisFilename,
+							SubPath:   genesisFilename,
 						},
 						{
 							Name:      "node-key",
-							MountPath: "/secret/" + nodeKeyFilename,
+							MountPath: "/home/app/config/" + nodeKeyFilename,
 							SubPath:   nodeKeyFilename,
+						},
+						{
+							Name:      "config-empty-dir",
+							MountPath: "/home/app/config",
 						},
 					}, configFilesMounts...),
 					StartupProbe: &corev1.Probe{
@@ -325,13 +326,13 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Name: "priv-key",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: chainNode.GetValidatorPrivKeySecretName(),
+					SecretName: chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
 				},
 			},
 		})
 		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 			Name:      "priv-key",
-			MountPath: "/secret/" + privKeyFilename,
+			MountPath: "/home/app/config/" + privKeyFilename,
 			SubPath:   privKeyFilename,
 		})
 	}
@@ -344,7 +345,7 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 
 	logger.Info("recreating pod")
 
-	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseRestarting); err != nil {
+	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeRestarting); err != nil {
 		return err
 	}
 
@@ -431,24 +432,24 @@ func (r *Reconciler) setPhaseRunningOrSyncing(ctx context.Context, chainNode *ap
 	}
 
 	if syncing {
-		if chainNode.Status.Phase != appsv1.PhaseSyncing {
+		if chainNode.Status.Phase != appsv1.PhaseChainNodeSyncing {
 			r.recorder.Eventf(chainNode,
 				corev1.EventTypeNormal,
 				appsv1.ReasonNodeSyncing,
 				"Node is syncing",
 			)
-			return r.updatePhase(ctx, chainNode, appsv1.PhaseSyncing)
+			return r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeSyncing)
 		}
 		return nil
 	}
 
-	if chainNode.Status.Phase != appsv1.PhaseRunning {
+	if chainNode.Status.Phase != appsv1.PhaseChainNodeRunning {
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeNormal,
 			appsv1.ReasonNodeRunning,
 			"Node is synced and running",
 		)
-		return r.updatePhase(ctx, chainNode, appsv1.PhaseRunning)
+		return r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeRunning)
 	}
 
 	return nil
