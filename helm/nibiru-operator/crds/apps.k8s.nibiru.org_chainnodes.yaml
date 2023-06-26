@@ -388,211 +388,56 @@ spec:
                       class to use to create persistent volumes.
                     type: string
                 type: object
+              resources:
+                description: Compute Resources required by the app container.
+                properties:
+                  claims:
+                    description: "Claims lists the names of resources, defined in
+                      spec.resourceClaims, that are used by this container. \n This
+                      is an alpha field and requires enabling the DynamicResourceAllocation
+                      feature gate. \n This field is immutable."
+                    items:
+                      description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                      properties:
+                        name:
+                          description: Name must match the name of one entry in pod.spec.resourceClaims
+                            of the Pod where this field is used. It makes that resource
+                            available inside a container.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Limits describes the maximum amount of compute resources
+                      allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Requests describes the minimum amount of compute
+                      resources required. If Requests is omitted for a container,
+                      it defaults to Limits if that is explicitly specified, otherwise
+                      to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                type: object
               validator:
                 description: Validator configures this node as a validator and configures
                   it.
                 properties:
-                  config:
-                    description: Config allows setting specific configurations for
-                      this node. Only used by ChainNodeSet controller. For single
-                      ChainNode please use .spec.config instead.
-                    properties:
-                      blockThreshold:
-                        description: BlockThreshold specifies the time to wait for
-                          a block before considering node unhealthy
-                        type: string
-                      imagePullSecrets:
-                        description: ImagePullSecrets is an optional list of references
-                          to secrets in the same namespace to use for pulling any
-                          of the images used by this node.
-                        items:
-                          description: LocalObjectReference contains enough information
-                            to let you locate the referenced object inside the same
-                            namespace.
-                          properties:
-                            name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
-                              type: string
-                          type: object
-                          x-kubernetes-map-type: atomic
-                        type: array
-                      override:
-                        description: Override allows overriding configs on toml configuration
-                          files
-                        x-kubernetes-preserve-unknown-fields: true
-                      reconcilePeriod:
-                        description: ReconcilePeriod is the period at which a reconcile
-                          loop will happen for this ChainNode. Defaults to `1m`.
-                        type: string
-                      sidecars:
-                        description: Sidecars allow configuring additional containers
-                          to run alongside the node
-                        items:
-                          description: SidecarSpec allow configuring additional containers
-                            to run alongside the node
-                          properties:
-                            args:
-                              description: Args to be passed to this container. Defaults
-                                to cmd defined in image.
-                              items:
-                                type: string
-                              type: array
-                            command:
-                              description: Command to be run by this container. Defaults
-                                to entrypoint defined in image.
-                              items:
-                                type: string
-                              type: array
-                            env:
-                              description: Env sets environment variables to be passed
-                                to this container.
-                              items:
-                                description: EnvVar represents an environment variable
-                                  present in a Container.
-                                properties:
-                                  name:
-                                    description: Name of the environment variable.
-                                      Must be a C_IDENTIFIER.
-                                    type: string
-                                  value:
-                                    description: 'Variable references $(VAR_NAME)
-                                      are expanded using the previously defined environment
-                                      variables in the container and any service environment
-                                      variables. If a variable cannot be resolved,
-                                      the reference in the input string will be unchanged.
-                                      Double $$ are reduced to a single $, which allows
-                                      for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)"
-                                      will produce the string literal "$(VAR_NAME)".
-                                      Escaped references will never be expanded, regardless
-                                      of whether the variable exists or not. Defaults
-                                      to "".'
-                                    type: string
-                                  valueFrom:
-                                    description: Source for the environment variable's
-                                      value. Cannot be used if value is not empty.
-                                    properties:
-                                      configMapKeyRef:
-                                        description: Selects a key of a ConfigMap.
-                                        properties:
-                                          key:
-                                            description: The key to select.
-                                            type: string
-                                          name:
-                                            description: 'Name of the referent. More
-                                              info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                              TODO: Add other useful fields. apiVersion,
-                                              kind, uid?'
-                                            type: string
-                                          optional:
-                                            description: Specify whether the ConfigMap
-                                              or its key must be defined
-                                            type: boolean
-                                        required:
-                                        - key
-                                        type: object
-                                        x-kubernetes-map-type: atomic
-                                      fieldRef:
-                                        description: 'Selects a field of the pod:
-                                          supports metadata.name, metadata.namespace,
-                                          `metadata.labels[''<KEY>'']`, `metadata.annotations[''<KEY>'']`,
-                                          spec.nodeName, spec.serviceAccountName,
-                                          status.hostIP, status.podIP, status.podIPs.'
-                                        properties:
-                                          apiVersion:
-                                            description: Version of the schema the
-                                              FieldPath is written in terms of, defaults
-                                              to "v1".
-                                            type: string
-                                          fieldPath:
-                                            description: Path of the field to select
-                                              in the specified API version.
-                                            type: string
-                                        required:
-                                        - fieldPath
-                                        type: object
-                                        x-kubernetes-map-type: atomic
-                                      resourceFieldRef:
-                                        description: 'Selects a resource of the container:
-                                          only resources limits and requests (limits.cpu,
-                                          limits.memory, limits.ephemeral-storage,
-                                          requests.cpu, requests.memory and requests.ephemeral-storage)
-                                          are currently supported.'
-                                        properties:
-                                          containerName:
-                                            description: 'Container name: required
-                                              for volumes, optional for env vars'
-                                            type: string
-                                          divisor:
-                                            anyOf:
-                                            - type: integer
-                                            - type: string
-                                            description: Specifies the output format
-                                              of the exposed resources, defaults to
-                                              "1"
-                                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                            x-kubernetes-int-or-string: true
-                                          resource:
-                                            description: 'Required: resource to select'
-                                            type: string
-                                        required:
-                                        - resource
-                                        type: object
-                                        x-kubernetes-map-type: atomic
-                                      secretKeyRef:
-                                        description: Selects a key of a secret in
-                                          the pod's namespace
-                                        properties:
-                                          key:
-                                            description: The key of the secret to
-                                              select from.  Must be a valid secret
-                                              key.
-                                            type: string
-                                          name:
-                                            description: 'Name of the referent. More
-                                              info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                              TODO: Add other useful fields. apiVersion,
-                                              kind, uid?'
-                                            type: string
-                                          optional:
-                                            description: Specify whether the Secret
-                                              or its key must be defined
-                                            type: boolean
-                                        required:
-                                        - key
-                                        type: object
-                                        x-kubernetes-map-type: atomic
-                                    type: object
-                                required:
-                                - name
-                                type: object
-                              type: array
-                            image:
-                              description: Image refers to the docker image to be
-                                used by the container
-                              minLength: 1
-                              type: string
-                            imagePullPolicy:
-                              description: ImagePullPolicy indicates the desired pull
-                                policy when creating nodes. Defaults to `Always` if
-                                `version` is `latest` and `IfNotPresent` otherwise.
-                              type: string
-                            mountDataVolume:
-                              description: MountDataVolume indicates where data volume
-                                will be mounted on this container. It is not mounted
-                                if not specified.
-                              type: string
-                            name:
-                              description: Name refers to the name to be assigned
-                                to the container
-                              minLength: 1
-                              type: string
-                          required:
-                          - image
-                          - name
-                          type: object
-                        type: array
-                    type: object
                   info:
                     description: Info contains information details about this validator.
                     properties:
@@ -699,65 +544,6 @@ spec:
                     - assets
                     - chainID
                     - stakeAmount
-                    type: object
-                  persistence:
-                    description: Persistence configures pvc for persisting data for
-                      this node. Only used by ChainNodeSet controller. For single
-                      ChainNode please use .spec.persistence instead.
-                    properties:
-                      additionalInitCommands:
-                        description: AdditionalInitCommands are additional commands
-                          to run on data initialization. Useful for downloading and
-                          extracting snapshots. App home is at `/home/app` and data
-                          dir is at `/home/app/data`. There is also `/temp`, a temporary
-                          volume shared by all init containers.
-                        items:
-                          properties:
-                            args:
-                              description: Args to be passed to this command.
-                              items:
-                                type: string
-                              type: array
-                            command:
-                              description: Command to be used. Defaults to image entrypoint.
-                              items:
-                                type: string
-                              type: array
-                            image:
-                              description: Image to be used to run this command. Defaults
-                                to app image.
-                              type: string
-                          required:
-                          - args
-                          type: object
-                        type: array
-                      autoResize:
-                        description: AutoResize specifies configurations to automatically
-                          resize PVC. Defaults to `true`.
-                        type: boolean
-                      autoResizeIncrement:
-                        description: AutoResizeIncrement specifies the size increment
-                          on each auto-resize event. Defaults to `50Gi`.
-                        type: string
-                      autoResizeMaxSize:
-                        description: AutoResizeMaxSize specifies the maximum size
-                          the PVC can have. Defaults to `2Ti`.
-                        type: string
-                      autoResizeThreshold:
-                        description: AutoResizeThreshold is the percentage of data
-                          usage at which an auto-resize event should occur. Defaults
-                          to `80`.
-                        type: integer
-                      size:
-                        description: Size of the persistent volume for storing data.
-                          Can't be updated when autoResize is enabled. Defaults to
-                          `50Gi`.
-                        minLength: 1
-                        type: string
-                      storageClass:
-                        description: StorageClassName specifies the name of the storage
-                          class to use to create persistent volumes.
-                        type: string
                     type: object
                   privateKeySecret:
                     description: PrivateKeySecret indicates the secret containing

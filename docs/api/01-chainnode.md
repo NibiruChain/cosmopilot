@@ -12,6 +12,7 @@
 * [ExposeConfig](#exposeconfig)
 * [Persistence](#persistence)
 * [SidecarSpec](#sidecarspec)
+* [ValidatorConfig](#validatorconfig)
 
 #### ChainNode
 
@@ -46,10 +47,11 @@ ChainNodeSpec defines the desired state of ChainNode
 | app | App specifies image and binary name of the chain application to run | AppSpec | true |
 | config | Config allows setting specific configurations for this node | *[Config](#config) | false |
 | persistence | Persistence configures pvc for persisting data on nodes | *[Persistence](#persistence) | false |
-| validator | Validator configures this node as a validator and configures it. | *ValidatorConfig | false |
+| validator | Validator configures this node as a validator and configures it. | *[ValidatorConfig](#validatorconfig) | false |
 | autoDiscoverPeers | AutoDiscoverPeers ensures peers with same chain ID are connected with each other. By default, it is enabled. | *bool | false |
 | peers | Peers are additional persistent peers that should be added to this node. | []Peer | false |
 | expose | Expose specifies which node endpoints are exposed and how they are exposed | *[ExposeConfig](#exposeconfig) | false |
+| resources | Compute Resources required by the app container. | corev1.ResourceRequirements | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -127,5 +129,17 @@ SidecarSpec allow configuring additional containers to run alongside the node
 | command | Command to be run by this container. Defaults to entrypoint defined in image. | []string | false |
 | args | Args to be passed to this container. Defaults to cmd defined in image. | []string | false |
 | env | Env sets environment variables to be passed to this container. | []corev1.EnvVar | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### ValidatorConfig
+
+ValidatorConfig turns this node into a validator and specifies how it will do it.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| privateKeySecret | PrivateKeySecret indicates the secret containing the private key to be use by this validator. Defaults to `<chainnode>-priv-key`. Will be created if it does not exist. | *string | false |
+| info | Info contains information details about this validator. | *ValidatorInfo | false |
+| init | Init specifies configs and initialization commands for creating a new chain and its genesis. | *GenesisInitConfig | false |
 
 [Back to Custom Resources](#custom-resources)

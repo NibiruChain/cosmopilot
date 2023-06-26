@@ -5,7 +5,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -39,58 +38,6 @@ func (app *AppSpec) GetImagePullPolicy() corev1.PullPolicy {
 		return corev1.PullAlways
 	}
 	return corev1.PullIfNotPresent
-}
-
-// Validator methods
-
-func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {
-	if val.PrivateKeySecret != nil {
-		return *val.PrivateKeySecret
-	}
-	return fmt.Sprintf("%s-priv-key", obj.GetName())
-}
-
-func (val *ValidatorConfig) GetAccountHDPath() string {
-	if val.Init != nil && val.Init.AccountHDPath != nil {
-		return *val.Init.AccountHDPath
-	}
-	return DefaultHDPath
-}
-
-func (val *ValidatorConfig) GetAccountSecretName(obj client.Object) string {
-	if val.Init != nil && val.Init.AccountMnemonicSecret != nil {
-		return *val.Init.AccountMnemonicSecret
-	}
-
-	return fmt.Sprintf("%s-account", obj.GetName())
-}
-
-func (val *ValidatorConfig) GetAccountPrefix() string {
-	if val.Init != nil && val.Init.AccountPrefix != nil {
-		return *val.Init.AccountPrefix
-	}
-	return DefaultAccountPrefix
-}
-
-func (val *ValidatorConfig) GetValPrefix() string {
-	if val.Init != nil && val.Init.ValPrefix != nil {
-		return *val.Init.ValPrefix
-	}
-	return DefaultValPrefix
-}
-
-func (val *ValidatorConfig) GetInitUnbondingTime() string {
-	if val.Init != nil && val.Init.UnbondingTime != nil {
-		return *val.Init.UnbondingTime
-	}
-	return DefaultUnbondingTime
-}
-
-func (val *ValidatorConfig) GetInitVotingPeriod() string {
-	if val.Init != nil && val.Init.VotingPeriod != nil {
-		return *val.Init.VotingPeriod
-	}
-	return DefaultVotingPeriod
 }
 
 // Peer helper methods

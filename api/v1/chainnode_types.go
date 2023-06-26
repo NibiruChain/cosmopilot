@@ -100,6 +100,10 @@ type ChainNodeSpec struct {
 	// Expose specifies which node endpoints are exposed and how they are exposed
 	// +optional
 	Expose *ExposeConfig `json:"expose,omitempty"`
+
+	// Compute Resources required by the app container.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode
@@ -145,6 +149,22 @@ type ChainNodeStatus struct {
 
 	// Jailed indicates if this validator is jailed. Always false if not a validator node.
 	Jailed bool `json:"jailed"`
+}
+
+// ValidatorConfig turns this node into a validator and specifies how it will do it.
+type ValidatorConfig struct {
+	// PrivateKeySecret indicates the secret containing the private key to be use by this validator.
+	// Defaults to `<chainnode>-priv-key`. Will be created if it does not exist.
+	// +optional
+	PrivateKeySecret *string `json:"privateKeySecret,omitempty"`
+
+	// Info contains information details about this validator.
+	// +optional
+	Info *ValidatorInfo `json:"info,omitempty"`
+
+	// Init specifies configs and initialization commands for creating a new chain and its genesis.
+	// +optional
+	Init *GenesisInitConfig `json:"init,omitempty"`
 }
 
 // Persistence configuration for this node

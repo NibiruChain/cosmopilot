@@ -50,32 +50,6 @@ type AppSpec struct {
 	App string `json:"app"`
 }
 
-// ValidatorConfig turns this node into a validator and specifies how it will do it.
-type ValidatorConfig struct {
-	// PrivateKeySecret indicates the secret containing the private key to be use by this validator.
-	// Defaults to `<chainnode>-priv-key`. Will be created if it does not exist.
-	// +optional
-	PrivateKeySecret *string `json:"privateKeySecret,omitempty"`
-
-	// Info contains information details about this validator.
-	// +optional
-	Info *ValidatorInfo `json:"info,omitempty"`
-
-	// Init specifies configs and initialization commands for creating a new chain and its genesis.
-	// +optional
-	Init *GenesisInitConfig `json:"init,omitempty"`
-
-	// Config allows setting specific configurations for this node. Only used by ChainNodeSet controller.
-	// For single ChainNode please use .spec.config instead.
-	// +optional
-	Config *Config `json:"config,omitempty"`
-
-	// Persistence configures pvc for persisting data for this node. Only used by ChainNodeSet controller.
-	// For single ChainNode please use .spec.persistence instead.
-	// +optional
-	Persistence *Persistence `json:"persistence,omitempty"`
-}
-
 // ValidatorInfo contains information about this validator.
 type ValidatorInfo struct {
 	// Moniker to be used by this validator. Defaults to the ChainNode name.

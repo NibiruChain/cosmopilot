@@ -255,6 +255,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						FailureThreshold: 1,
 						PeriodSeconds:    10,
 					},
+					Resources: chainNode.Spec.Resources,
 				},
 				{
 					Name:            nodeUtilsContainerName,

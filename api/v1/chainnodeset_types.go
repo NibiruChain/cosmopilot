@@ -1,6 +1,7 @@
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -52,7 +53,7 @@ type ChainNodeSetSpec struct {
 
 	// Validator configures a validator node and configures it.
 	// +optional
-	Validator *ValidatorConfig `json:"validator,omitempty"`
+	Validator *NodeSetValidatorConfig `json:"validator,omitempty"`
 
 	// Nodes indicates the list of groups of chainnodes to be run
 	Nodes []NodeGroupSpec `json:"nodes"`
@@ -71,6 +72,34 @@ type ChainNodeSetStatus struct {
 	// Instances indicates the total number of chainnode instances on this set
 	// +optional
 	Instances int `json:"instances,omitempty"`
+}
+
+// NodeSetValidatorConfig turns this node into a validator and specifies how it will do it.
+type NodeSetValidatorConfig struct {
+	// PrivateKeySecret indicates the secret containing the private key to be use by this validator.
+	// Defaults to `<chainnode>-priv-key`. Will be created if it does not exist.
+	// +optional
+	PrivateKeySecret *string `json:"privateKeySecret,omitempty"`
+
+	// Info contains information details about this validator.
+	// +optional
+	Info *ValidatorInfo `json:"info,omitempty"`
+
+	// Init specifies configs and initialization commands for creating a new chain and its genesis.
+	// +optional
+	Init *GenesisInitConfig `json:"init,omitempty"`
+
+	// Config allows setting specific configurations for this node.
+	// +optional
+	Config *Config `json:"config,omitempty"`
+
+	// Persistence configures pvc for persisting data for this node.
+	// +optional
+	Persistence *Persistence `json:"persistence,omitempty"`
+
+	// Compute Resources required by the app container.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group
@@ -102,6 +131,10 @@ type NodeGroupSpec struct {
 	// Ingress indicates if an ingress should be created to access API endpoints of these nodes and configures it.
 	// +optional
 	Ingress *IngressConfig `json:"ingress,omitempty"`
+
+	// Compute Resources required by the app container.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints
