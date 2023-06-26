@@ -151,12 +151,14 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			Genesis: &appsv1.GenesisConfig{
 				ConfigMap: pointer.String(fmt.Sprintf("%s-genesis", nodeSet.Status.ChainID)),
 			},
-			App:         nodeSet.Spec.App,
-			Config:      group.Config,
-			Persistence: group.Persistence,
-			Peers:       group.Peers,
-			Expose:      group.Expose,
-			Resources:   group.Resources,
+			App:          nodeSet.Spec.App,
+			Config:       group.Config,
+			Persistence:  group.Persistence,
+			Peers:        group.Peers,
+			Expose:       group.Expose,
+			Resources:    group.Resources,
+			Affinity:     group.Affinity,
+			NodeSelector: group.NodeSelector,
 		},
 	}
 	return node, controllerutil.SetControllerReference(nodeSet, node, r.Scheme)

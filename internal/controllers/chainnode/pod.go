@@ -115,6 +115,8 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
+			Affinity:      chainNode.Spec.Affinity,
+			NodeSelector:  chainNode.Spec.NodeSelector,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:  pointer.Int64(nonRootId),
 				RunAsGroup: pointer.Int64(nonRootId),

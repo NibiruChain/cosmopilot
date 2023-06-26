@@ -49,7 +49,9 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 				Info:             nodeSet.Spec.Validator.Info,
 				Init:             nodeSet.Spec.Validator.Init,
 			},
-			Resources: nodeSet.Spec.Validator.Resources,
+			Resources:    nodeSet.Spec.Validator.Resources,
+			Affinity:     nodeSet.Spec.Validator.Affinity,
+			NodeSelector: nodeSet.Spec.Validator.NodeSelector,
 		},
 	}
 	return validator, controllerutil.SetControllerReference(nodeSet, validator, r.Scheme)
