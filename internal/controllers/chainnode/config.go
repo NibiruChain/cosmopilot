@@ -237,20 +237,20 @@ func (r *Reconciler) getPeerConfiguration(ctx context.Context, chainNode *appsv1
 
 	if chainNode.AutoDiscoverPeersEnabled() {
 		// List all services with the same chain ID label
-		listOption := client.MatchingLabels{labelChainID: chainNode.Status.ChainID}
+		listOption := client.MatchingLabels{LabelChainID: chainNode.Status.ChainID}
 		svcList := &corev1.ServiceList{}
 		if err := r.List(ctx, svcList, listOption); err != nil {
 			return nil, err
 		}
 
 		for _, svc := range svcList.Items {
-			if svc.Labels[labelNodeID] == chainNode.Status.NodeID {
+			if svc.Labels[LabelNodeID] == chainNode.Status.NodeID {
 				continue
 			}
-			peers = append(peers, fmt.Sprintf("%s@%s:26656", svc.Labels[labelNodeID], svc.Spec.ClusterIP))
-			unconditional = append(unconditional, svc.Labels[labelNodeID])
-			if svc.Labels[labelValidator] == "true" {
-				private = append(private, svc.Labels[labelNodeID])
+			peers = append(peers, fmt.Sprintf("%s@%s:26656", svc.Labels[LabelNodeID], svc.Spec.ClusterIP))
+			unconditional = append(unconditional, svc.Labels[LabelNodeID])
+			if svc.Labels[LabelValidator] == "true" {
+				private = append(private, svc.Labels[LabelNodeID])
 			}
 		}
 	}

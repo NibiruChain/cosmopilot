@@ -84,7 +84,9 @@ spec:
                     type: string
                 type: object
               nodes:
-                additionalProperties:
+                description: Nodes indicates the list of groups of chainnodes to be
+                  run
+                items:
                   description: NodeGroupSpec sets chainnode configurations for a group
                   properties:
                     config:
@@ -304,10 +306,41 @@ spec:
                             to `NodePort`.
                           type: string
                       type: object
+                    ingress:
+                      description: Ingress indicates if an ingress should be created
+                        to access API endpoints of these nodes and configures it.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations to be appended to the ingress.
+                          type: object
+                        enableGRPC:
+                          description: EnableGRPC enable gRPC endpoint.
+                          type: boolean
+                        enableLCD:
+                          description: EnableLCD enable LCD endpoint.
+                          type: boolean
+                        enableRPC:
+                          description: EnableRPC enable RPC endpoint.
+                          type: boolean
+                        host:
+                          description: Host specifies the host in which endpoints
+                            will be exposed. Endpoints are exposed on corresponding
+                            subdomain of this host. An example host `nodes.example.com`
+                            will have endpoints exposed at `rpc.nodes.example.com`,
+                            `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+                          type: string
+                      required:
+                      - host
+                      type: object
                     instances:
                       description: Instances indicates the number of chainnode instances
                         to run on this group
                       type: integer
+                    name:
+                      description: Name refers the name of this group
+                      type: string
                     peers:
                       description: Peers are additional persistent peers that should
                         be added to this node.
@@ -395,10 +428,10 @@ spec:
                             storage class to use to create persistent volumes.
                           type: string
                       type: object
+                  required:
+                  - name
                   type: object
-                description: Nodes indicates the list of groups of chainnodes to be
-                  run
-                type: object
+                type: array
               validator:
                 description: Validator configures a validator node and configures
                   it.

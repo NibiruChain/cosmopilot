@@ -55,7 +55,7 @@ type ChainNodeSetSpec struct {
 	Validator *ValidatorConfig `json:"validator,omitempty"`
 
 	// Nodes indicates the list of groups of chainnodes to be run
-	Nodes map[string]NodeGroupSpec `json:"nodes"`
+	Nodes []NodeGroupSpec `json:"nodes"`
 }
 
 // ChainNodeSetStatus defines the observed state of ChainNodeSet
@@ -75,6 +75,9 @@ type ChainNodeSetStatus struct {
 
 // NodeGroupSpec sets chainnode configurations for a group
 type NodeGroupSpec struct {
+	// Name refers the name of this group
+	Name string `json:"name"`
+
 	// Instances indicates the number of chainnode instances to run on this group
 	// +optional
 	// +default=1
@@ -95,4 +98,32 @@ type NodeGroupSpec struct {
 	// Expose specifies which node endpoints are exposed and how they are exposed
 	// +optional
 	Expose *ExposeConfig `json:"expose,omitempty"`
+
+	// Ingress indicates if an ingress should be created to access API endpoints of these nodes and configures it.
+	// +optional
+	Ingress *IngressConfig `json:"ingress,omitempty"`
+}
+
+// IngressConfig specifies configurations for ingress to expose API endpoints
+type IngressConfig struct {
+	// EnableRPC enable RPC endpoint.
+	// +optional
+	EnableRPC bool `json:"enableRPC,omitempty"`
+
+	// EnableGRPC enable gRPC endpoint.
+	// +optional
+	EnableGRPC bool `json:"enableGRPC,omitempty"`
+
+	// EnableLCD enable LCD endpoint.
+	// +optional
+	EnableLCD bool `json:"enableLCD,omitempty"`
+
+	// Host specifies the host in which endpoints will be exposed. Endpoints are exposed on corresponding
+	// subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
+	// `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+	Host string `json:"host"`
+
+	// Annotations to be appended to the ingress.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 }

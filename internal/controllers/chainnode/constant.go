@@ -14,9 +14,9 @@ const (
 	genesisFilename    = "genesis.json"
 	mnemonicKey        = "mnemonic"
 
-	labelNodeID    = "node-id"
-	labelChainID   = "chain-id"
-	labelValidator = "validator"
+	LabelNodeID    = "node-id"
+	LabelChainID   = "chain-id"
+	LabelValidator = "validator"
 
 	annotationConfigHash      = "apps.k8s.nibiru.org/config-hash"
 	annotationDataInitialized = "apps.k8s.nibiru.org/data-initialized"

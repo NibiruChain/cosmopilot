@@ -44,13 +44,14 @@ spec:
       unbondingTime: 86400s
       votingPeriod: 7200s
       additionalInitCommands:
-        - image: curlimages/curl:8.1.1
-          args: [ "-s", "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd", "-o", "/temp/coingecko.json" ]
-
-        - image: apteno/alpine-jq
+        - image: ghcr.io/nibiruchain/node-tools
           command: [ "sh" , "-c" ]
           args:
-            - jq '.bitcoin.usd' /temp/coingecko.json > /temp/bitcoin
+            - >
+              curl -s "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd" -o /temp/coingecko.json;
+              jq '.bitcoin.usd' /temp/coingecko.json > /temp/bitcoin;
+              jq '.ethereum.usd' /temp/coingecko.json > /temp/ethereum;
+              jq '.app_state.oracle.params.min_voters = "1"' /home/app/config/genesis.json | sponge /home/app/config/genesis.json;
 
         - command: [ "sh" , "-c" ]
           args:
@@ -62,11 +63,6 @@ spec:
               --max-leverage=10
               --mmr=0.05
               --home=/home/app
-
-        - image: apteno/alpine-jq
-          command: [ "sh" , "-c" ]
-          args:
-            - jq '.ethereum.usd' /temp/coingecko.json > /temp/ethereum
 
         - command: [ "sh" , "-c" ]
           args:
@@ -80,7 +76,7 @@ spec:
               --home=/home/app
 
   nodes:
-    fullnodes:
+    - name: fullnodes
       instances: 1
 
       config:
@@ -91,7 +87,32 @@ spec:
             pruning-keep-recent: "100"
             pruning-interval: "10"
 
-    hm-nodes:
+      ingress:
+        host: devnet-k8s.play.nibiru.fi
+        enableRPC: true
+        enableGRPC: true
+        enableLCD: true
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-prod
+          nginx.ingress.kubernetes.io/enable-cors: "true"
+          nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+          nginx.ingress.kubernetes.io/server-snippet: |2
+            proxy_cache static-cache;
+            proxy_cache_valid any 3s;
+            proxy_cache_methods GET HEAD;
+            proxy_cache_lock on;
+            proxy_cache_lock_age 1m;
+            proxy_cache_lock_timeout 1m;
+            proxy_cache_use_stale error timeout updating http_502 http_503 http_504;
+            proxy_cache_background_update on;
+            add_header X-Cache-Status $upstream_cache_status;
+            proxy_cache_bypass $http_upgrade;
+            location ~* "^/block_search" {
+              deny all;
+              return 403;
+            }
+
+    - name: hm-nodes
       config:
         override:
           app.toml:
@@ -110,7 +131,7 @@ spec:
             mountDataVolume: /home/app/data
             env:
               - name: DATABASE_URI
-                value: postgresql://postgres:soDjazPbBC@postgres-postgresql:5432/heart_monitor?sslmode=disable
+                value: postgresql://postgres:ikevmGEWaa@postgres-postgresql:5432/heart_monitor?sslmode=disable
               - name: CHAIN_DB_PATH
                 value: /home/app/data
               - name: TENDERMINT_RPC_ENDPOINT

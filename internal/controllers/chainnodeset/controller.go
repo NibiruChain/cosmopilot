@@ -86,6 +86,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	if err := r.ensureServices(ctx, nodeSet); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := r.ensureIngresses(ctx, nodeSet); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if nodeSet.Status.Phase != appsv1.PhaseChainNodeSetRunning {
 		nodeSet.Status.Phase = appsv1.PhaseChainNodeSetRunning
 		return ctrl.Result{}, r.Status().Update(ctx, nodeSet)

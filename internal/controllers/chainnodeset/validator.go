@@ -34,8 +34,9 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 			Name:      fmt.Sprintf("%s-validator", nodeSet.GetName()),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: map[string]string{
-				labelChainNodeSet:          nodeSet.GetName(),
-				labelChainNodeSetValidator: strconv.FormatBool(true),
+				LabelChainNodeSet:          nodeSet.GetName(),
+				LabelChainNodeSetGroup:     validatorGroupName,
+				LabelChainNodeSetValidator: strconv.FormatBool(true),
 			},
 		},
 		Spec: appsv1.ChainNodeSpec{

@@ -27,11 +27,14 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 	}
 
 	totalInstances := 0
-	for group, cfg := range nodeSet.Spec.Nodes {
-		if err := r.ensureNodeGroup(ctx, nodeSet, group, cfg); err != nil {
+	if nodeSet.HasValidator() {
+		totalInstances += 1
+	}
+	for _, group := range nodeSet.Spec.Nodes {
+		if err := r.ensureNodeGroup(ctx, nodeSet, group); err != nil {
 			return err
 		}
-		totalInstances += cfg.GetInstances()
+		totalInstances += group.GetInstances()
 	}
 	if nodeSet.Status.Instances != totalInstances {
 		nodeSet.Status.Instances = totalInstances
@@ -40,12 +43,12 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 	return nil
 }
 
-func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group string, cfg appsv1.NodeGroupSpec) error {
+func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec) error {
 	logger := log.FromContext(ctx)
 
 	selector := labels.SelectorFromSet(map[string]string{
-		labelChainNodeSet:      nodeSet.GetName(),
-		labelChainNodeSetGroup: group,
+		LabelChainNodeSet:      nodeSet.GetName(),
+		LabelChainNodeSetGroup: group.Name,
 	})
 	chainNodeList := &appsv1.ChainNodeList{}
 	if err := r.List(ctx, chainNodeList, &client.ListOptions{
@@ -55,19 +58,19 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 	}
 
 	currentSize := len(chainNodeList.Items)
-	desiredSize := cfg.GetInstances()
+	desiredSize := group.GetInstances()
 
 	// Remove ChainNodes if necessary
 	for i := currentSize - 1; i >= desiredSize; i-- {
-		nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group, i)
+		nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, i)
 		logger.Info("removing chainnode", "chainnode", nodeName)
-		if err := r.removeNode(ctx, nodeSet, nodeName, nodeSet.GetNamespace()); err != nil {
+		if err := r.removeNode(ctx, nodeSet, group, i); err != nil {
 			return err
 		}
 	}
 
 	for i := 0; i < desiredSize; i++ {
-		node, err := r.getNodeSpec(nodeSet, fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group, i), group, cfg)
+		node, err := r.getNodeSpec(nodeSet, group, i)
 		if err != nil {
 			return err
 		}
@@ -118,8 +121,9 @@ func (r *Reconciler) ensureNode(ctx context.Context, nodeSet *appsv1.ChainNodeSe
 	return r.waitChainNodeRunning(node)
 }
 
-func (r *Reconciler) removeNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, name, namespace string) error {
-	if err := r.Delete(ctx, &appsv1.ChainNode{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}); err != nil {
+func (r *Reconciler) removeNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec, index int) error {
+	nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, index)
+	if err := r.Delete(ctx, &appsv1.ChainNode{ObjectMeta: metav1.ObjectMeta{Name: nodeName, Namespace: nodeSet.GetNamespace()}}); err != nil {
 		return err
 	}
 
@@ -127,19 +131,20 @@ func (r *Reconciler) removeNode(ctx context.Context, nodeSet *appsv1.ChainNodeSe
 		corev1.EventTypeNormal,
 		appsv1.ReasonNodeDeleted,
 		"ChainNode %s removed",
-		name,
+		nodeName,
 	)
+
 	return nil
 }
 
-func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, name, group string, cfg appsv1.NodeGroupSpec) (*appsv1.ChainNode, error) {
+func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec, index int) (*appsv1.ChainNode, error) {
 	node := &appsv1.ChainNode{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, index),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: map[string]string{
-				labelChainNodeSet:      nodeSet.GetName(),
-				labelChainNodeSetGroup: group,
+				LabelChainNodeSet:      nodeSet.GetName(),
+				LabelChainNodeSetGroup: group.Name,
 			},
 		},
 		Spec: appsv1.ChainNodeSpec{
@@ -147,10 +152,10 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, name, group strin
 				ConfigMap: pointer.String(fmt.Sprintf("%s-genesis", nodeSet.Status.ChainID)),
 			},
 			App:         nodeSet.Spec.App,
-			Config:      cfg.Config,
-			Persistence: cfg.Persistence,
-			Peers:       cfg.Peers,
-			Expose:      cfg.Expose,
+			Config:      group.Config,
+			Persistence: group.Persistence,
+			Peers:       group.Peers,
+			Expose:      group.Expose,
 		},
 	}
 	return node, controllerutil.SetControllerReference(nodeSet, node, r.Scheme)

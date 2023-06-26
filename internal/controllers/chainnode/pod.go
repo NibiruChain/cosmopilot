@@ -19,6 +19,7 @@ import (
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
+	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
 func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) error {
@@ -104,11 +105,13 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Annotations: map[string]string{
 				annotationConfigHash: configHash,
 			},
-			Labels: map[string]string{
-				labelNodeID:    chainNode.Status.NodeID,
-				labelChainID:   chainNode.Status.ChainID,
-				labelValidator: strconv.FormatBool(chainNode.IsValidator()),
-			},
+			Labels: utils.MergeMaps(
+				map[string]string{
+					LabelNodeID:    chainNode.Status.NodeID,
+					LabelChainID:   chainNode.Status.ChainID,
+					LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
+				},
+				chainNode.Labels),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,

@@ -19,13 +19,14 @@ spec:
       unbondingTime: 86400s
       votingPeriod: 7200s
       additionalInitCommands:
-        - image: curlimages/curl:8.1.1
-          args: [ "-s", "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd", "-o", "/temp/coingecko.json" ]
-
-        - image: apteno/alpine-jq
+        - image: ghcr.io/nibiruchain/node-tools
           command: [ "sh" , "-c" ]
           args:
-            - jq '.bitcoin.usd' /temp/coingecko.json > /temp/bitcoin
+            - >
+              curl -s "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd" -o /temp/coingecko.json;
+              jq '.bitcoin.usd' /temp/coingecko.json > /temp/bitcoin;
+              jq '.ethereum.usd' /temp/coingecko.json > /temp/ethereum;
+              jq '.app_state.oracle.params.min_voters = "1"' /home/app/config/genesis.json | sponge /home/app/config/genesis.json;
 
         - command: [ "sh" , "-c" ]
           args:
@@ -37,11 +38,6 @@ spec:
               --max-leverage=10
               --mmr=0.05
               --home=/home/app
-
-        - image: apteno/alpine-jq
-          command: [ "sh" , "-c" ]
-          args:
-            - jq '.ethereum.usd' /temp/coingecko.json > /temp/ethereum
 
         - command: [ "sh" , "-c" ]
           args:
