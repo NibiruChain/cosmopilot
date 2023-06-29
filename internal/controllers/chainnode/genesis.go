@@ -191,6 +191,10 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		initCommands...,
 	)
 	if err != nil {
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeWarning,
+			appsv1.ReasonInitGenesisFailure,
+			"failed to initialize genesis: %s", err.Error())
 		return err
 	}
 

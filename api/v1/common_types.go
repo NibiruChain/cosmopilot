@@ -28,6 +28,7 @@ const (
 	ReasonNodeCreated        = "NodeCreated"
 	ReasonNodeUpdated        = "NodeUpdated"
 	ReasonNodeDeleted        = "NodeDeleted"
+	ReasonInitGenesisFailure = "InitGenesisFail"
 )
 
 // AppSpec specifies the source image and binary name of the app to run

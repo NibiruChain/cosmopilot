@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -125,7 +126,7 @@ func (p *PodHelper) WaitForPodPhase(ctx context.Context, timeout time.Duration, 
 		default:
 			p.pod = event.Object.(*corev1.Pod)
 			if p.pod.Status.Phase == corev1.PodFailed {
-				return false, fmt.Errorf("pod failed")
+				return false, fmt.Errorf("pod failed: %s", p.getFailureReason(ctx))
 			}
 			return p.pod.Status.Phase == phase, nil
 		}
@@ -359,4 +360,34 @@ func (p *PodHelper) WaitForContainerStarted(ctx context.Context, timeout time.Du
 		return fmt.Errorf("no events received for pod %s/%s", p.pod.Namespace, p.pod.Name)
 	}
 	return nil
+}
+
+func (p *PodHelper) GetLogs(ctx context.Context, container string) (string, error) {
+	req := p.client.CoreV1().Pods(p.pod.Namespace).GetLogs(p.pod.Name, &corev1.PodLogOptions{Container: container})
+
+	logs, err := req.Stream(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer logs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, logs)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(buf.String()), nil
+}
+
+func (p *PodHelper) getFailureReason(ctx context.Context) string {
+	for _, c := range p.pod.Status.InitContainerStatuses {
+		if !c.Ready && c.State.Terminated != nil {
+			if c.State.Terminated.ExitCode != 0 {
+				if logs, err := p.GetLogs(ctx, c.Name); err == nil {
+					return logs
+				}
+			}
+		}
+	}
+	return "could not retrieve failure reason"
 }
