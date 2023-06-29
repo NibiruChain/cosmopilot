@@ -194,6 +194,12 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 					TargetPort: intstr.FromInt(chainutils.GrpcPort),
 				},
 				{
+					Name:       chainutils.PrometheusPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.PrometheusPort,
+					TargetPort: intstr.FromInt(chainutils.PrometheusPort),
+				},
+				{
 					Name:       nodeUtilsPortName,
 					Protocol:   corev1.ProtocolTCP,
 					Port:       nodeUtilsPort,
@@ -244,6 +250,12 @@ func (r *Reconciler) getHeadlessServiceSpec(chainNode *appsv1.ChainNode) (*corev
 					Protocol:   corev1.ProtocolTCP,
 					Port:       chainutils.GrpcPort,
 					TargetPort: intstr.FromInt(chainutils.GrpcPort),
+				},
+				{
+					Name:       chainutils.PrometheusPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.PrometheusPort,
+					TargetPort: intstr.FromInt(chainutils.PrometheusPort),
 				},
 				{
 					Name:       nodeUtilsPortName,

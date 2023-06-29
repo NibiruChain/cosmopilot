@@ -69,12 +69,6 @@ func (r *Reconciler) getServiceSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
-					Name:       chainutils.P2pPortName,
-					Protocol:   corev1.ProtocolTCP,
-					Port:       chainutils.P2pPort,
-					TargetPort: intstr.FromInt(chainutils.P2pPort),
-				},
-				{
 					Name:       chainutils.RpcPortName,
 					Protocol:   corev1.ProtocolTCP,
 					Port:       chainutils.RpcPort,

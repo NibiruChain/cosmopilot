@@ -194,6 +194,11 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 							ContainerPort: chainutils.GrpcPort,
 							Protocol:      corev1.ProtocolTCP,
 						},
+						{
+							Name:          chainutils.PrometheusPortName,
+							ContainerPort: chainutils.PrometheusPort,
+							Protocol:      corev1.ProtocolTCP,
+						},
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{

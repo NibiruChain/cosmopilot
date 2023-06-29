@@ -32,6 +32,9 @@ var (
 			"addr_book_strict":   false,
 			"allow_duplicate_ip": true,
 		},
+		"instrumentation": map[string]interface{}{
+			"prometheus": true,
+		},
 	}
 
 	validatorConfigToml = map[string]interface{}{

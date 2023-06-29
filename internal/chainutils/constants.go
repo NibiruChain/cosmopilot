@@ -13,5 +13,8 @@ const (
 	GrpcPortName = "grpc"
 	GrpcPort     = 9090
 
+	PrometheusPortName = "prometheus"
+	PrometheusPort     = 26660
+
 	nonRootId = 1000
 )
