@@ -95,7 +95,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if nodeSet.Status.Phase != appsv1.PhaseChainNodeSetRunning {
+	if nodeSet.Status.Phase != appsv1.PhaseChainNodeSetRunning || nodeSet.Status.AppVersion != nodeSet.Spec.App.GetImageVersion() {
+		nodeSet.Status.AppVersion = nodeSet.Spec.App.GetImageVersion()
 		nodeSet.Status.Phase = appsv1.PhaseChainNodeSetRunning
 		return ctrl.Result{}, r.Status().Update(ctx, nodeSet)
 	}

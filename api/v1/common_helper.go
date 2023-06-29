@@ -22,11 +22,15 @@ const (
 
 // GetImage returns the versioned image to be used
 func (app *AppSpec) GetImage() string {
-	version := DefaultImageVersion
+	return fmt.Sprintf("%s:%s", app.Image, app.GetImageVersion())
+}
+
+// GetImageVersion returns the image version to be used
+func (app *AppSpec) GetImageVersion() string {
 	if app.Version != nil {
-		version = *app.Version
+		return *app.Version
 	}
-	return fmt.Sprintf("%s:%s", app.Image, version)
+	return DefaultImageVersion
 }
 
 // GetImagePullPolicy returns the pull policy to be used for the app image

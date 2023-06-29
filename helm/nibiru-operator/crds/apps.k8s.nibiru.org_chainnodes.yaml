@@ -22,6 +22,9 @@ spec:
     - jsonPath: .status.ip
       name: IP
       type: string
+    - jsonPath: .status.appVersion
+      name: Version
+      type: string
     - jsonPath: .status.chainID
       name: ChainID
       type: string
@@ -1395,6 +1398,9 @@ spec:
               accountAddress:
                 description: AccountAddress is the account address of this validator.
                   Omitted when not a validator
+                type: string
+              appVersion:
+                description: AppVersion is the application version currently deployed
                 type: string
               chainID:
                 description: ChainID shows the chain ID

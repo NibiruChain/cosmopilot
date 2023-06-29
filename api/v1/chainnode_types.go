@@ -38,6 +38,7 @@ type ChainNodeList struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`
 //+kubebuilder:printcolumn:name="IP",type=string,JSONPath=`.status.ip`
+//+kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.appVersion`
 //+kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
 //+kubebuilder:printcolumn:name="Validator",type=boolean,JSONPath=`.status.validator`
 //+kubebuilder:printcolumn:name="Jailed",type=boolean,JSONPath=`.status.jailed`
@@ -158,6 +159,9 @@ type ChainNodeStatus struct {
 
 	// Jailed indicates if this validator is jailed. Always false if not a validator node.
 	Jailed bool `json:"jailed"`
+
+	// AppVersion is the application version currently deployed
+	AppVersion string `json:"appVersion,omitempty"`
 }
 
 // ValidatorConfig turns this node into a validator and specifies how it will do it.

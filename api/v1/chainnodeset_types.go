@@ -30,6 +30,7 @@ type ChainNodeSetList struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`
+//+kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.appVersion`
 //+kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
 //+kubebuilder:printcolumn:name="Instances",type=integer,JSONPath=`.status.instances`
 
@@ -72,6 +73,9 @@ type ChainNodeSetStatus struct {
 	// Instances indicates the total number of chainnode instances on this set
 	// +optional
 	Instances int `json:"instances,omitempty"`
+
+	// AppVersion is the application version currently deployed
+	AppVersion string `json:"appVersion,omitempty"`
 }
 
 // NodeSetValidatorConfig turns this node into a validator and specifies how it will do it.

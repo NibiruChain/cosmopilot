@@ -136,5 +136,11 @@ spec:
                 value: /home/app/data
               - name: TENDERMINT_RPC_ENDPOINT
                 value: http://localhost:26657
+              - name: GRPC_ENDPOINT
+                value: localhost:9090
+              - name: GRPC_INSECURE
+                value: "true"
               - name: NO_PARTITIONS
                 value: "true"
+              - name: CHAIN_ID
+                value: nibiru-devnet-0

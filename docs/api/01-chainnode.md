@@ -74,6 +74,7 @@ ChainNodeStatus defines the observed state of ChainNode
 | accountAddress | AccountAddress is the account address of this validator. Omitted when not a validator | string | false |
 | validatorAddress | ValidatorAddress is the valoper address of this validator. Omitted when not a validator | string | false |
 | jailed | Jailed indicates if this validator is jailed. Always false if not a validator node. | bool | true |
+| appVersion | AppVersion is the application version currently deployed | string | false |
 
 [Back to Custom Resources](#custom-resources)
 
