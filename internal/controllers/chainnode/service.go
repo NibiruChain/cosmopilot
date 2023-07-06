@@ -100,7 +100,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 			// Wait for LoadBalancer to be available
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
 				return svc.Status.LoadBalancer.Ingress != nil && len(svc.Status.LoadBalancer.Ingress) > 0, nil
-			}, time.Minute); err != nil {
+			}, 5*time.Minute); err != nil {
 				return err
 			}
 			externalAddress = fmt.Sprintf("%s@%s:%d", chainNode.Status.NodeID, p2p.Status.LoadBalancer.Ingress[0].IP, chainutils.P2pPort)

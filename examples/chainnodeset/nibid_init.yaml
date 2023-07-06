@@ -5,7 +5,7 @@ metadata:
 spec:
   app:
     image: ghcr.io/nibiruchain/nibiru
-    version: 0.21.0
+    version: 0.21.5
     app: nibid
 
   validator:
@@ -35,7 +35,7 @@ spec:
         - command: [ "sh" , "-c" ]
           args:
             - >
-              nibid add-genesis-perp-market
+              nibid genesis add-genesis-perp-market
               --pair=ubtc:unusd
               --sqrt-depth=40000000000000
               --price-multiplier=$(cat /temp/bitcoin)
@@ -46,7 +46,7 @@ spec:
         - command: [ "sh" , "-c" ]
           args:
             - >
-              nibid add-genesis-perp-market
+              nibid genesis add-genesis-perp-market
               --pair=ueth:unusd
               --sqrt-depth=40000000000000
               --price-multiplier=$(cat /temp/ethereum)

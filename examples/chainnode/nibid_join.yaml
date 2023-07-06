@@ -5,7 +5,7 @@ metadata:
 spec:
   app:
     image: ghcr.io/nibiruchain/nibiru
-    version: 0.21.0
+    version: 0.21.5
     app: nibid
 
   genesis:
