@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
+	kappsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -59,7 +60,7 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, nodeUtilsImage strin
 //+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes/finalizers,verbs=update
-//+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;configmaps;secrets;services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;configmaps;secrets;services;deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=pods/exec;pods/attach,verbs=create
 //+kubebuilder:rbac:groups="",resources=pods/log,verbs=get
 //+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list
@@ -95,9 +96,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Create a private key for signing and an account for this node if it is a validator
 	if chainNode.IsValidator() {
-		if err := r.ensureSigningKey(ctx, chainNode); err != nil {
-			return ctrl.Result{}, err
+		if chainNode.ShouldCreatePrivKey() {
+			if err := r.ensureSigningKey(ctx, chainNode); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
+
 		if err := r.ensureAccount(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -125,6 +129,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+
+	// Deploy TMKMS if configured
+	if err := r.ensureTmKMS(ctx, chainNode); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Ensure pod is running
@@ -166,6 +175,7 @@ func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{OwnerType: &appsv1.ChainNode{}}).
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{OwnerType: &appsv1.ChainNode{}}).
 		Watches(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, &handler.EnqueueRequestForOwner{OwnerType: &appsv1.ChainNode{}}).
+		Watches(&source.Kind{Type: &kappsv1.Deployment{}}, &handler.EnqueueRequestForOwner{OwnerType: &appsv1.ChainNode{}}).
 		WithEventFilter(GenerationChangedPredicate{}).
 		Complete(r)
 }

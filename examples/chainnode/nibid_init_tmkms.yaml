@@ -1,0 +1,86 @@
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNode
+metadata:
+  name: nibiru-validator
+spec:
+  app:
+    image: ghcr.io/nibiruchain/nibiru
+    version: 0.21.5
+    app: nibid
+
+  validator:
+    info:
+      moniker: nibiru
+      website: https://nibiru.fi
+    tmKMS:
+      provider:
+        vault:
+          address: https://vault.default.svc.cluster.local:8200
+          key: nibiru-devnet-0-validator-key
+          tokenSecret:
+            key: token
+            name: vault
+          certificateSecret:
+            key: vault.ca
+            name: vault-server-tls
+
+    init:
+      chainID: nibiru-devnet-0
+      assets: [ "1000000000000000unibi" ]
+      stakeAmount: 100000000unibi
+      unbondingTime: 86400s
+      votingPeriod: 7200s
+      additionalInitCommands:
+        - image: ghcr.io/nibiruchain/node-tools
+          command: [ "sh" , "-c" ]
+          args:
+            - >
+              curl -s "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd" -o /temp/coingecko.json;
+              jq '.bitcoin.usd' /temp/coingecko.json > /temp/bitcoin;
+              jq '.ethereum.usd' /temp/coingecko.json > /temp/ethereum;
+              jq '.app_state.oracle.params.min_voters = "1"' /home/app/config/genesis.json | sponge /home/app/config/genesis.json;
+
+        - command: [ "sh" , "-c" ]
+          args:
+            - >
+              nibid genesis add-genesis-perp-market
+              --pair=ubtc:unusd
+              --sqrt-depth=40000000000000
+              --price-multiplier=$(cat /temp/bitcoin)
+              --max-leverage=10
+              --mmr=0.05
+              --home=/home/app
+
+        - command: [ "sh" , "-c" ]
+          args:
+            - >
+              nibid genesis add-genesis-perp-market
+              --pair=ueth:unusd
+              --sqrt-depth=40000000000000
+              --price-multiplier=$(cat /temp/ethereum)
+              --max-leverage=15
+              --mmr=0.05
+              --home=/home/app
+
+  config:
+    override:
+      app.toml:
+        minimum-gas-prices: 0.025unibi
+
+    sidecars:
+      - name: pricefeeder
+        image: ghcr.io/nibiruchain/pricefeeder:0.21.0
+        env:
+          - name: FEEDER_MNEMONIC
+            valueFrom:
+              secretKeyRef:
+                name: nibiru-validator-account
+                key: mnemonic
+          - name: CHAIN_ID
+            value: nibiru-devnet-0
+          - name: GRPC_ENDPOINT
+            value: localhost:9090
+          - name: WEBSOCKET_ENDPOINT
+            value: ws://localhost:26657/websocket
+          - name: EXCHANGE_SYMBOLS_MAP
+            value: '{"bitfinex":{"ubtc:unusd":"tBTCUSD","ueth:unusd":"tETHUSD","uusdc:unusd":"tUDCUSD"},"binance":{"ubtc:uusd":"BTCUSD","ueth:uusd":"ETHUSD","uusdt:uusd":"USDTUSD","uusdc:uusd":"USDCUSD","uatom:uusd":"ATOMUSD","ubnb:uusd":"BNBUSD","uavax:uusd":"AVAXUSD","usol:uusd":"SOLUSD","uada:uusd":"ADAUSD","ubtc:unusd":"BTCUSD","ueth:unusd":"ETHUSD","uusdt:unusd":"USDTUSD","uusdc:unusd":"USDCUSD","uatom:unusd":"ATOMUSD","ubnb:unusd":"BNBUSD","uavax:unusd":"AVAXUSD","usol:unusd":"SOLUSD","uada:unusd":"ADAUSD"}}'

@@ -341,15 +341,18 @@ func (p *PodHelper) WaitForContainerStarted(ctx context.Context, timeout time.Du
 				return false, fmt.Errorf("pod failed")
 			}
 
-			if p.pod.Status.Phase != corev1.PodRunning {
-				return false, nil
-			}
-
 			for _, c := range p.pod.Status.ContainerStatuses {
-				if c.Name == container && c.Started != nil {
-					return *c.Started, nil
+				if c.Name == container {
+					if c.Started != nil && *c.Started {
+						return true, nil
+					}
+
+					if c.State.Terminated != nil && c.State.Terminated.ExitCode != 0 {
+						return false, fmt.Errorf("container failed: %v", p.getFailureReason(ctx))
+					}
 				}
 			}
+
 			return false, nil
 		}
 	})
@@ -380,7 +383,7 @@ func (p *PodHelper) GetLogs(ctx context.Context, container string) (string, erro
 }
 
 func (p *PodHelper) getFailureReason(ctx context.Context) string {
-	for _, c := range p.pod.Status.InitContainerStatuses {
+	for _, c := range append(p.pod.Status.ContainerStatuses, p.pod.Status.InitContainerStatuses...) {
 		if !c.Ready && c.State.Terminated != nil {
 			if c.State.Terminated.ExitCode != 0 {
 				if logs, err := p.GetLogs(ctx, c.Name); err == nil {

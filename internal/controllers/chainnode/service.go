@@ -40,13 +40,13 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 		}
 	}
 
-	// Ensure headless service
-	headless, err := r.getHeadlessServiceSpec(chainNode)
+	// Ensure internal service
+	internal, err := r.getInternalServiceSpec(chainNode)
 	if err != nil {
 		return err
 	}
 
-	if err := r.ensureService(ctx, headless); err != nil {
+	if err := r.ensureService(ctx, internal); err != nil {
 		return err
 	}
 
@@ -165,7 +165,8 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 					LabelChainID:   chainNode.Status.ChainID,
 					LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
 				},
-				chainNode.Labels),
+				chainNode.Labels,
+			),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -192,6 +193,12 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 					Protocol:   corev1.ProtocolTCP,
 					Port:       chainutils.GrpcPort,
 					TargetPort: intstr.FromInt(chainutils.GrpcPort),
+				},
+				{
+					Name:       chainutils.PrivValPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.PrivValPort,
+					TargetPort: intstr.FromInt(chainutils.PrivValPort),
 				},
 				{
 					Name:       chainutils.PrometheusPortName,
@@ -217,14 +224,13 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 	return svc, controllerutil.SetControllerReference(chainNode, svc, r.Scheme)
 }
 
-func (r *Reconciler) getHeadlessServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Service, error) {
+func (r *Reconciler) getInternalServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Service, error) {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-headless", chainNode.GetName()),
+			Name:      fmt.Sprintf("%s-internal", chainNode.GetName()),
 			Namespace: chainNode.GetNamespace(),
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP:                corev1.ClusterIPNone,
 			PublishNotReadyAddresses: true,
 			Ports: []corev1.ServicePort{
 				{
@@ -250,6 +256,12 @@ func (r *Reconciler) getHeadlessServiceSpec(chainNode *appsv1.ChainNode) (*corev
 					Protocol:   corev1.ProtocolTCP,
 					Port:       chainutils.GrpcPort,
 					TargetPort: intstr.FromInt(chainutils.GrpcPort),
+				},
+				{
+					Name:       chainutils.PrivValPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.PrivValPort,
+					TargetPort: intstr.FromInt(chainutils.PrivValPort),
 				},
 				{
 					Name:       chainutils.PrometheusPortName,
@@ -297,7 +309,8 @@ func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Ser
 					LabelNodeID:  chainNode.Status.NodeID,
 					LabelChainID: chainNode.Status.ChainID,
 				},
-				chainNode.Labels),
+				chainNode.Labels,
+			),
 		},
 	}
 	return svc, controllerutil.SetControllerReference(chainNode, svc, r.Scheme)

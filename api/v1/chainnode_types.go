@@ -23,6 +23,7 @@ const (
 	PhaseChainNodeRunning     ChainNodePhase = "Running"
 	PhaseChainNodeSyncing     ChainNodePhase = "Syncing"
 	PhaseChainNodeRestarting  ChainNodePhase = "Restarting"
+	PhaseChainNodeError       ChainNodePhase = "Error"
 )
 
 //+kubebuilder:object:root=true
@@ -178,6 +179,11 @@ type ValidatorConfig struct {
 	// Init specifies configs and initialization commands for creating a new chain and its genesis.
 	// +optional
 	Init *GenesisInitConfig `json:"init,omitempty"`
+
+	// TmKMS configuration for signing commits for this validator.
+	// When configured, .spec.validator.privateKeySecret will not be mounted on the validator node.
+	// +optional
+	TmKMS *TmKMS `json:"tmKMS,omitempty"`
 }
 
 // Persistence configuration for this node

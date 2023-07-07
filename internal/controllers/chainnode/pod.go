@@ -71,7 +71,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 	}
 
 	// Recreate pod if it is in failed state
-	if currentPod.Status.Phase == corev1.PodFailed {
+	if podInFailedState(currentPod) {
 		logger.Info("pod is in failed state")
 		return r.recreatePod(ctx, chainNode, pod)
 	}
@@ -192,6 +192,11 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						{
 							Name:          chainutils.GrpcPortName,
 							ContainerPort: chainutils.GrpcPort,
+							Protocol:      corev1.ProtocolTCP,
+						},
+						{
+							Name:          chainutils.PrivValPortName,
+							ContainerPort: chainutils.PrivValPort,
 							Protocol:      corev1.ProtocolTCP,
 						},
 						{
@@ -332,7 +337,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		}
 	}
 
-	if chainNode.IsValidator() {
+	if chainNode.IsValidator() && !chainNode.UsesTmKms() {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
 			Name: "priv-key",
 			VolumeSource: corev1.VolumeSource{
@@ -375,6 +380,13 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 	}
 
 	if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, appContainerName); err != nil {
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeWarning,
+			appsv1.ReasonNodeError,
+			"Error: %v",
+			err,
+		)
+		_ = r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeError)
 		return err
 	}
 	r.recorder.Eventf(chainNode,
@@ -466,4 +478,19 @@ func (r *Reconciler) setPhaseRunningOrSyncing(ctx context.Context, chainNode *ap
 	}
 
 	return nil
+}
+
+func podInFailedState(pod *corev1.Pod) bool {
+	if pod.Status.Phase == corev1.PodFailed {
+		return true
+	}
+
+	for _, c := range pod.Status.ContainerStatuses {
+		if !c.Ready && c.State.Terminated != nil {
+			if c.State.Terminated.ExitCode != 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -79,6 +79,14 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 		if err != nil {
 			return "", err
 		}
+		if chainNode.UsesTmKms() {
+			configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
+				"priv_validator_laddr": privValidatorListenAddress,
+			})
+			if err != nil {
+				return "", err
+			}
+		}
 	}
 
 	// Apply user specified configs

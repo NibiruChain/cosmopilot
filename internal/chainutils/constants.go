@@ -16,5 +16,8 @@ const (
 	PrometheusPortName = "prometheus"
 	PrometheusPort     = 26660
 
+	PrivValPortName = "privvalidator"
+	PrivValPort     = 26658
+
 	nonRootId = 1000
 )

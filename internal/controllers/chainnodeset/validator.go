@@ -48,6 +48,7 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 				PrivateKeySecret: nodeSet.Spec.Validator.PrivateKeySecret,
 				Info:             nodeSet.Spec.Validator.Info,
 				Init:             nodeSet.Spec.Validator.Init,
+				TmKMS:            nodeSet.Spec.Validator.TmKMS,
 			},
 			Resources:    nodeSet.Spec.Validator.Resources,
 			Affinity:     nodeSet.Spec.Validator.Affinity,

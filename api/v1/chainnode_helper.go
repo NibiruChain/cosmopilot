@@ -32,7 +32,7 @@ func (chainNode *ChainNode) GetReconcilePeriod() time.Duration {
 }
 
 func (chainNode *ChainNode) GetNodeFQDN() string {
-	return fmt.Sprintf("%s-headless.%s.svc.cluster.local", chainNode.GetName(), chainNode.GetNamespace())
+	return fmt.Sprintf("%s-internal.%s.svc.cluster.local", chainNode.GetName(), chainNode.GetNamespace())
 }
 
 func (chainNode *ChainNode) GetPersistenceSize() string {
@@ -114,6 +114,44 @@ func (chainNode *ChainNode) IsValidator() bool {
 
 func (chainNode *ChainNode) ShouldInitGenesis() bool {
 	return chainNode.Spec.Validator != nil && chainNode.Spec.Validator.Init != nil
+}
+
+func (chainNode *ChainNode) UsesTmKms() bool {
+	return chainNode.Spec.Validator.TmKMS != nil
+}
+
+func (chainNode *ChainNode) ShouldUploadVaultKey() bool {
+	if chainNode.ShouldInitGenesis() {
+		return true
+	}
+
+	if chainNode.Spec.Validator.TmKMS != nil && chainNode.Spec.Validator.TmKMS.Provider.Vault != nil {
+		return chainNode.Spec.Validator.TmKMS.Provider.Vault.UploadGenerated
+	}
+
+	return false
+}
+
+func (chainNode *ChainNode) ShouldCreatePrivKey() bool {
+	if !chainNode.IsValidator() {
+		return false
+	}
+
+	if chainNode.ShouldInitGenesis() {
+		if chainNode.Spec.Validator.TmKMS != nil && chainNode.Spec.Validator.TmKMS.Provider.Vault != nil {
+			chainNode.Spec.Validator.TmKMS.Provider.Vault.UploadGenerated = true
+		}
+		return true
+	}
+
+	if chainNode.UsesTmKms() {
+		if chainNode.Spec.Validator.TmKMS.Provider.Vault != nil && chainNode.Spec.Validator.TmKMS.Provider.Vault.UploadGenerated {
+			return true
+		}
+		return false
+	}
+
+	return false
 }
 
 func (chainNode *ChainNode) AutoDiscoverPeersEnabled() bool {

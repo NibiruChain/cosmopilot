@@ -5,6 +5,8 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
 )
 
 const (
@@ -65,4 +67,24 @@ func (peer *Peer) IsPrivate() bool {
 		return *peer.Private
 	}
 	return false
+}
+
+// TmKMS helper methods
+
+func (kms *TmKMS) GetKeyFormat() *TmKmsKeyFormat {
+	if kms.KeyFormat != nil {
+		return kms.KeyFormat
+	}
+	return &TmKmsKeyFormat{
+		Type:               tmkms.DefaultKeyType,
+		AccountKeyPrefix:   tmkms.DefaultAccountPrefix,
+		ConsensusKeyPrefix: tmkms.DefaultConsensusPrefix,
+	}
+}
+
+func (kms *TmKMS) GetProtocolVersion() tmkms.ProtocolVersion {
+	if kms.ValidatorProtocol != nil {
+		return *kms.ValidatorProtocol
+	}
+	return tmkms.ProtocolVersionV0_34
 }

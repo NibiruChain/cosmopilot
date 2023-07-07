@@ -144,5 +144,6 @@ ValidatorConfig turns this node into a validator and specifies how it will do it
 | privateKeySecret | PrivateKeySecret indicates the secret containing the private key to be use by this validator. Defaults to `<chainnode>-priv-key`. Will be created if it does not exist. | *string | false |
 | info | Info contains information details about this validator. | *ValidatorInfo | false |
 | init | Init specifies configs and initialization commands for creating a new chain and its genesis. | *GenesisInitConfig | false |
+| tmKMS | TmKMS configuration for signing commits for this validator. When configured, .spec.validator.privateKeySecret will not be mounted on the validator node. | *TmKMS | false |
 
 [Back to Custom Resources](#custom-resources)

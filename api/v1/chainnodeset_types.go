@@ -113,6 +113,11 @@ type NodeSetValidatorConfig struct {
 	// If specified, the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// TmKMS configuration for signing commits for this validator.
+	// When configured, .spec.validator.privateKeySecret will not be mounted on the validator node.
+	// +optional
+	TmKMS *TmKMS `json:"tmKMS,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group

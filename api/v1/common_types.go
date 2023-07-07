@@ -2,6 +2,8 @@ package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
 )
 
 // Reasons for events
@@ -21,6 +23,7 @@ const (
 	ReasonConfigsUpdated     = "ConfigsUpdated"
 	ReasonNodeStarted        = "NodeStarted"
 	ReasonNodeRestarted      = "NodeRestarted"
+	ReasonNodeError          = "NodeError"
 	ReasonNodeSyncing        = "NodeSyncing"
 	ReasonNodeRunning        = "NodeRunning"
 	ReasonValidatorJailed    = "ValidatorJailed"
@@ -29,6 +32,7 @@ const (
 	ReasonNodeUpdated        = "NodeUpdated"
 	ReasonNodeDeleted        = "NodeDeleted"
 	ReasonInitGenesisFailure = "InitGenesisFail"
+	ReasonUploadFailure      = "UploadFailed"
 )
 
 // AppSpec specifies the source image and binary name of the app to run
@@ -166,4 +170,52 @@ type Peer struct {
 	// Private marks this peer as private.
 	// +optional
 	Private *bool `json:"private,omitempty"`
+}
+
+type TmKMS struct {
+	// Provider specifies the signing provider to be used by tmkms
+	Provider TmKmsProvider `json:"provider"`
+
+	// KeyFormat specifies the format and type of key for chain.
+	// Defaults to `{"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix": "nibivalconspub"}`.
+	// +optional
+	KeyFormat *TmKmsKeyFormat `json:"keyFormat,omitempty"`
+
+	// ValidatorProtocol specifies the tendermint protocol version to be used.
+	// One of `legacy`, `v0.33` or `v0.34`. Defaults to `v0.34`.
+	// +optional
+	ValidatorProtocol *tmkms.ProtocolVersion `json:"validatorProtocol,omitempty"`
+}
+
+type TmKmsKeyFormat struct {
+	Type               string `json:"type"`
+	AccountKeyPrefix   string `json:"account_key_prefix"`
+	ConsensusKeyPrefix string `json:"consensus_key_prefix"`
+}
+
+type TmKmsProvider struct {
+	// Vault provider
+	// +optional
+	Vault *TmKmsVaultProvider `json:"vault,omitempty"`
+}
+
+type TmKmsVaultProvider struct {
+	// Address of the Vault cluster
+	Address string `json:"address"`
+
+	// Key to be used by this validator.
+	Key string `json:"key"`
+
+	// Secret containing the CA certificate of the Vault cluster.
+	// +optional
+	CertificateSecret *corev1.SecretKeySelector `json:"certificateSecret,omitempty"`
+
+	// Secret containing the token to be used.
+	TokenSecret *corev1.SecretKeySelector `json:"tokenSecret"`
+
+	// UploadGenerated indicates if the controller should upload the generated private key to vault.
+	// Defaults to `false`. Will be set to `true` if this validator is initializing a new genesis.
+	// This should not be used in production.
+	// +optional
+	UploadGenerated bool `json:"uploadGenerated,omitempty"`
 }
