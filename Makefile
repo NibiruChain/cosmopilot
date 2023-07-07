@@ -44,6 +44,7 @@ help: ## Display this help.
 docs: crd-to-markdown
 	@mkdir -p ./docs/api
 	@$(CRD_TO_MARKDOWN) -f ./api/v1/chainnode_types.go -n ChainNode > ./docs/api/01-chainnode.md
+	@$(CRD_TO_MARKDOWN) -f ./api/v1/chainnodeset_types.go -n ChainNodeSet > ./docs/api/02-chainnodeset.md
 
 ##@ Development
 
