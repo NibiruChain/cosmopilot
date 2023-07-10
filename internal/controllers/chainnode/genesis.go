@@ -82,6 +82,19 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 		if err != nil {
 			return err
 		}
+
+		if chainNode.Spec.Genesis.GenesisSHA != nil {
+			hash := utils.Sha256(genesis)
+			if hash != *chainNode.Spec.Genesis.GenesisSHA {
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeWarning,
+					appsv1.ReasonGenesisWrongHash,
+					"Genesis 256 SHA does not match the one specified by the user",
+				)
+				return fmt.Errorf("genesis 256 SHA does not match the one specified by the user")
+			}
+		}
+
 		chainID, err = chainutils.ExtractChainIdFromGenesis(genesis)
 		if err != nil {
 			return err

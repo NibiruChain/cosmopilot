@@ -1134,6 +1134,9 @@ spec:
                     description: ConfigMap specifies a configmap to load the genesis
                       from
                     type: string
+                  genesisSHA:
+                    description: GenesisSHA is the 256 SHA to validate the genesis.
+                    type: string
                   url:
                     description: URL to download the genesis from.
                     minLength: 1

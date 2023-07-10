@@ -33,6 +33,7 @@ const (
 	ReasonNodeDeleted        = "NodeDeleted"
 	ReasonInitGenesisFailure = "InitGenesisFail"
 	ReasonUploadFailure      = "UploadFailed"
+	ReasonGenesisWrongHash   = "GenesisWrongHash"
 )
 
 // AppSpec specifies the source image and binary name of the app to run
@@ -146,6 +147,10 @@ type GenesisConfig struct {
 	// +optional
 	// +kubebuilder:validation:MinLength=1
 	Url *string `json:"url,omitempty"`
+
+	// GenesisSHA is the 256 SHA to validate the genesis.
+	// +optional
+	GenesisSHA *string `json:"genesisSHA,omitempty"`
 
 	// ConfigMap specifies a configmap to load the genesis from
 	// +optional

@@ -379,6 +379,11 @@ func (in *GenesisConfig) DeepCopyInto(out *GenesisConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.GenesisSHA != nil {
+		in, out := &in.GenesisSHA, &out.GenesisSHA
+		*out = new(string)
+		**out = **in
+	}
 	if in.ConfigMap != nil {
 		in, out := &in.ConfigMap, &out.ConfigMap
 		*out = new(string)
