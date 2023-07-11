@@ -3,6 +3,7 @@ package chainnode
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 
 func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.ChainNode) error {
 	// Ensure main service
-	svc, err := r.getServiceSpec(chainNode)
+	svc, err := r.getServiceSpec(ctx, chainNode)
 	if err != nil {
 		return err
 	}
@@ -55,7 +56,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 	if err != nil {
 		return err
 	}
-	if chainNode.ExposesP2P() {
+	if chainNode.Spec.Expose.Enabled() {
 		if err := r.ensureService(ctx, p2p); err != nil {
 			return err
 		}
@@ -64,7 +65,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 		var externalAddress string
 		sh := k8s.NewServiceHelper(r.ClientSet, r.RestConfig, p2p)
 
-		switch chainNode.GetP2pServiceType() {
+		switch chainNode.Spec.Expose.GetServiceType() {
 		case corev1.ServiceTypeNodePort:
 			// Wait for NodePort to be available
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
@@ -141,7 +142,7 @@ func (r *Reconciler) ensureService(ctx context.Context, svc *corev1.Service) err
 		return err
 	}
 
-	if !patchResult.IsEmpty() {
+	if !patchResult.IsEmpty() || !reflect.DeepEqual(currentSvc.Annotations, svc.Annotations) {
 		logger.Info("updating service", "name", svc.GetName())
 
 		svc.ObjectMeta.ResourceVersion = currentSvc.ObjectMeta.ResourceVersion
@@ -154,7 +155,7 @@ func (r *Reconciler) ensureService(ctx context.Context, svc *corev1.Service) err
 	return nil
 }
 
-func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Service, error) {
+func (r *Reconciler) getServiceSpec(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.Service, error) {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      chainNode.GetName(),
@@ -221,6 +222,32 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 				chainNode.Labels),
 		},
 	}
+
+	if chainNode.Spec.Config != nil &&
+		chainNode.Spec.Config.StateSync.Enabled() &&
+		chainNode.Status.LatestHeight > int64(chainNode.Spec.Config.StateSync.SnapshotInterval*3) {
+		c, err := r.getQueryClient(chainNode)
+		if err != nil {
+			return nil, err
+		}
+
+		snapshotInterval := chainNode.Spec.Config.StateSync.SnapshotInterval
+		trustHeight := (chainNode.Status.LatestHeight / int64(snapshotInterval) * int64(snapshotInterval)) - (int64(snapshotInterval) * 3)
+
+		if trustHeight > 0 {
+			trustHash, err := c.GetBlockHash(ctx, trustHeight)
+			if err != nil {
+				return nil, err
+			}
+
+			if svc.Annotations == nil {
+				svc.Annotations = make(map[string]string)
+			}
+			svc.Annotations[AnnotationStateSyncTrustHeight] = strconv.FormatInt(trustHeight, 10)
+			svc.Annotations[AnnotationStateSyncTrustHash] = trustHash
+		}
+	}
+
 	return svc, controllerutil.SetControllerReference(chainNode, svc, r.Scheme)
 }
 
@@ -294,7 +321,7 @@ func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Ser
 			Namespace: chainNode.GetNamespace(),
 		},
 		Spec: corev1.ServiceSpec{
-			Type:                     chainNode.GetP2pServiceType(),
+			Type:                     chainNode.Spec.Expose.GetServiceType(),
 			PublishNotReadyAddresses: true,
 			Ports: []corev1.ServicePort{
 				{

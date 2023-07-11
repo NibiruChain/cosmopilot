@@ -18,6 +18,9 @@ const (
 	LabelChainID   = "chain-id"
 	LabelValidator = "validator"
 
+	AnnotationStateSyncTrustHeight = "apps.k8s.nibiru.org/state-sync-trust-height"
+	AnnotationStateSyncTrustHash   = "apps.k8s.nibiru.org/state-sync-trust-hash"
+
 	annotationConfigHash       = "apps.k8s.nibiru.org/config-hash"
 	annotationDataInitialized  = "apps.k8s.nibiru.org/data-initialized"
 	annotationVaultKeyUploaded = "apps.k8s.nibiru.org/vault-key-uploaded"
@@ -37,6 +40,8 @@ const (
 	nonRootId      = 1000
 
 	privValidatorListenAddress = "tcp://0.0.0.0:26658"
+
+	defaultStateSyncTrustPeriod = "168h0m0s"
 )
 
 var (

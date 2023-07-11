@@ -163,7 +163,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	return ctrl.Result{RequeueAfter: chainNode.GetReconcilePeriod()}, nil
+	return ctrl.Result{RequeueAfter: chainNode.GetReconcilePeriod()}, r.updateLatestHeight(ctx, chainNode)
 }
 
 func (r *Reconciler) updatePhase(ctx context.Context, chainNode *appsv1.ChainNode, phase appsv1.ChainNodePhase) error {

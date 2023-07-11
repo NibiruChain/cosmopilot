@@ -6,10 +6,14 @@
 
 * [AccountAssets](#accountassets)
 * [AppSpec](#appspec)
+* [Config](#config)
+* [ExposeConfig](#exposeconfig)
 * [GenesisConfig](#genesisconfig)
 * [GenesisInitConfig](#genesisinitconfig)
 * [InitCommand](#initcommand)
 * [Peer](#peer)
+* [SidecarSpec](#sidecarspec)
+* [StateSyncConfig](#statesyncconfig)
 * [TmKMS](#tmkms)
 * [TmKmsKeyFormat](#tmkmskeyformat)
 * [TmKmsProvider](#tmkmsprovider)
@@ -37,6 +41,32 @@ AppSpec specifies the source image and binary name of the app to run
 | version | Version is the image tag to be used. Defaults to `latest`. | *string | false |
 | imagePullPolicy | ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
 | app | App is the name of the binary of the application to be run | string | true |
+
+[Back to Custom Resources](#custom-resources)
+
+#### Config
+
+Config allows setting specific configurations for a chainnode such as overrides to app.toml and config.toml
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| override | Override allows overriding configs on toml configuration files | *map[string]runtime.RawExtension | false |
+| sidecars | Sidecars allow configuring additional containers to run alongside the node | [][SidecarSpec](#sidecarspec) | false |
+| imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
+| blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy | *string | false |
+| reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `1m`. | *string | false |
+| stateSync | StateSync configures statesync snapshots for this node. | *[StateSyncConfig](#statesyncconfig) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### ExposeConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| p2p | P2P indicates whether to expose p2p endpoint for this node. Defaults to `false`. | *bool | false |
+| p2pServiceType | P2pServiceType indicates how p2p port will be exposed. Either `LoadBalancer` or `NodePort`. Defaults to `NodePort`. | *corev1.ServiceType | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -95,6 +125,33 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | port | Port is the P2P port to be used. Defaults to `26656`. | *int | false |
 | unconditional | Unconditional marks this peer as unconditional. | *bool | false |
 | private | Private marks this peer as private. | *bool | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### SidecarSpec
+
+SidecarSpec allow configuring additional containers to run alongside the node
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name refers to the name to be assigned to the container | string | true |
+| image | Image refers to the docker image to be used by the container | string | true |
+| imagePullPolicy | ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
+| mountDataVolume | MountDataVolume indicates where data volume will be mounted on this container. It is not mounted if not specified. | *string | false |
+| command | Command to be run by this container. Defaults to entrypoint defined in image. | []string | false |
+| args | Args to be passed to this container. Defaults to cmd defined in image. | []string | false |
+| env | Env sets environment variables to be passed to this container. | []corev1.EnvVar | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### StateSyncConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| snapshotInterval | SnapshotInterval specifies the block interval at which local state sync snapshots are taken (0 to disable). | int | true |
+| snapshotKeepRecent | SnapshotKeepRecent specifies the number of recent snapshots to keep and serve (0 to keep all). Defaults to 2. | *int | false |
 
 [Back to Custom Resources](#custom-resources)
 

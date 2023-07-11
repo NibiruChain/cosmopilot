@@ -51,6 +51,8 @@ spec:
               --home=/home/app
 
   config:
+    stateSync:
+      snapshotInterval: 100
     override:
       app.toml:
         minimum-gas-prices: 0.025unibi

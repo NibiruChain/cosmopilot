@@ -51,6 +51,9 @@ spec:
               --home=/home/app
 
   config:
+    stateSync:
+      snapshotInterval: 100
+
     sidecars:
       - name: pricefeeder
         image: ghcr.io/nibiruchain/pricefeeder:0.21.0

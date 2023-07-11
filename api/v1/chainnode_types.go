@@ -5,7 +5,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func init() {
@@ -44,6 +43,7 @@ type ChainNodeList struct {
 //+kubebuilder:printcolumn:name="Validator",type=boolean,JSONPath=`.status.validator`
 //+kubebuilder:printcolumn:name="Jailed",type=boolean,JSONPath=`.status.jailed`
 //+kubebuilder:printcolumn:name="DataUsage",type=string,JSONPath=`.status.dataUsage`
+//+kubebuilder:printcolumn:name="LatestHeight",type=integer,JSONPath=`.status.latestHeight`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // ChainNode is the Schema for the chainnodes API
@@ -94,6 +94,11 @@ type ChainNodeSpec struct {
 	// AutoDiscoverPeers ensures peers with same chain ID are connected with each other. By default, it is enabled.
 	// +optional
 	AutoDiscoverPeers *bool `json:"autoDiscoverPeers,omitempty"`
+
+	// StateSyncRestore configures this node to find a state-sync snapshot on the network and restore from it.
+	// This is disabled by default.
+	// +optional
+	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 
 	// Peers are additional persistent peers that should be added to this node.
 	// +optional
@@ -163,6 +168,9 @@ type ChainNodeStatus struct {
 
 	// AppVersion is the application version currently deployed
 	AppVersion string `json:"appVersion,omitempty"`
+
+	// LatestHeight is the last height read on the node by the operator.
+	LatestHeight int64 `json:"latestHeight,omitempty"`
 }
 
 // ValidatorConfig turns this node into a validator and specifies how it will do it.
@@ -230,76 +238,4 @@ type Persistence struct {
 	// shared by all init containers.
 	// +optional
 	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
-}
-
-type ExposeConfig struct {
-	// P2P indicates whether to expose p2p endpoint for this node. Defaults to `false`.
-	// +optional
-	// +default=false
-	P2P *bool `json:"p2p,omitempty"`
-
-	// P2pServiceType indicates how p2p port will be exposed. Either `LoadBalancer` or `NodePort`.
-	// Defaults to `NodePort`.
-	// +optional
-	// +default="NodePort"
-	P2pServiceType *corev1.ServiceType `json:"p2pServiceType,omitempty"`
-}
-
-// Config allows setting specific configurations for a chainnode such as overrides to app.toml and config.toml
-type Config struct {
-	// Override allows overriding configs on toml configuration files
-	// +optional
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
-	Override *map[string]runtime.RawExtension `json:"override,omitempty"`
-
-	// Sidecars allow configuring additional containers to run alongside the node
-	// +optional
-	Sidecars []SidecarSpec `json:"sidecars,omitempty"`
-
-	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node.
-	// +optional
-	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-
-	// BlockThreshold specifies the time to wait for a block before considering node unhealthy
-	// +optional
-	BlockThreshold *string `json:"blockThreshold,omitempty"`
-
-	// ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode.
-	// Defaults to `1m`.
-	// +optional
-	// +default=1m
-	ReconcilePeriod *string `json:"reconcilePeriod,omitempty"`
-}
-
-// SidecarSpec allow configuring additional containers to run alongside the node
-type SidecarSpec struct {
-	// Name refers to the name to be assigned to the container
-	// +kubebuilder:validation:MinLength=1
-	Name string `json:"name"`
-
-	// Image refers to the docker image to be used by the container
-	// +kubebuilder:validation:MinLength=1
-	Image string `json:"image"`
-
-	// ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
-	// is `latest` and `IfNotPresent` otherwise.
-	// +optional
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-
-	// MountDataVolume indicates where data volume will be mounted on this container. It is not mounted if not specified.
-	// +optional
-	MountDataVolume *string `json:"mountDataVolume,omitempty"`
-
-	// Command to be run by this container. Defaults to entrypoint defined in image.
-	// +optional
-	Command []string `json:"command,omitempty"`
-
-	// Args to be passed to this container. Defaults to cmd defined in image.
-	// +optional
-	Args []string `json:"args,omitempty"`
-
-	// Env sets environment variables to be passed to this container.
-	// +optional
-	Env []corev1.EnvVar `json:"env,omitempty"`
 }

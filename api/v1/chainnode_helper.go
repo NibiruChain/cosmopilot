@@ -2,24 +2,18 @@ package v1
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	DefaultPersistenceSize = "50Gi"
-	DefaultBlockThreshold  = "30s"
 
 	DefaultAutoResize          = true
 	DefaultAutoResizeThreshold = 80
 	DefaultAutoResizeIncrement = "50Gi"
 	DefaultAutoResizeMaxSize   = "2Ti"
-
-	DefaultP2pExpose      = false
-	DefaultP2pServiceType = corev1.ServiceTypeNodePort
 )
 
 func (chainNode *ChainNode) GetReconcilePeriod() time.Duration {
@@ -85,29 +79,6 @@ func (chainNode *ChainNode) GetPersistenceInitCommands() []InitCommand {
 	return []InitCommand{}
 }
 
-// GetSidecarImagePullPolicy returns the pull policy to be used for the sidecar container image
-func (chainNode *ChainNode) GetSidecarImagePullPolicy(name string) corev1.PullPolicy {
-	if chainNode.Spec.Config == nil || chainNode.Spec.Config.Sidecars == nil {
-		return corev1.PullIfNotPresent
-	}
-
-	for _, c := range chainNode.Spec.Config.Sidecars {
-		if c.Name == name {
-			if c.ImagePullPolicy != "" {
-				return c.ImagePullPolicy
-			}
-			parts := strings.Split(c.Image, ":")
-
-			if len(parts) == 1 || parts[1] == DefaultImageVersion {
-				return corev1.PullAlways
-			}
-
-			return corev1.PullIfNotPresent
-		}
-	}
-	return corev1.PullIfNotPresent
-}
-
 func (chainNode *ChainNode) IsValidator() bool {
 	return chainNode.Spec.Validator != nil
 }
@@ -161,25 +132,11 @@ func (chainNode *ChainNode) AutoDiscoverPeersEnabled() bool {
 	return true
 }
 
-func (chainNode *ChainNode) GetBlockThreshold() string {
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.BlockThreshold != nil {
-		return *chainNode.Spec.Config.BlockThreshold
+func (chainNode *ChainNode) StateSyncRestoreEnabled() bool {
+	if chainNode.Spec.StateSyncRestore != nil {
+		return *chainNode.Spec.StateSyncRestore
 	}
-	return DefaultBlockThreshold
-}
-
-func (chainNode *ChainNode) ExposesP2P() bool {
-	if chainNode.Spec.Expose != nil && chainNode.Spec.Expose.P2P != nil {
-		return *chainNode.Spec.Expose.P2P
-	}
-	return DefaultP2pExpose
-}
-
-func (chainNode *ChainNode) GetP2pServiceType() corev1.ServiceType {
-	if chainNode.Spec.Expose != nil && chainNode.Spec.Expose.P2pServiceType != nil {
-		return *chainNode.Spec.Expose.P2pServiceType
-	}
-	return DefaultP2pServiceType
+	return false
 }
 
 // Validator methods

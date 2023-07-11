@@ -290,7 +290,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					Env: []corev1.EnvVar{
 						{
 							Name:  "BLOCK_THRESHOLD",
-							Value: chainNode.GetBlockThreshold(),
+							Value: chainNode.Spec.Config.GetBlockThreshold(),
 						},
 					},
 					Resources: corev1.ResourceRequirements{
@@ -317,7 +317,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			container := corev1.Container{
 				Name:            c.Name,
 				Image:           c.Image,
-				ImagePullPolicy: chainNode.GetSidecarImagePullPolicy(c.Name),
+				ImagePullPolicy: chainNode.Spec.Config.GetSidecarImagePullPolicy(c.Name),
 				Command:         c.Command,
 				Args:            c.Args,
 				Env:             c.Env,

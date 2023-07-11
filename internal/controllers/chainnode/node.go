@@ -43,3 +43,18 @@ func (r *Reconciler) updateJailedStatus(ctx context.Context, chainNode *appsv1.C
 
 	return nil
 }
+
+func (r *Reconciler) updateLatestHeight(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	client, err := r.getQueryClient(chainNode)
+	if err != nil {
+		return err
+	}
+
+	block, err := client.GetLatestBlock(ctx)
+	if err != nil {
+		return err
+	}
+
+	chainNode.Status.LatestHeight = block.Header.Height
+	return r.Status().Update(ctx, chainNode)
+}

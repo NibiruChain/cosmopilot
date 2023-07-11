@@ -2,6 +2,7 @@ package chainutils
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/cometbft/cometbft/proto/tendermint/p2p"
@@ -55,6 +56,16 @@ func (c *QueryClient) GetLatestBlock(ctx context.Context) (*tmtypes.Block, error
 		return nil, err
 	}
 	return response.Block, nil
+}
+
+func (c *QueryClient) GetBlockHash(ctx context.Context, height int64) (string, error) {
+	response, err := c.nodeClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{
+		Height: height,
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(response.BlockId.Hash), nil
 }
 
 func (c *QueryClient) IsNodeSyncing(ctx context.Context) (bool, error) {

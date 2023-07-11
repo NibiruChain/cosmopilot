@@ -1178,6 +1178,23 @@ spec:
                             - name
                             type: object
                           type: array
+                        stateSync:
+                          description: StateSync configures statesync snapshots for
+                            this node.
+                          properties:
+                            snapshotInterval:
+                              description: SnapshotInterval specifies the block interval
+                                at which local state sync snapshots are taken (0 to
+                                disable).
+                              type: integer
+                            snapshotKeepRecent:
+                              description: SnapshotKeepRecent specifies the number
+                                of recent snapshots to keep and serve (0 to keep all).
+                                Defaults to 2.
+                              type: integer
+                          required:
+                          - snapshotInterval
+                          type: object
                       type: object
                     expose:
                       description: Expose specifies which node endpoints are exposed
@@ -2445,6 +2462,23 @@ spec:
                           - name
                           type: object
                         type: array
+                      stateSync:
+                        description: StateSync configures statesync snapshots for
+                          this node.
+                        properties:
+                          snapshotInterval:
+                            description: SnapshotInterval specifies the block interval
+                              at which local state sync snapshots are taken (0 to
+                              disable).
+                            type: integer
+                          snapshotKeepRecent:
+                            description: SnapshotKeepRecent specifies the number of
+                              recent snapshots to keep and serve (0 to keep all).
+                              Defaults to 2.
+                            type: integer
+                        required:
+                        - snapshotInterval
+                        type: object
                     type: object
                   info:
                     description: Info contains information details about this validator.

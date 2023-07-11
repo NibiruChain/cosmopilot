@@ -11,6 +11,8 @@ spec:
   genesis:
     configMap: nibiru-devnet-0-genesis
 
+  stateSyncRestore: true
+
   config:
     override:
       app.toml:

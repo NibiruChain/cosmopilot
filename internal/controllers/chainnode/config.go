@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -71,6 +72,66 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 	configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], defaultConfigToml)
 	if err != nil {
 		return "", err
+	}
+
+	// Apply state-sync config
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.StateSync.Enabled() {
+		configs[appTomlFilename], err = utils.Merge(configs[appTomlFilename], map[string]interface{}{
+			"state-sync": map[string]interface{}{
+				"snapshot-interval":    chainNode.Spec.Config.StateSync.SnapshotInterval,
+				"snapshot-keep-recent": chainNode.Spec.Config.StateSync.GetKeepRecent(),
+			},
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if chainNode.StateSyncRestoreEnabled() {
+		peers, stateSyncAnnotations, err := r.getChainPeers(ctx, chainNode, AnnotationStateSyncTrustHeight, AnnotationStateSyncTrustHash)
+		if err != nil {
+			return "", err
+		}
+
+		rpcServers := make([]string, 0)
+
+		switch {
+		case len(peers) > 1:
+			for _, peer := range peers {
+				rpcServers = append(rpcServers, fmt.Sprintf("http://%s:%d", peer.Address, chainutils.RpcPort))
+			}
+
+		case len(peers) == 1:
+			for i := 0; i < 2; i++ {
+				rpcServers = append(rpcServers, fmt.Sprintf("http://%s:%d", peers[0].Address, chainutils.RpcPort))
+			}
+
+		default:
+			return "", fmt.Errorf("could not find other peers for this chain")
+		}
+
+		trustHeight, trustHash := getMostRecentHeightFromServicesAnnotations(stateSyncAnnotations)
+		if trustHeight == 0 {
+			r.recorder.Event(chainNode,
+				corev1.EventTypeWarning,
+				appsv1.ReasonNoTrustHeight,
+				"no chainnode with valid trust height config is available",
+			)
+			return "", fmt.Errorf("could not find ChainNode with valid state-sync configs")
+		}
+
+		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
+			"statesync": map[string]interface{}{
+				"enable":       true,
+				"rpc_servers":  strings.Join(rpcServers, ","),
+				"trust_height": trustHeight,
+				"trust_hash":   trustHash,
+				"trust_period": defaultStateSyncTrustPeriod,
+			},
+		})
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// Apply validator configs
@@ -246,27 +307,18 @@ func (r *Reconciler) getPeerConfiguration(ctx context.Context, chainNode *appsv1
 	unconditional := make([]string, 0)
 	private := make([]string, 0)
 
+	var peersList []appsv1.Peer
 	if chainNode.AutoDiscoverPeersEnabled() {
-		// List all services with the same chain ID label
-		listOption := client.MatchingLabels{LabelChainID: chainNode.Status.ChainID}
-		svcList := &corev1.ServiceList{}
-		if err := r.List(ctx, svcList, listOption); err != nil {
+		chainPeers, _, err := r.getChainPeers(ctx, chainNode)
+		if err != nil {
 			return nil, err
 		}
-
-		for _, svc := range svcList.Items {
-			if svc.Labels[LabelNodeID] == chainNode.Status.NodeID {
-				continue
-			}
-			peers = append(peers, fmt.Sprintf("%s@%s:26656", svc.Labels[LabelNodeID], svc.Spec.ClusterIP))
-			unconditional = append(unconditional, svc.Labels[LabelNodeID])
-			if svc.Labels[LabelValidator] == "true" {
-				private = append(private, svc.Labels[LabelNodeID])
-			}
-		}
+		peersList = append(chainPeers, chainNode.Spec.Peers...)
+	} else {
+		peersList = chainNode.Spec.Peers
 	}
 
-	for _, peer := range chainNode.Spec.Peers {
+	for _, peer := range peersList {
 		peers = append(peers, fmt.Sprintf("%s@%s:%d", peer.ID, peer.Address, peer.GetPort()))
 		if peer.IsUnconditional() {
 			unconditional = append(unconditional, peer.ID)
@@ -283,4 +335,62 @@ func (r *Reconciler) getPeerConfiguration(ctx context.Context, chainNode *appsv1
 			"private_peer_ids":       strings.Join(private, ","),
 		},
 	}, nil
+}
+
+func (r *Reconciler) getChainPeers(ctx context.Context, chainNode *appsv1.ChainNode, getAnnotations ...string) ([]appsv1.Peer, []map[string]string, error) {
+	// List all services with the same chain ID label
+	listOption := client.MatchingLabels{LabelChainID: chainNode.Status.ChainID}
+	svcList := &corev1.ServiceList{}
+	if err := r.List(ctx, svcList, listOption); err != nil {
+		return nil, nil, err
+	}
+
+	peers := make([]appsv1.Peer, 0)
+	annotationsList := make([]map[string]string, 0)
+
+	for _, svc := range svcList.Items {
+		if svc.Labels[LabelNodeID] == chainNode.Status.NodeID {
+			continue
+		}
+
+		peer := appsv1.Peer{
+			ID:            svc.Labels[LabelNodeID],
+			Address:       svc.Spec.ClusterIP,
+			Port:          pointer.Int(chainutils.P2pPort),
+			Unconditional: pointer.Bool(true),
+		}
+
+		if svc.Labels[LabelValidator] == "true" {
+			peer.Private = pointer.Bool(true)
+		}
+
+		peers = append(peers, peer)
+		annotations := make(map[string]string)
+		for _, annotation := range getAnnotations {
+			annotations[annotation] = svc.Annotations[annotation]
+		}
+		annotationsList = append(annotationsList, annotations)
+	}
+
+	return peers, annotationsList, nil
+}
+
+func getMostRecentHeightFromServicesAnnotations(annotationsList []map[string]string) (int64, string) {
+	var trustHeight int64
+	var trustHash string
+
+	for _, annotations := range annotationsList {
+		heightStr, ok := annotations[AnnotationStateSyncTrustHeight]
+		if !ok {
+			continue
+		}
+
+		height, err := strconv.ParseInt(heightStr, 10, 64)
+		if err == nil && height > trustHeight {
+			trustHeight = height
+			trustHash = annotations[AnnotationStateSyncTrustHash]
+		}
+	}
+
+	return trustHeight, trustHash
 }
