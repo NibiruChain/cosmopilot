@@ -37,7 +37,7 @@ const (
 	startupTimeout = 5 * time.Minute
 	nonRootId      = 1000
 
-	privValidatorListenAddress = "tcp://0.0.0.0:26658"
+	privValidatorListenAddress = "tcp://0.0.0.0:26659"
 
 	defaultStateSyncTrustPeriod = "168h0m0s"
 )

@@ -14,11 +14,24 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
 )
 
-func (r *Reconciler) ensureTmKMS(ctx context.Context, chainNode *appsv1.ChainNode) error {
-	if chainNode.Spec.Validator == nil || chainNode.Spec.Validator.TmKMS == nil {
+func (r *Reconciler) ensureTmKMSConfig(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	if !chainNode.UsesTmKms() {
 		// Configuration not specified or removed. Let's try to delete it anyway.
-		_ = tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode).Undeploy(ctx)
+		_ = tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode).UndeployConfig(ctx)
 		return nil
+	}
+
+	kms, err := r.getTmkms(ctx, chainNode)
+	if err != nil {
+		return err
+	}
+
+	return kms.DeployConfig(ctx)
+}
+
+func (r *Reconciler) getTmkms(ctx context.Context, chainNode *appsv1.ChainNode) (*tmkms.KMS, error) {
+	if !chainNode.UsesTmKms() {
+		return nil, fmt.Errorf("no tmkms configuration available in chainnode")
 	}
 
 	var providerConfig tmkms.Option
@@ -33,11 +46,11 @@ func (r *Reconciler) ensureTmKMS(ctx context.Context, chainNode *appsv1.ChainNod
 		)
 		if chainNode.ShouldUploadVaultKey() {
 			if err := r.ensureTmkmsVaultUploadKey(ctx, chainNode); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	default:
-		return fmt.Errorf("no supported provider configured")
+		return nil, fmt.Errorf("no supported provider configured")
 	}
 
 	chainConfig := tmkms.WithChain(
@@ -51,11 +64,11 @@ func (r *Reconciler) ensureTmKMS(ctx context.Context, chainNode *appsv1.ChainNod
 
 	validatorConfig := tmkms.WithValidator(
 		chainNode.Status.ChainID,
-		fmt.Sprintf("tcp://%s:%d", chainNode.GetNodeFQDN(), chainutils.PrivValPort),
+		fmt.Sprintf("tcp://localhost:%d", chainutils.PrivValPort),
 		tmkms.WithProtocolVersion(chainNode.Spec.Validator.TmKMS.GetProtocolVersion()),
 	)
 
-	return tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode, chainConfig, validatorConfig, providerConfig).Deploy(ctx)
+	return tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode, chainConfig, validatorConfig, providerConfig), nil
 }
 
 func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *appsv1.ChainNode) error {

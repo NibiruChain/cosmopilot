@@ -189,12 +189,6 @@ func (r *Reconciler) getServiceSpec(ctx context.Context, chainNode *appsv1.Chain
 					TargetPort: intstr.FromInt(chainutils.GrpcPort),
 				},
 				{
-					Name:       chainutils.PrivValPortName,
-					Protocol:   corev1.ProtocolTCP,
-					Port:       chainutils.PrivValPort,
-					TargetPort: intstr.FromInt(chainutils.PrivValPort),
-				},
-				{
 					Name:       chainutils.PrometheusPortName,
 					Protocol:   corev1.ProtocolTCP,
 					Port:       chainutils.PrometheusPort,
@@ -258,12 +252,6 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 					Protocol:   corev1.ProtocolTCP,
 					Port:       chainutils.GrpcPort,
 					TargetPort: intstr.FromInt(chainutils.GrpcPort),
-				},
-				{
-					Name:       chainutils.PrivValPortName,
-					Protocol:   corev1.ProtocolTCP,
-					Port:       chainutils.PrivValPort,
-					TargetPort: intstr.FromInt(chainutils.PrivValPort),
 				},
 				{
 					Name:       chainutils.PrometheusPortName,

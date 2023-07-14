@@ -2,13 +2,12 @@ package tmkms
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
-	"github.com/banzaicloud/k8s-objectmatcher/patch"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -41,12 +40,12 @@ func New(client *kubernetes.Clientset, scheme *runtime.Scheme, name string, owne
 	}
 }
 
-func (kms *KMS) Deploy(ctx context.Context) error {
+func (kms *KMS) DeployConfig(ctx context.Context) error {
 	if err := kms.processAllProviders(ctx); err != nil {
 		return err
 	}
 
-	if err := kms.ensurePVC(ctx); err != nil {
+	if err := kms.ensureIdentityKey(ctx); err != nil {
 		return err
 	}
 
@@ -54,22 +53,17 @@ func (kms *KMS) Deploy(ctx context.Context) error {
 		return err
 	}
 
-	return kms.ensureDeployment(ctx)
+	return nil
 }
 
-func (kms *KMS) Undeploy(ctx context.Context) error {
-	// Delete deployment
-	if err := kms.Client.AppsV1().Deployments(kms.Owner.GetNamespace()).Delete(ctx, kms.Name, metav1.DeleteOptions{}); err != nil {
-		return err
-	}
-
+func (kms *KMS) UndeployConfig(ctx context.Context) error {
 	// Delete config map
 	if err := kms.Client.CoreV1().ConfigMaps(kms.Owner.GetNamespace()).Delete(ctx, kms.Name, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 
-	// Delete PVC
-	if err := kms.Client.CoreV1().PersistentVolumeClaims(kms.Owner.GetNamespace()).Delete(ctx, kms.Name, metav1.DeleteOptions{}); err != nil {
+	// Delete Secret
+	if err := kms.Client.CoreV1().Secrets(kms.Owner.GetNamespace()).Delete(ctx, kms.Name, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 
@@ -91,41 +85,103 @@ func (kms *KMS) getConfigToml() (string, error) {
 	return utils.TomlEncode(kms.Config)
 }
 
-func (kms *KMS) ensurePVC(ctx context.Context) error {
-	size, err := resource.ParseQuantity(DefaultPvcSize)
-	if err != nil {
-		return err
-	}
+func (kms *KMS) getConfigHash() string {
+	cfg, _ := kms.getConfigToml()
+	return utils.Sha256(cfg)
+}
 
-	spec := &corev1.PersistentVolumeClaim{
+func (kms *KMS) ensureIdentityKey(ctx context.Context) error {
+	_, err := kms.Client.CoreV1().Secrets(kms.Owner.GetNamespace()).Get(ctx, kms.Name, metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		var key string
+		key, err = kms.generateKmsIdentityKey(ctx)
+		if err != nil {
+			return err
+		}
+
+		spec := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      kms.Name,
+				Namespace: kms.Owner.GetNamespace(),
+			},
+			Immutable: pointer.Bool(true),
+			Data:      map[string][]byte{identityKeyName: []byte(key)},
+		}
+		_, err = kms.Client.CoreV1().Secrets(kms.Owner.GetNamespace()).Create(ctx, spec, metav1.CreateOptions{})
+	}
+	return err
+}
+
+func (kms *KMS) generateKmsIdentityKey(ctx context.Context) (string, error) {
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kms.Name,
+			Name:      fmt.Sprintf("%s-generate-identity", kms.Name),
 			Namespace: kms.Owner.GetNamespace(),
 		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Volumes: []corev1.Volume{
+				{
+					Name: "data",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
 			},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: size,
+			InitContainers: []corev1.Container{
+				{
+					Name:            tmkmsAppName,
+					Image:           kms.Config.Image,
+					ImagePullPolicy: corev1.PullAlways,
+					Command:         []string{"/bin/sh", "-c", "tmkms init /root/tmkms"},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "data",
+							MountPath: "/root/tmkms",
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{
+				{
+					Name:            "busybox",
+					Image:           kms.Config.Image,
+					ImagePullPolicy: corev1.PullAlways,
+					Command:         []string{"cat", "/root/tmkms/secrets/" + identityKeyName},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "data",
+							MountPath: "/root/tmkms",
+						},
+					},
 				},
 			},
 		},
 	}
-	if err := controllerutil.SetControllerReference(kms.Owner, spec, kms.Scheme); err != nil {
-		return err
+	if err := controllerutil.SetControllerReference(kms.Owner, pod, kms.Scheme); err != nil {
+		return "", err
 	}
 
-	_, err = kms.Client.CoreV1().PersistentVolumeClaims(kms.Owner.GetNamespace()).Get(ctx, kms.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			_, err = kms.Client.CoreV1().PersistentVolumeClaims(kms.Owner.GetNamespace()).Create(ctx, spec, metav1.CreateOptions{})
-		}
-		return err
+	ph := k8s.NewPodHelper(kms.Client, nil, pod)
+
+	// Delete the pod if it already exists
+	_ = ph.Delete(ctx)
+
+	// Delete the pod independently of the result
+	defer ph.Delete(ctx)
+
+	if err := ph.Create(ctx); err != nil {
+		return "", err
 	}
-	// PVC does not require any updates
-	return nil
+
+	// Wait for the pod to finish
+	if err := ph.WaitForPodSucceeded(ctx, time.Minute); err != nil {
+		return "", err
+	}
+
+	// Grab identity key file content
+	out, err := ph.GetLogs(ctx, "busybox")
+	return strings.TrimSpace(out), err
 }
 
 func (kms *KMS) ensureConfigMap(ctx context.Context) error {
@@ -161,19 +217,25 @@ func (kms *KMS) ensureConfigMap(ctx context.Context) error {
 	return err
 }
 
-func (kms *KMS) ensureDeployment(ctx context.Context) error {
+func (kms *KMS) GetVolumes() []corev1.Volume {
 	// Build volumes list with providers volumes
 	volumes := []corev1.Volume{
 		{
-			Name: "data",
+			Name: "tmkms-data",
 			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: kms.Name,
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "tmkms-identity",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: kms.Name,
 				},
 			},
 		},
 		{
-			Name: "config",
+			Name: "tmkms-config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -189,14 +251,23 @@ func (kms *KMS) ensureDeployment(ctx context.Context) error {
 		}
 	}
 
+	return volumes
+}
+
+func (kms *KMS) GetContainerSpec() corev1.Container {
 	// Build volume mounts list with provider volume mounts
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "data",
+			Name:      "tmkms-data",
 			MountPath: "/data",
 		},
 		{
-			Name:      "config",
+			Name:      "tmkms-identity",
+			MountPath: "/data/" + identityKeyName,
+			SubPath:   identityKeyName,
+		},
+		{
+			Name:      "tmkms-config",
 			MountPath: "/data/" + configFileName,
 			SubPath:   configFileName,
 		},
@@ -207,98 +278,17 @@ func (kms *KMS) ensureDeployment(ctx context.Context) error {
 		}
 	}
 
-	spec := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kms.Name,
-			Namespace: kms.Owner.GetNamespace(),
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32(1),
-			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RecreateDeploymentStrategyType,
-			},
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					labelApp:   tmkmsAppName,
-					labelOwner: kms.Owner.GetName(),
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						labelApp:   tmkmsAppName,
-						labelOwner: kms.Owner.GetName(),
-					},
-				},
-				Spec: corev1.PodSpec{
-					Volumes: volumes,
-					InitContainers: []corev1.Container{
-						{
-							Name:            "tmkms-init",
-							Image:           kms.Config.Image,
-							ImagePullPolicy: corev1.PullAlways,
-							Command: []string{
-								"/bin/sh",
-								"-c",
-								"ls /data/kms-identity.key || (tmkms init /tmp && mv /tmp/secrets/kms-identity.key /data/kms-identity.key)",
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "data",
-									MountPath: "/data",
-								},
-							},
-						},
-					},
-					Containers: []corev1.Container{
-						{
-							Name:            tmkmsAppName,
-							Image:           kms.Config.Image,
-							ImagePullPolicy: corev1.PullAlways,
-							Args:            []string{"start", "-c", "/data/" + configFileName},
-							VolumeMounts:    volumeMounts,
-						},
-					},
-				},
+	return corev1.Container{
+		Name:            tmkmsAppName,
+		Image:           kms.Config.Image,
+		ImagePullPolicy: corev1.PullAlways,
+		Args:            []string{"start", "-c", "/data/" + configFileName},
+		VolumeMounts:    volumeMounts,
+		Env: []corev1.EnvVar{
+			{
+				Name:  "ROLLME",
+				Value: kms.getConfigHash(),
 			},
 		},
 	}
-	if err := controllerutil.SetControllerReference(kms.Owner, spec, kms.Scheme); err != nil {
-		return err
-	}
-
-	deployment, err := kms.Client.AppsV1().Deployments(kms.Owner.GetNamespace()).Get(ctx, kms.Name, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			deployment, err = kms.Client.AppsV1().Deployments(kms.Owner.GetNamespace()).Create(ctx, spec, metav1.CreateOptions{})
-			if err != nil {
-				return err
-			}
-			return kms.waitDeploymentReady(ctx, deployment)
-		}
-		return err
-	}
-
-	patchResult, err := patch.DefaultPatchMaker.Calculate(deployment, spec)
-	if err != nil {
-		return err
-	}
-
-	if !patchResult.IsEmpty() {
-		spec.ObjectMeta.ResourceVersion = deployment.ObjectMeta.ResourceVersion
-		spec, err = kms.Client.AppsV1().Deployments(kms.Owner.GetNamespace()).Update(ctx, spec, metav1.UpdateOptions{})
-		if err != nil {
-			return err
-		}
-		deployment = spec
-	}
-
-	return kms.waitDeploymentReady(ctx, deployment)
-}
-
-func (kms *KMS) waitDeploymentReady(ctx context.Context, deployment *appsv1.Deployment) error {
-	dh := k8s.NewDeploymentHelper(kms.Client, nil, deployment)
-	return dh.WaitForCondition(ctx, func(deployment *appsv1.Deployment) (bool, error) {
-		return deployment.Status.ReadyReplicas == 1, nil
-	}, time.Minute)
 }

@@ -101,7 +101,7 @@ func (chainNode *ChainNode) ShouldInitGenesis() bool {
 }
 
 func (chainNode *ChainNode) UsesTmKms() bool {
-	return chainNode.Spec.Validator.TmKMS != nil
+	return chainNode.Spec.Validator != nil && chainNode.Spec.Validator.TmKMS != nil
 }
 
 func (chainNode *ChainNode) ShouldUploadVaultKey() bool {

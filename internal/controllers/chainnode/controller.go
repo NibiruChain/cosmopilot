@@ -65,7 +65,6 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, nodeUtilsImage strin
 //+kubebuilder:rbac:groups="",resources=pods/log,verbs=get
 //+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
-//+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -134,8 +133,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	// Deploy TMKMS if configured
-	if err := r.ensureTmKMS(ctx, chainNode); err != nil {
+	// Deploy TMKMS configs if configured
+	if err := r.ensureTmKMSConfig(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 

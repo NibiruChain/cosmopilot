@@ -8,11 +8,9 @@ import (
 
 const (
 	DefaultTmKmsImage = "ghcr.io/nibiruchain/tmkms:hashicorp"
-	DefaultPvcSize    = "10Gi"
 	configFileName    = "config.toml"
-	labelApp          = "app"
 	tmkmsAppName      = "tmkms"
-	labelOwner        = "owner"
+	identityKeyName   = "kms-identity.key"
 )
 
 func defaultConfig() *Config {

@@ -19,6 +19,10 @@ func TestSha256(t *testing.T) {
 			provided: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed at tellus id sapien auctor fermentum eu a felis.",
 			expected: "72719066dfb65a1951bcc028f779245ecb60cfd64e69d4a1e829ea8d747cbe5f",
 		},
+		{
+			provided: "",
+			expected: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		},
 	}
 
 	for _, test := range tests {
