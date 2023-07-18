@@ -1,0 +1,22 @@
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNode
+metadata:
+  name: nibiru-node
+spec:
+  app:
+    image: ghcr.io/nibiruchain/nibiru
+    version: 0.21.5
+    app: nibid
+
+  genesis:
+    fromNodeRPC:
+      secure: false
+      hostname: nibiru-validator-internal.default.svc.cluster.local
+      port: 26657
+
+  stateSyncRestore: true
+
+  config:
+    override:
+      app.toml:
+        minimum-gas-prices: 0.025unibi
