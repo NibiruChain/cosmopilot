@@ -106,7 +106,36 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 		)
 	}
 
-	// TODO: add other methods for retrieving genesis
+	if chainNode.Spec.Genesis.FromNodeRPC != nil {
+		genesisUrl := chainNode.Spec.Genesis.FromNodeRPC.GetGenesisFromRPCUrl()
+		logger.Info("retrieving genesis from node RPC", "url", genesisUrl)
+		genesis, err = utils.GetGenesisFromNodeRPC(genesisUrl)
+		if err != nil {
+			return err
+		}
+
+		if chainNode.Spec.Genesis.GenesisSHA != nil {
+			hash := utils.Sha256(genesis)
+			if hash != *chainNode.Spec.Genesis.GenesisSHA {
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeWarning,
+					appsv1.ReasonGenesisWrongHash,
+					"Genesis 256 SHA does not match the one specified by the user",
+				)
+				return fmt.Errorf("genesis 256 SHA does not match the one specified by the user")
+			}
+		}
+
+		chainID, err = chainutils.ExtractChainIdFromGenesis(genesis)
+		if err != nil {
+			return err
+		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonGenesisImported,
+			"Genesis downloaded using specified RPC node",
+		)
+	}
 
 	if genesis == "" || chainID == "" {
 		return fmt.Errorf("genesis could not be retrived using any of the available methods")
