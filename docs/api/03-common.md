@@ -8,6 +8,7 @@
 * [AppSpec](#appspec)
 * [Config](#config)
 * [ExposeConfig](#exposeconfig)
+* [FromNodeRPCConfig](#fromnoderpcconfig)
 * [GenesisConfig](#genesisconfig)
 * [GenesisInitConfig](#genesisinitconfig)
 * [InitCommand](#initcommand)
@@ -70,6 +71,18 @@ Config allows setting specific configurations for a chainnode such as overrides 
 
 [Back to Custom Resources](#custom-resources)
 
+#### FromNodeRPCConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| secure | Defines protocol to use. Defaults to false. | bool | false |
+| hostname | Hostname or IP address of the RPC server | string | true |
+| port | TCP port used for RPC queries on the RPC server. Defaults to `26657`. | *int | false |
+
+[Back to Custom Resources](#custom-resources)
+
 #### GenesisConfig
 
 GenesisConfig specifies how genesis will be retrieved
@@ -77,6 +90,7 @@ GenesisConfig specifies how genesis will be retrieved
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | url | URL to download the genesis from. | *string | false |
+| fromNodeRPC | Get the genesis from the existing node RPC endpoint. | *[FromNodeRPCConfig](#fromnoderpcconfig) | false |
 | genesisSHA | GenesisSHA is the 256 SHA to validate the genesis. | *string | false |
 | configMap | ConfigMap specifies a configmap to load the genesis from | *string | false |
 

@@ -1331,6 +1331,23 @@ spec:
                     description: ConfigMap specifies a configmap to load the genesis
                       from
                     type: string
+                  fromNodeRPC:
+                    description: Get the genesis from the existing node RPC endpoint.
+                    properties:
+                      hostname:
+                        description: Hostname or IP address of the RPC server
+                        minLength: 1
+                        type: string
+                      port:
+                        description: TCP port used for RPC queries on the RPC server.
+                          Defaults to `26657`.
+                        type: integer
+                      secure:
+                        description: Defines protocol to use. Defaults to false.
+                        type: boolean
+                    required:
+                    - hostname
+                    type: object
                   genesisSHA:
                     description: GenesisSHA is the 256 SHA to validate the genesis.
                     type: string
