@@ -219,6 +219,10 @@ type GenesisConfig struct {
 	// +kubebuilder:validation:MinLength=1
 	Url *string `json:"url,omitempty"`
 
+	// Get the genesis from the existing node RPC endpoint.
+	// +optional
+	FromNodeRPC *FromNodeRPCConfig `json:"fromNodeRPC,omitempty"`
+
 	// GenesisSHA is the 256 SHA to validate the genesis.
 	// +optional
 	GenesisSHA *string `json:"genesisSHA,omitempty"`
@@ -317,4 +321,18 @@ type StateSyncConfig struct {
 	// SnapshotKeepRecent specifies the number of recent snapshots to keep and serve (0 to keep all). Defaults to 2.
 	// +optional
 	SnapshotKeepRecent *int `json:"snapshotKeepRecent,omitempty"`
+}
+
+type FromNodeRPCConfig struct {
+	// Defines protocol to use. Defaults to false.
+	// +optional
+	Secure bool `json:"secure,omitempty"`
+
+	// Hostname or IP address of the RPC server
+	// +kubebuilder:validation:MinLength=1
+	Hostname string `json:"hostname"`
+
+	// TCP port used for RPC queries on the RPC server. Defaults to `26657`.
+	// +optional
+	Port *int `json:"port,omitempty"`
 }
