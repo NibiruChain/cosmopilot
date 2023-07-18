@@ -148,3 +148,26 @@ func (ss *StateSyncConfig) GetKeepRecent() int {
 	}
 	return DefaultStateSyncKeepRecent
 }
+
+// GetGenesisFromRPCUrl transforms struct into url string
+
+func (gg *FromNodeRPCConfig) GetGenesisFromRPCUrl() string {
+	if gg == nil {
+		return ""
+	}
+
+	port := 26657
+	protocol := "http://"
+	hostname := gg.Hostname
+
+	if gg.Secure {
+		protocol = "https://"
+		port = 443
+	}
+
+	if gg.Port != nil {
+		port = *gg.Port
+	}
+
+	return fmt.Sprintf("%s%s:%d/genesis", protocol, hostname, port)
+}
