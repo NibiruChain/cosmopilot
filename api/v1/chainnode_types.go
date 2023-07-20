@@ -154,6 +154,9 @@ type ChainNodeStatus struct {
 
 	// LatestHeight is the last height read on the node by the operator.
 	LatestHeight int64 `json:"latestHeight,omitempty"`
+
+	// SeedMode indicates if this node is running with seed mode enabled.
+	SeedMode bool `json:"seedMode,omitempty"`
 }
 
 // ValidatorConfig turns this node into a validator and specifies how it will do it.

@@ -951,6 +951,10 @@ spec:
                     description: ReconcilePeriod is the period at which a reconcile
                       loop will happen for this ChainNode. Defaults to `1m`.
                     type: string
+                  seedMode:
+                    description: SeedMode configures this node to run on seed mode.
+                      Defaults to `false`.
+                    type: boolean
                   sidecars:
                     description: Sidecars allow configuring additional containers
                       to run alongside the node
@@ -1752,6 +1756,10 @@ spec:
               pvcSize:
                 description: PvcSize shows the current size of the pvc of this node
                 type: string
+              seedMode:
+                description: SeedMode indicates if this node is running with seed
+                  mode enabled.
+                type: boolean
               validator:
                 description: Validator indicates if this node is a validator.
                 type: boolean

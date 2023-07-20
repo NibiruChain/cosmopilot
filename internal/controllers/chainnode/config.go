@@ -88,6 +88,18 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 		}
 	}
 
+	// Apply seed-mode if enabled
+	if chainNode.Spec.Config.SeedModeEnabled() {
+		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
+			"p2p": map[string]interface{}{
+				"seed_mode": true,
+			},
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+
 	if chainNode.StateSyncRestoreEnabled() {
 		peers, stateSyncAnnotations, err := r.getChainPeers(ctx, chainNode, AnnotationStateSyncTrustHeight, AnnotationStateSyncTrustHash)
 		if err != nil {

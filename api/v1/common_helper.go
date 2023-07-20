@@ -72,6 +72,13 @@ func (cfg *Config) GetSidecarImagePullPolicy(name string) corev1.PullPolicy {
 	return corev1.PullIfNotPresent
 }
 
+func (cfg *Config) SeedModeEnabled() bool {
+	if cfg != nil && cfg.SeedMode != nil {
+		return *cfg.SeedMode
+	}
+	return false
+}
+
 // Peer helper methods
 
 func (peer *Peer) GetPort() int {

@@ -87,6 +87,10 @@ type Config struct {
 	// StateSync configures statesync snapshots for this node.
 	// +optional
 	StateSync *StateSyncConfig `json:"stateSync,omitempty"`
+
+	// SeedMode configures this node to run on seed mode. Defaults to `false`.
+	// +optional
+	SeedMode *bool `json:"seedMode,omitempty"`
 }
 
 // SidecarSpec allow configuring additional containers to run alongside the node
