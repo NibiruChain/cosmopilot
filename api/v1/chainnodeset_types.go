@@ -76,6 +76,26 @@ type ChainNodeSetStatus struct {
 
 	// AppVersion is the application version currently deployed
 	AppVersion string `json:"appVersion,omitempty"`
+
+	// Nodes indicates which nodes are available on this nodeset. Excludes validator node.
+	Nodes []ChainNodeSetNodeStatus `json:"nodes,omitempty"`
+}
+
+type ChainNodeSetNodeStatus struct {
+	// Name is the name of the node.
+	Name string `json:"name"`
+
+	// Public indicates whether this node can be accessed publicly.
+	Public bool `json:"public"`
+
+	// ID is the node ID of this node.
+	ID string `json:"id"`
+
+	// Address is the hostname or IP address to reach this node.
+	Address string `json:"address"`
+
+	// Port is the P2P port for connecting to this node.
+	Port int `json:"port"`
 }
 
 // NodeSetValidatorConfig turns this node into a validator and specifies how it will do it.

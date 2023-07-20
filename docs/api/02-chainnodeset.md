@@ -6,6 +6,7 @@
 ### Sub Resources
 
 * [ChainNodeSetList](#chainnodesetlist)
+* [ChainNodeSetNodeStatus](#chainnodesetnodestatus)
 * [ChainNodeSetSpec](#chainnodesetspec)
 * [ChainNodeSetStatus](#chainnodesetstatus)
 * [IngressConfig](#ingressconfig)
@@ -35,6 +36,20 @@ ChainNodeSetList contains a list of ChainNodeSet
 
 [Back to Custom Resources](#custom-resources)
 
+#### ChainNodeSetNodeStatus
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name is the name of the node. | string | true |
+| public | Public indicates whether this node can be accessed publicly. | bool | true |
+| id | ID is the node ID of this node. | string | true |
+| address | Address is the hostname or IP address to reach this node. | string | true |
+| port | Port is the P2P port for connecting to this node. | int | true |
+
+[Back to Custom Resources](#custom-resources)
+
 #### ChainNodeSetSpec
 
 ChainNodeSetSpec defines the desired state of ChainNode
@@ -58,6 +73,7 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet
 | chainID | ChainID shows the chain ID | string | false |
 | instances | Instances indicates the total number of chainnode instances on this set | int | false |
 | appVersion | AppVersion is the application version currently deployed | string | false |
+| nodes | Nodes indicates which nodes are available on this nodeset. Excludes validator node. | [][ChainNodeSetNodeStatus](#chainnodesetnodestatus) | false |
 
 [Back to Custom Resources](#custom-resources)
 

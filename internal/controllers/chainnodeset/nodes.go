@@ -3,6 +3,7 @@ package chainnodeset
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 	"github.com/NibiruChain/nibiru-operator/pkg/informer"
 )
 
@@ -30,6 +32,11 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 	if nodeSet.HasValidator() {
 		totalInstances += 1
 	}
+
+	if nodeSet.Status.Nodes == nil {
+		nodeSet.Status.Nodes = make([]appsv1.ChainNodeSetNodeStatus, 0)
+	}
+
 	for _, group := range nodeSet.Spec.Nodes {
 		if err := r.ensureNodeGroup(ctx, nodeSet, group); err != nil {
 			return err
@@ -77,6 +84,22 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 		if err := r.ensureNode(ctx, nodeSet, node); err != nil {
 			return err
 		}
+
+		nodeStatus := appsv1.ChainNodeSetNodeStatus{
+			Name:    node.Name,
+			ID:      node.Status.NodeID,
+			Address: node.Status.IP,
+			Port:    chainutils.P2pPort,
+		}
+		if node.Status.PublicAddress != "" {
+			if parts := strings.Split(node.Status.PublicAddress, ":"); len(parts) == 2 {
+				if parts = strings.Split(parts[0], "@"); len(parts) == 2 {
+					nodeStatus.Public = true
+					nodeStatus.Address = parts[1]
+				}
+			}
+		}
+		nodeSet.Status.Nodes = append(nodeSet.Status.Nodes, nodeStatus)
 	}
 	return nil
 }

@@ -3234,6 +3234,36 @@ spec:
                 description: Instances indicates the total number of chainnode instances
                   on this set
                 type: integer
+              nodes:
+                description: Nodes indicates which nodes are available on this nodeset.
+                  Excludes validator node.
+                items:
+                  properties:
+                    address:
+                      description: Address is the hostname or IP address to reach
+                        this node.
+                      type: string
+                    id:
+                      description: ID is the node ID of this node.
+                      type: string
+                    name:
+                      description: Name is the name of the node.
+                      type: string
+                    port:
+                      description: Port is the P2P port for connecting to this node.
+                      type: integer
+                    public:
+                      description: Public indicates whether this node can be accessed
+                        publicly.
+                      type: boolean
+                  required:
+                  - address
+                  - id
+                  - name
+                  - port
+                  - public
+                  type: object
+                type: array
               phase:
                 description: Phase indicates the current phase for this ChainNodeSet.
                 type: string
