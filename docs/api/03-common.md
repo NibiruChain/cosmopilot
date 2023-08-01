@@ -42,6 +42,7 @@ AppSpec specifies the source image and binary name of the app to run
 | version | Version is the image tag to be used. Defaults to `latest`. | *string | false |
 | imagePullPolicy | ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
 | app | App is the name of the binary of the application to be run | string | true |
+| sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Defaults to `v0.47`. | *SdkVersion | false |
 
 [Back to Custom Resources](#custom-resources)
 

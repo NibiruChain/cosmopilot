@@ -6,6 +6,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 )
 
 type App struct {
@@ -17,14 +19,16 @@ type App struct {
 	binary     string
 	image      string
 	pullPolicy corev1.PullPolicy
+	sdkVersion appsv1.SdkVersion
 }
 
-func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config, owner metav1.Object, options ...Option) *App {
+func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config, owner metav1.Object, sdkVersion appsv1.SdkVersion, options ...Option) *App {
 	app := &App{
 		client:     client,
 		owner:      owner,
 		scheme:     scheme,
 		restConfig: cfg,
+		sdkVersion: sdkVersion,
 	}
 	applyOptions(app, options)
 	return app

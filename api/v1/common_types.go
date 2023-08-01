@@ -38,6 +38,15 @@ const (
 	ReasonNoTrustHeight      = "NoTrustHeight"
 )
 
+// SdkVersion specifies the cosmos-sdk version.
+// +kubebuilder:validation:Enum=v0.45;v0.47
+type SdkVersion string
+
+const (
+	V0_47 SdkVersion = "v0.47"
+	V0_45 SdkVersion = "v0.45"
+)
+
 // AppSpec specifies the source image and binary name of the app to run
 type AppSpec struct {
 	// Image indicates the docker image to be used
@@ -56,6 +65,10 @@ type AppSpec struct {
 
 	// App is the name of the binary of the application to be run
 	App string `json:"app"`
+
+	// SdkVersion specifies the version of cosmos-sdk used by this app. Defaults to `v0.47`.
+	// +optional
+	SdkVersion *SdkVersion `json:"sdkVersion,omitempty"`
 }
 
 // Config allows setting specific configurations for a chainnode such as overrides to app.toml and config.toml

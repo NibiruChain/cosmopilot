@@ -91,6 +91,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	app := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
+		chainNode.Spec.App.GetSdkVersion(),
 		chainutils.WithImage(chainNode.Spec.App.GetImage()),
 		chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
 		chainutils.WithBinary(chainNode.Spec.App.App),

@@ -65,6 +65,13 @@ spec:
                       when creating nodes. Defaults to `Always` if `version` is `latest`
                       and `IfNotPresent` otherwise.
                     type: string
+                  sdkVersion:
+                    description: SdkVersion specifies the version of cosmos-sdk used
+                      by this app. Defaults to `v0.47`.
+                    enum:
+                    - v0.45
+                    - v0.47
+                    type: string
                   version:
                     description: Version is the image tag to be used. Defaults to
                       `latest`.

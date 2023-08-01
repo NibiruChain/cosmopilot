@@ -23,6 +23,7 @@ const (
 	DefaultValPrefix           = "nibivaloper"
 	DefaultP2pPort             = 26656
 	DefaultStateSyncKeepRecent = 2
+	DefaultSdkVersion          = V0_47
 )
 
 // GetImage returns the versioned image to be used
@@ -47,6 +48,13 @@ func (app *AppSpec) GetImagePullPolicy() corev1.PullPolicy {
 		return corev1.PullAlways
 	}
 	return corev1.PullIfNotPresent
+}
+
+func (app *AppSpec) GetSdkVersion() SdkVersion {
+	if app.SdkVersion != nil {
+		return *app.SdkVersion
+	}
+	return DefaultSdkVersion
 }
 
 // GetSidecarImagePullPolicy returns the pull policy to be used for the sidecar container image

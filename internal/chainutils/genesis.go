@@ -13,6 +13,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
@@ -61,6 +62,24 @@ func (a *App) NewGenesis(ctx context.Context,
 	params *GenesisParams,
 	initCommands ...*InitCommand,
 ) (string, error) {
+
+	addGenesisAccountArgs := make([]string, 0)
+	gentxArgs := make([]string, 0)
+	collectGentxsArgs := make([]string, 0)
+
+	switch a.sdkVersion {
+	case appsv1.V0_45:
+		addGenesisAccountArgs = append(addGenesisAccountArgs, "add-genesis-account")
+		gentxArgs = append(gentxArgs, "gentx")
+		collectGentxsArgs = append(collectGentxsArgs, "collect-gentxs")
+	case appsv1.V0_47:
+		fallthrough
+	default:
+		addGenesisAccountArgs = append(addGenesisAccountArgs, []string{"genesis", "add-genesis-account"}...)
+		gentxArgs = append(gentxArgs, []string{"genesis", "gentx"}...)
+		collectGentxsArgs = append(collectGentxsArgs, []string{"genesis", "collect-gentxs"}...)
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-genesis-init", a.owner.GetName()),
@@ -149,9 +168,11 @@ func (a *App) NewGenesis(ctx context.Context,
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args: []string{"genesis", "add-genesis-account", account.Address, strings.Join(params.Assets, ","),
+					Args: append(addGenesisAccountArgs, []string{
+						account.Address,
+						strings.Join(params.Assets, ","),
 						"--home", "/home/app",
-					},
+					}...),
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "data",
@@ -213,9 +234,11 @@ func (a *App) NewGenesis(ctx context.Context,
 			Image:           a.image,
 			ImagePullPolicy: a.pullPolicy,
 			Command:         []string{a.binary},
-			Args: []string{"genesis", "add-genesis-account", acc.Address, strings.Join(acc.Assets, ","),
+			Args: append(addGenesisAccountArgs, []string{
+				acc.Address,
+				strings.Join(acc.Assets, ","),
 				"--home", "/home/app",
-			},
+			}...),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "data",
@@ -245,30 +268,30 @@ func (a *App) NewGenesis(ctx context.Context,
 		})
 	}
 
-	// Add gentxs container
-	infoArgs := []string{
+	// Add gentx container
+	gentxCommand := append(gentxArgs, []string{
+		"account", params.StakeAmount,
+		"--chain-id", params.ChainID,
+		"--home", "/home/app",
+		"--keyring-backend", "test",
+		"--yes",
 		"--moniker", nodeInfo.Moniker,
-	}
+	}...)
 	if nodeInfo.Details != nil {
-		infoArgs = append(infoArgs, "--details", *nodeInfo.Details)
+		gentxCommand = append(gentxCommand, "--details", *nodeInfo.Details)
 	}
 	if nodeInfo.Website != nil {
-		infoArgs = append(infoArgs, "--website", *nodeInfo.Website)
+		gentxCommand = append(gentxCommand, "--website", *nodeInfo.Website)
 	}
 	if nodeInfo.Identity != nil {
-		infoArgs = append(infoArgs, "--identity", *nodeInfo.Identity)
+		gentxCommand = append(gentxCommand, "--identity", *nodeInfo.Identity)
 	}
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
 		Name:            "gentx",
 		Image:           a.image,
 		ImagePullPolicy: a.pullPolicy,
 		Command:         []string{a.binary},
-		Args: append([]string{"genesis", "gentx", "account", params.StakeAmount,
-			"--chain-id", params.ChainID,
-			"--home", "/home/app",
-			"--keyring-backend", "test",
-			"--yes",
-		}, infoArgs...),
+		Args:            gentxCommand,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "data",
@@ -283,9 +306,7 @@ func (a *App) NewGenesis(ctx context.Context,
 		Image:           a.image,
 		ImagePullPolicy: a.pullPolicy,
 		Command:         []string{a.binary},
-		Args: []string{"genesis", "collect-gentxs",
-			"--home", "/home/app",
-		},
+		Args:            append(collectGentxsArgs, []string{"--home", "/home/app"}...),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "data",
