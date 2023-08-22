@@ -113,6 +113,19 @@ type Config struct {
 	// cluster-autoscaler to evict this node's pod.
 	// +optional
 	SafeToEvict *bool `json:"safeToEvict,omitempty"`
+
+	// ServiceMonitor allows deploying prometheus service monitor for this node.
+	// +optional
+	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
+}
+
+type ServiceMonitorSpec struct {
+	// Enable indicates a service monitor should be deployed for this node.
+	Enable bool `json:"enable"`
+
+	// Selector indicates the prometheus installation that will be using this service monitor.
+	// +optional
+	Selector map[string]string `json:"selector,omitempty"`
 }
 
 // SidecarSpec allow configuring additional containers to run alongside the node

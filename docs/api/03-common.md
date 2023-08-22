@@ -13,6 +13,7 @@
 * [GenesisInitConfig](#genesisinitconfig)
 * [InitCommand](#initcommand)
 * [Peer](#peer)
+* [ServiceMonitorSpec](#servicemonitorspec)
 * [SidecarSpec](#sidecarspec)
 * [StateSyncConfig](#statesyncconfig)
 * [TmKMS](#tmkms)
@@ -61,6 +62,7 @@ Config allows setting specific configurations for a chainnode such as overrides 
 | seedMode | SeedMode configures this node to run on seed mode. Defaults to `false`. | *bool | false |
 | env | Env refers to the list of environment variables to set in the app container. | []corev1.EnvVar | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
+| serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -143,6 +145,17 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | port | Port is the P2P port to be used. Defaults to `26656`. | *int | false |
 | unconditional | Unconditional marks this peer as unconditional. | *bool | false |
 | private | Private marks this peer as private. | *bool | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### ServiceMonitorSpec
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| enable | Enable indicates a service monitor should be deployed for this node. | bool | true |
+| selector | Selector indicates the prometheus installation that will be using this service monitor. | map[string]string | false |
 
 [Back to Custom Resources](#custom-resources)
 

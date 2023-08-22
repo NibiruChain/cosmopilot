@@ -26,6 +26,12 @@ const (
 	DefaultSdkVersion          = V0_47
 )
 
+var (
+	defaultServiceMonitorSelector = map[string]string{
+		"release": "monitoring-stack",
+	}
+)
+
 // GetImage returns the versioned image to be used
 func (app *AppSpec) GetImage() string {
 	return fmt.Sprintf("%s:%s", app.Image, app.GetImageVersion())
@@ -92,6 +98,20 @@ func (cfg *Config) GetEnv() []corev1.EnvVar {
 		return cfg.Env
 	}
 	return []corev1.EnvVar{}
+}
+
+func (cfg *Config) ServiceMonitorsEnabled() bool {
+	if cfg != nil && cfg.ServiceMonitor != nil {
+		return cfg.ServiceMonitor.Enable
+	}
+	return false
+}
+
+func (cfg *Config) ServiceMonitorSelector() map[string]string {
+	if cfg != nil && cfg.ServiceMonitor != nil && cfg.ServiceMonitor.Selector != nil {
+		return cfg.ServiceMonitor.Selector
+	}
+	return defaultServiceMonitorSelector
 }
 
 // Peer helper methods

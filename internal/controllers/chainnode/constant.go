@@ -31,6 +31,8 @@ const (
 	startupTimeout       = 5 * time.Minute
 	timeoutWaitServiceIP = 5 * time.Minute
 
+	prometheusScrapeInterval = "15s"
+
 	nodeUtilsContainerName = "node-utils"
 	nodeUtilsCPU           = "10m"
 	nodeUtilsMemory        = "20Mi"

@@ -10,9 +10,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 )
@@ -105,7 +103,7 @@ func (r *Reconciler) updatePhase(ctx context.Context, nodeSet *appsv1.ChainNodeS
 func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.ChainNodeSet{}).
-		Watches(&source.Kind{Type: &appsv1.ChainNode{}}, &handler.EnqueueRequestForOwner{OwnerType: &appsv1.ChainNodeSet{}}).
+		Owns(&appsv1.ChainNode{}).
 		WithEventFilter(GenerationChangedPredicate{}).
 		Complete(r)
 }
