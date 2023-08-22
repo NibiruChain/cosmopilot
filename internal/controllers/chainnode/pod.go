@@ -377,7 +377,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				SubPath:   privKeyFilename,
 			})
 		}
+	}
 
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.SafeToEvict != nil {
+		pod.Annotations[annotationSafeEvict] = strconv.FormatBool(*chainNode.Spec.Config.SafeToEvict)
 	}
 
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)

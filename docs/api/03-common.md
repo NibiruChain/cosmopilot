@@ -60,6 +60,7 @@ Config allows setting specific configurations for a chainnode such as overrides 
 | stateSync | StateSync configures statesync snapshots for this node. | *[StateSyncConfig](#statesyncconfig) | false |
 | seedMode | SeedMode configures this node to run on seed mode. Defaults to `false`. | *bool | false |
 | env | Env refers to the list of environment variables to set in the app container. | []corev1.EnvVar | false |
+| safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

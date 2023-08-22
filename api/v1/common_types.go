@@ -108,6 +108,11 @@ type Config struct {
 	// Env refers to the list of environment variables to set in the app container.
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows
+	// cluster-autoscaler to evict this node's pod.
+	// +optional
+	SafeToEvict *bool `json:"safeToEvict,omitempty"`
 }
 
 // SidecarSpec allow configuring additional containers to run alongside the node

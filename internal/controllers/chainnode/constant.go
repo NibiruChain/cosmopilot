@@ -21,6 +21,7 @@ const (
 	AnnotationStateSyncTrustHeight = "apps.k8s.nibiru.org/state-sync-trust-height"
 	AnnotationStateSyncTrustHash   = "apps.k8s.nibiru.org/state-sync-trust-hash"
 
+	annotationSafeEvict        = "cluster-autoscaler.kubernetes.io/safe-to-evict"
 	annotationConfigHash       = "apps.k8s.nibiru.org/config-hash"
 	annotationDataInitialized  = "apps.k8s.nibiru.org/data-initialized"
 	annotationVaultKeyUploaded = "apps.k8s.nibiru.org/vault-key-uploaded"

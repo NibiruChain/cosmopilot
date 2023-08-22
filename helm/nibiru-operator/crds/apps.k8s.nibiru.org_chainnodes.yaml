@@ -1073,6 +1073,11 @@ spec:
                     description: ReconcilePeriod is the period at which a reconcile
                       loop will happen for this ChainNode. Defaults to `1m`.
                     type: string
+                  safeToEvict:
+                    description: SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict
+                      annotation to the given value. It allows/disallows cluster-autoscaler
+                      to evict this node's pod.
+                    type: boolean
                   seedMode:
                     description: SeedMode configures this node to run on seed mode.
                       Defaults to `false`.
