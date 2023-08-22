@@ -68,5 +68,7 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 			NodeSelector: nodeSet.Spec.Validator.NodeSelector,
 		},
 	}
+
+	setChainNodeServiceMonitor(nodeSet, validator)
 	return validator, controllerutil.SetControllerReference(nodeSet, validator, r.Scheme)
 }

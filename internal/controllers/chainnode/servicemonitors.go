@@ -24,7 +24,7 @@ func (r *Reconciler) ensureServiceMonitors(ctx context.Context, chainNode *appsv
 	}
 
 	if chainNode.Spec.Config.ServiceMonitorsEnabled() {
-		var current *monitoring.ServiceMonitor
+		current := &monitoring.ServiceMonitor{}
 		err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), current)
 		if err != nil {
 			if errors.IsNotFound(err) {

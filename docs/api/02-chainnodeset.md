@@ -62,6 +62,7 @@ ChainNodeSetSpec defines the desired state of ChainNode
 | genesis | Genesis indicates where nodes from this set will get the genesis from. Can be omitted when .spec.validator.init is specified. | *GenesisConfig | true |
 | validator | Validator configures a validator node and configures it. | *[NodeSetValidatorConfig](#nodesetvalidatorconfig) | false |
 | nodes | Nodes indicates the list of groups of chainnodes to be run | [][NodeGroupSpec](#nodegroupspec) | true |
+| serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet. ServiceMonitor config on ChainNode overrides this one. | *ServiceMonitorSpec | false |
 
 [Back to Custom Resources](#custom-resources)
 

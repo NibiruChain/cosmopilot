@@ -35,7 +35,10 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	scheme.AddKnownTypes(monitoring.SchemeGroupVersion, &monitoring.ServiceMonitor{})
+	if err := monitoring.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "unable to add prometheus crds to scheme")
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,

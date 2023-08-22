@@ -58,6 +58,11 @@ type ChainNodeSetSpec struct {
 
 	// Nodes indicates the list of groups of chainnodes to be run
 	Nodes []NodeGroupSpec `json:"nodes"`
+
+	// ServiceMonitor allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet.
+	// ServiceMonitor config on ChainNode overrides this one.
+	// +optional
+	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
 }
 
 // ChainNodeSetStatus defines the observed state of ChainNodeSet

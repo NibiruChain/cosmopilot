@@ -1817,6 +1817,24 @@ spec:
                   - name
                   type: object
                 type: array
+              serviceMonitor:
+                description: ServiceMonitor allows deploying prometheus service monitor
+                  for all ChainNodes in this ChainNodeSet. ServiceMonitor config on
+                  ChainNode overrides this one.
+                properties:
+                  enable:
+                    description: Enable indicates a service monitor should be deployed
+                      for this node.
+                    type: boolean
+                  selector:
+                    additionalProperties:
+                      type: string
+                    description: Selector indicates the prometheus installation that
+                      will be using this service monitor.
+                    type: object
+                required:
+                - enable
+                type: object
               validator:
                 description: Validator configures a validator node and configures
                   it.

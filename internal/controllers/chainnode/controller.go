@@ -81,7 +81,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	logger.Info("starting reconcile")
 
-	// Eventual status updates
+	// Eventually update status seed mode
 	chainNode.Status.SeedMode = chainNode.Spec.Config.SeedModeEnabled()
 
 	// Create/update secret with node key for this node.
