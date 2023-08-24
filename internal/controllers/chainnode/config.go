@@ -168,7 +168,11 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 			}
 
 		default:
-			logger.Error(fmt.Errorf("could not find other peers for this chain"), "not restoring from state-sync")
+			r.recorder.Event(chainNode,
+				corev1.EventTypeWarning,
+				appsv1.ReasonNoPeers,
+				"not restoring from state-sync: could not find other peers for this chain",
+			)
 		}
 
 		if len(rpcServers) >= 2 {
@@ -177,9 +181,8 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 				r.recorder.Event(chainNode,
 					corev1.EventTypeWarning,
 					appsv1.ReasonNoTrustHeight,
-					"no chainnode with valid trust height config is available",
+					"not restoring from state-sync: no chainnode with valid trust height config is available",
 				)
-				logger.Error(fmt.Errorf("could not find ChainNode with valid state-sync configs"), "not restoring from state-sync")
 			} else {
 				configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
 					"statesync": map[string]interface{}{

@@ -36,6 +36,7 @@ const (
 	ReasonUploadFailure      = "UploadFailed"
 	ReasonGenesisWrongHash   = "GenesisWrongHash"
 	ReasonNoTrustHeight      = "NoTrustHeight"
+	ReasonNoPeers            = "NoPeers"
 )
 
 // SdkVersion specifies the cosmos-sdk version.
