@@ -99,6 +99,7 @@ GenesisConfig specifies how genesis will be retrieved
 | fromNodeRPC | Get the genesis from the existing node RPC endpoint. | *[FromNodeRPCConfig](#fromnoderpcconfig) | false |
 | genesisSHA | GenesisSHA is the 256 SHA to validate the genesis. | *string | false |
 | configMap | ConfigMap specifies a configmap to load the genesis from | *string | false |
+| useDataVolume | UseDataVolume indicates that the operator should save the genesis in the same volume as node data instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -273,6 +273,11 @@ type GenesisConfig struct {
 	// ConfigMap specifies a configmap to load the genesis from
 	// +optional
 	ConfigMap *string `json:"configMap,omitempty"`
+
+	// UseDataVolume indicates that the operator should save the genesis in the same volume as node data
+	// instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB.
+	// +optional
+	UseDataVolume *bool `json:"useDataVolume,omitempty"`
 }
 
 type Peer struct {

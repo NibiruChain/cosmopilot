@@ -5,11 +5,13 @@ metadata:
 spec:
   app:
     image: ghcr.io/nibiruchain/nibiru
-    version: 0.21.5
+    version: 0.21.9
     app: nibid
 
   genesis:
-    configMap: nibiru-devnet-0-genesis
+    useDataVolume: true
+    fromNodeRPC:
+      hostname: nibiru-validator
 
   stateSyncRestore: true
 

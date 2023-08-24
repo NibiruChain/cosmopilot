@@ -111,11 +111,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	// Get or initialize a genesis
-	if err := r.ensureGenesis(ctx, app, chainNode); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	// Create/update services for this node
 	if err := r.ensureServices(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
@@ -138,6 +133,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+
+	// Get or initialize a genesis
+	if err := r.ensureGenesis(ctx, app, chainNode); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Deploy TMKMS configs if configured

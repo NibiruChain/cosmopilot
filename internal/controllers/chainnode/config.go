@@ -100,6 +100,16 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 		}
 	}
 
+	// Use genesis from data dir
+	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
+		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
+			"genesis_file": genesisLocation,
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+
 	// Apply validator configs
 	if chainNode.IsValidator() {
 		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], validatorConfigToml)

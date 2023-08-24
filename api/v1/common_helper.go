@@ -63,6 +63,15 @@ func (app *AppSpec) GetSdkVersion() SdkVersion {
 	return DefaultSdkVersion
 }
 
+// GenesisConfig helper methods
+
+func (g *GenesisConfig) ShouldUseDataVolume() bool {
+	if g != nil && g.UseDataVolume != nil {
+		return *g.UseDataVolume
+	}
+	return false
+}
+
 // GetSidecarImagePullPolicy returns the pull policy to be used for the sidecar container image
 func (cfg *Config) GetSidecarImagePullPolicy(name string) corev1.PullPolicy {
 	if cfg == nil || cfg.Sidecars == nil {

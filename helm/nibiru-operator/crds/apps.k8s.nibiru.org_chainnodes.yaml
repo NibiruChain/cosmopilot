@@ -1553,6 +1553,12 @@ spec:
                     description: URL to download the genesis from.
                     minLength: 1
                     type: string
+                  useDataVolume:
+                    description: UseDataVolume indicates that the operator should
+                      save the genesis in the same volume as node data instead of
+                      a ConfigMap. This is useful for genesis whose size is bigger
+                      than ConfigMap limit of 1MiB.
+                    type: boolean
                 type: object
               nodeSelector:
                 additionalProperties:

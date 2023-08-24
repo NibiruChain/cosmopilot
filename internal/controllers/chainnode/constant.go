@@ -12,6 +12,7 @@ const (
 	appTomlFilename    = "app.toml"
 	configTomlFilename = "config.toml"
 	genesisFilename    = "genesis.json"
+	genesisLocation    = "data/genesis.json"
 	mnemonicKey        = "mnemonic"
 
 	LabelNodeID    = "node-id"

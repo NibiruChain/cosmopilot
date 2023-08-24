@@ -155,16 +155,6 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					},
 				},
 				{
-					Name: "genesis",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: fmt.Sprintf("%s-genesis", chainNode.Status.ChainID),
-							},
-						},
-					},
-				},
-				{
 					Name: "node-key",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
@@ -223,11 +213,6 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						{
 							Name:      "data",
 							MountPath: "/home/app/data",
-						},
-						{
-							Name:      "genesis",
-							MountPath: "/home/app/config/" + genesisFilename,
-							SubPath:   genesisFilename,
 						},
 						{
 							Name:      "node-key",
@@ -320,6 +305,47 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				},
 			},
 		},
+	}
+
+	if !chainNode.Spec.Genesis.ShouldUseDataVolume() {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: "genesis",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("%s-genesis", chainNode.Status.ChainID),
+					},
+				},
+			},
+		})
+		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "genesis",
+			MountPath: "/home/app/config/" + genesisFilename,
+			SubPath:   genesisFilename,
+		})
+	} else {
+		//TODO: This is a workaround. Remove this when issue with genesis_file field not being used is fixed
+		pod.Spec.InitContainers = []corev1.Container{
+			{
+				Name:    "link-genesis",
+				Image:   "busybox",
+				Command: []string{"/bin/sh"},
+				Args: []string{
+					"-c",
+					"ln -s /home/app/data/genesis.json /home/app/config/genesis.json",
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "data",
+						MountPath: "/home/app/data",
+					},
+					{
+						Name:      "config-empty-dir",
+						MountPath: "/home/app/config",
+					},
+				},
+			},
+		}
 	}
 
 	if chainNode.Spec.Config != nil {

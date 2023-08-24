@@ -8,11 +8,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
@@ -76,6 +78,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 	genesis := ""
 	chainID := ""
 	var err error
+
 	if chainNode.Spec.Genesis.Url != nil {
 		logger.Info("retrieving genesis from url", "url", *chainNode.Spec.Genesis.Url)
 		genesis, err = utils.FetchJson(*chainNode.Spec.Genesis.Url)
@@ -141,23 +144,34 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 		return fmt.Errorf("genesis could not be retrived using any of the available methods")
 	}
 
-	// We create the genesis once only.
-	cm := &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-genesis", chainID),
-			Namespace: chainNode.Namespace,
-			Labels:    chainNode.Labels,
-		},
-		Data: map[string]string{genesisFilename: genesis},
-	}
-	if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
-		return err
-	}
+	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
+		logger.Info("writing genesis to data volume")
+		pvc := &corev1.PersistentVolumeClaim{}
+		if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
+			return err
+		}
+		if err := k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).WriteToFile(ctx, genesis, genesisFilename); err != nil {
+			return err
+		}
 
-	logger.Info("creating genesis configmap")
-	if err := r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
-		return err
+	} else {
+		cm := &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-genesis", chainID),
+				Namespace: chainNode.Namespace,
+				Labels:    chainNode.Labels,
+			},
+			Data: map[string]string{genesisFilename: genesis},
+		}
+		if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
+			return err
+		}
+
+		logger.Info("creating genesis configmap")
+		if err := r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
+			return err
+		}
 	}
 
 	// update chainID in status
