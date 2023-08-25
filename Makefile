@@ -80,8 +80,9 @@ build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/manager
 
 .PHONY: run
+run: WORKER_NAME?=
 run: manifests generate ## Run a controller from your host.
-	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)"
+	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)"
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
@@ -118,6 +119,8 @@ deploy: RELEASE_NAME?=nibiru-operator
 deploy: NAMESPACE?=nibiru-system
 deploy: SERVICE_MONITOR_ENABLED?=false
 deploy: IMAGE_PULL_SECRETS?=
+deploy: WORKER_NAME?=
+deploy: WORKER_COUNT?=1
 deploy: manifests helm ## Deploy controller to the K8s cluster
 	@$(HELM) upgrade $(RELEASE_NAME) \
 		--install \
@@ -126,6 +129,8 @@ deploy: manifests helm ## Deploy controller to the K8s cluster
 		--set image=$(NAME) \
 		--set imageTag=$(VERSION:v%=%) \
 		--set nodeUtilsImage=$(NODE_UTILS_IMG) \
+		--set workerName=$(WORKER_NAME) \
+		--set workerCount=$(WORKER_COUNT) \
 		--set imagePullSecrets=$(IMAGE_PULL_SECRETS) \
 		--set serviceMonitorEnabled=$(SERVICE_MONITOR_ENABLED) \
 		helm/nibiru-operator

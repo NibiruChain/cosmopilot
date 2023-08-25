@@ -14,10 +14,12 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 )
 
 // Reconciler reconciles a ChainNode object
@@ -27,12 +29,14 @@ type Reconciler struct {
 	RestConfig     *rest.Config
 	Scheme         *runtime.Scheme
 	configCache    *ttlcache.Cache[string, map[string]interface{}]
-	nodeUtilsImage string
 	queryClients   map[string]*chainutils.QueryClient
 	recorder       record.EventRecorder
+	nodeUtilsImage string
+	workerCount    int
+	workerName     string
 }
 
-func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, nodeUtilsImage string) (*Reconciler, error) {
+func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
 	cfgCache := ttlcache.New(
 		ttlcache.WithTTL[string, map[string]interface{}](24 * time.Hour),
 	)
@@ -43,9 +47,11 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, nodeUtilsImage strin
 		RestConfig:     mgr.GetConfig(),
 		Scheme:         mgr.GetScheme(),
 		configCache:    cfgCache,
-		nodeUtilsImage: nodeUtilsImage,
 		queryClients:   make(map[string]*chainutils.QueryClient),
 		recorder:       mgr.GetEventRecorderFor("chainnode-controller"),
+		nodeUtilsImage: opts.NodeUtilsImage,
+		workerCount:    opts.WorkerCount,
+		workerName:     opts.WorkerName,
 	}
 	if err := r.setupWithManager(mgr); err != nil {
 		return nil, err
@@ -77,6 +83,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		logger.Error(err, "unable to fetch chainnode")
 		return ctrl.Result{}, err
+	}
+
+	if chainNode.Labels[controllers.LabelWorkerName] != r.workerName {
+		logger.Info("skipping chainnode due to worker-name mismatch.")
+		return ctrl.Result{}, nil
 	}
 
 	logger.Info("starting reconcile")
@@ -185,6 +196,7 @@ func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Service{}).
 		WithEventFilter(GenerationChangedPredicate{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: r.workerCount}).
 		Complete(r)
 }
 

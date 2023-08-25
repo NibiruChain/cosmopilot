@@ -20,3 +20,9 @@ func (r *Reconciler) AddOrUpdateNodeStatus(nodeSet *appsv1.ChainNodeSet, status 
 		nodeSet.Status.Nodes = append(nodeSet.Status.Nodes, status)
 	}
 }
+
+func applyChainNodeSetLabels(nodeSet *appsv1.ChainNodeSet, chainNode *appsv1.ChainNode) {
+	for k, v := range nodeSet.Labels {
+		chainNode.Labels[k] = v
+	}
+}

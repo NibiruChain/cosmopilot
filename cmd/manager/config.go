@@ -29,8 +29,18 @@ func init() {
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.",
 	)
 
-	flag.StringVar(&nodeUtilsImage, "nodeutils-image",
+	flag.StringVar(&runOpts.NodeUtilsImage, "nodeutils-image",
 		environ.GetString("NODE_UTILS_IMAGE", "ghcr.io/nibiruchain/node-utils"),
 		"nodeutils image to be deployed with nodes.",
+	)
+
+	flag.StringVar(&runOpts.WorkerName, "worker-name",
+		environ.GetString("WORKER_NAME", ""),
+		"name of the worker, passed in label `worker-name`. Used for limiting resources processed by this operator instance.",
+	)
+
+	flag.IntVar(&runOpts.WorkerCount, "worker-count",
+		environ.GetInt("WORKER_COUNT", 1),
+		"number of maximum concurrent reconciles that can be run.",
 	)
 }

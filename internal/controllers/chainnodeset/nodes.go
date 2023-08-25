@@ -189,6 +189,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			StateSyncRestore: group.StateSyncRestore,
 		},
 	}
+	applyChainNodeSetLabels(nodeSet, node)
 	setChainNodeServiceMonitor(nodeSet, node)
 	return node, controllerutil.SetControllerReference(nodeSet, node, r.Scheme)
 }

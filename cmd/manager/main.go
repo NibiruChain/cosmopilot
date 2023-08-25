@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnode"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnodeset"
 )
@@ -20,10 +21,10 @@ import (
 var (
 	scheme               = runtime.NewScheme()
 	setupLog             = ctrl.Log.WithName("setup")
-	nodeUtilsImage       string
 	metricsAddr          string
 	enableLeaderElection bool
 	probeAddr            string
+	runOpts              controllers.ControllerRunOptions
 )
 
 func main() {
@@ -58,12 +59,12 @@ func main() {
 		log.Fatalf("unable to create clientset: %v", err)
 	}
 
-	if _, err = chainnode.New(mgr, clientset, nodeUtilsImage); err != nil {
+	if _, err = chainnode.New(mgr, clientset, &runOpts); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ChainNode")
 		os.Exit(1)
 	}
 
-	if _, err = chainnodeset.New(mgr, clientset); err != nil {
+	if _, err = chainnodeset.New(mgr, clientset, &runOpts); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ChainNodeSet")
 		os.Exit(1)
 	}

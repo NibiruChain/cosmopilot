@@ -38,6 +38,10 @@ spec:
           env:
             - name: NODE_UTILS_IMAGE
               value: {{ .Values.nodeUtilsImage }}
+            - name: WORKER_NAME
+              value: {{ .Values.workerName }}
+            - name: WORKER_COUNT
+              value: {{ .Values.workerCount }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

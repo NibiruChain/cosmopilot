@@ -3,3 +3,5 @@ nodeUtilsImage: ghcr.io/nibiruchain/node-utils
 replicas: 1
 serviceMonitorEnabled: true
 imagePullSecrets: []
+workerCount: 1
+workerName: ""
