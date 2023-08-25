@@ -157,7 +157,7 @@ func (r *Reconciler) getServiceSpec(ctx context.Context, chainNode *appsv1.Chain
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      chainNode.GetName(),
 			Namespace: chainNode.GetNamespace(),
-			Labels:    chainNode.Labels,
+			Labels:    WithChainNodeLabels(chainNode),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -214,14 +214,11 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-internal", chainNode.GetName()),
 			Namespace: chainNode.GetNamespace(),
-			Labels: utils.MergeMaps(
-				map[string]string{
-					LabelNodeID:    chainNode.Status.NodeID,
-					LabelChainID:   chainNode.Status.ChainID,
-					LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
-				},
-				chainNode.Labels,
-			),
+			Labels: WithChainNodeLabels(chainNode, map[string]string{
+				LabelNodeID:    chainNode.Status.NodeID,
+				LabelChainID:   chainNode.Status.ChainID,
+				LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
+			}),
 		},
 		Spec: corev1.ServiceSpec{
 			PublishNotReadyAddresses: true,
@@ -305,7 +302,7 @@ func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Ser
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-p2p", chainNode.GetName()),
 			Namespace: chainNode.GetNamespace(),
-			Labels:    chainNode.Labels,
+			Labels:    WithChainNodeLabels(chainNode),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:                     chainNode.Spec.Expose.GetServiceType(),

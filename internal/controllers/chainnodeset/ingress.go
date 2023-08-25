@@ -108,6 +108,7 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s", nodeSet.GetName(), group.Name),
 			Namespace:   nodeSet.GetNamespace(),
+			Labels:      WithChainNodeSetLabels(nodeSet),
 			Annotations: group.Ingress.Annotations,
 		},
 		Spec: v1.IngressSpec{
@@ -191,6 +192,7 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s-grpc", nodeSet.GetName(), group.Name),
 			Namespace:   nodeSet.GetNamespace(),
+			Labels:      WithChainNodeSetLabels(nodeSet),
 			Annotations: nginxGrpcAnnotations,
 		},
 		Spec: v1.IngressSpec{

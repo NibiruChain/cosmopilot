@@ -57,7 +57,7 @@ func (r *Reconciler) getServiceMonitorSpec(chainNode *appsv1.ChainNode) (*monito
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      chainNode.GetName(),
 			Namespace: chainNode.GetNamespace(),
-			Labels:    chainNode.Spec.Config.ServiceMonitorSelector(),
+			Labels:    WithChainNodeLabels(chainNode, chainNode.Spec.Config.ServiceMonitorSelector()),
 		},
 		Spec: monitoring.ServiceMonitorSpec{
 			Endpoints: []monitoring.Endpoint{

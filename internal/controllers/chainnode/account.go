@@ -37,6 +37,7 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      chainNode.Spec.Validator.GetAccountSecretName(chainNode),
 					Namespace: chainNode.GetNamespace(),
+					Labels:    WithChainNodeLabels(chainNode),
 				},
 				Data: make(map[string][]byte),
 			}

@@ -169,10 +169,10 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, index),
 			Namespace: nodeSet.GetNamespace(),
-			Labels: map[string]string{
+			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
 				LabelChainNodeSet:      nodeSet.GetName(),
 				LabelChainNodeSetGroup: group.Name,
-			},
+			}),
 		},
 		Spec: appsv1.ChainNodeSpec{
 			Genesis: &appsv1.GenesisConfig{
@@ -189,7 +189,6 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			StateSyncRestore: group.StateSyncRestore,
 		},
 	}
-	applyChainNodeSetLabels(nodeSet, node)
 	setChainNodeServiceMonitor(nodeSet, node)
 	return node, controllerutil.SetControllerReference(nodeSet, node, r.Scheme)
 }

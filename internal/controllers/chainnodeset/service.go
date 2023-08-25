@@ -65,6 +65,7 @@ func (r *Reconciler) getServiceSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      group.GetServiceName(nodeSet),
 			Namespace: nodeSet.GetNamespace(),
+			Labels:    WithChainNodeSetLabels(nodeSet),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{

@@ -93,7 +93,7 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      chainNode.GetName(),
 					Namespace: chainNode.GetNamespace(),
-					Labels:    chainNode.Labels,
+					Labels:    WithChainNodeLabels(chainNode),
 					Annotations: map[string]string{
 						annotationDataInitialized: strconv.FormatBool(false),
 					},

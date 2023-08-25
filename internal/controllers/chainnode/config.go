@@ -229,7 +229,7 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      chainNode.GetName(),
 					Namespace: chainNode.GetNamespace(),
-					Labels:    chainNode.Labels,
+					Labels:    WithChainNodeLabels(chainNode),
 					Annotations: map[string]string{
 						annotationConfigHash: hash,
 					},

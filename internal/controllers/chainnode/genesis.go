@@ -160,7 +160,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-genesis", chainID),
 				Namespace: chainNode.Namespace,
-				Labels:    chainNode.Labels,
+				Labels:    WithChainNodeLabels(chainNode),
 			},
 			Data: map[string]string{genesisFilename: genesis},
 		}

@@ -29,7 +29,7 @@ func (r *Reconciler) ensureNodeKey(ctx context.Context, chainNode *appsv1.ChainN
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      chainNode.Name,
 					Namespace: chainNode.Namespace,
-					Labels:    chainNode.Labels,
+					Labels:    WithChainNodeLabels(chainNode),
 				},
 				Data: make(map[string][]byte),
 			}
@@ -113,7 +113,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
 					Namespace: chainNode.GetNamespace(),
-					Labels:    chainNode.Labels,
+					Labels:    WithChainNodeLabels(chainNode),
 				},
 				Data: make(map[string][]byte),
 			}

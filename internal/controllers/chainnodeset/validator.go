@@ -46,11 +46,11 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-validator", nodeSet.GetName()),
 			Namespace: nodeSet.GetNamespace(),
-			Labels: map[string]string{
+			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
 				LabelChainNodeSet:          nodeSet.GetName(),
 				LabelChainNodeSetGroup:     validatorGroupName,
 				LabelChainNodeSetValidator: strconv.FormatBool(true),
-			},
+			}),
 		},
 		Spec: appsv1.ChainNodeSpec{
 			Genesis:     nodeSet.Spec.Genesis,
@@ -68,7 +68,6 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 			NodeSelector: nodeSet.Spec.Validator.NodeSelector,
 		},
 	}
-	applyChainNodeSetLabels(nodeSet, validator)
 	setChainNodeServiceMonitor(nodeSet, validator)
 	return validator, controllerutil.SetControllerReference(nodeSet, validator, r.Scheme)
 }
