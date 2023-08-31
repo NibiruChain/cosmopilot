@@ -75,6 +75,14 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 		return "", err
 	}
 
+	// Apply moniker
+	configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
+		"moniker": chainNode.GetMoniker(),
+	})
+	if err != nil {
+		return "", err
+	}
+
 	// Apply state-sync config
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.StateSync.Enabled() {
 		configs[appTomlFilename], err = utils.Merge(configs[appTomlFilename], map[string]interface{}{

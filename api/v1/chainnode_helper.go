@@ -152,6 +152,13 @@ func (chainNode *ChainNode) StateSyncRestoreEnabled() bool {
 	return false
 }
 
+func (chainNode *ChainNode) GetMoniker() string {
+	if chainNode.IsValidator() && chainNode.Spec.Validator.Info != nil && chainNode.Spec.Validator.Info.Moniker != nil {
+		return *chainNode.Spec.Validator.Info.Moniker
+	}
+	return chainNode.GetName()
+}
+
 // Validator methods
 
 func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {
