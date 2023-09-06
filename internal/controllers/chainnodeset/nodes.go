@@ -189,6 +189,13 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			StateSyncRestore: group.StateSyncRestore,
 		},
 	}
+
+	// When enabling snapshots on a group, lets do it only for the first node of the group.
+	// We will also name it after the group, and not the individual node.
+	if index > 0 && group.Persistence != nil {
+		group.Persistence.Snapshots = nil
+	}
+
 	setChainNodeServiceMonitor(nodeSet, node)
 	return node, controllerutil.SetControllerReference(nodeSet, node, r.Scheme)
 }

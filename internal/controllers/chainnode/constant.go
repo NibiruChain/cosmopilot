@@ -18,14 +18,19 @@ const (
 	LabelNodeID    = "node-id"
 	LabelChainID   = "chain-id"
 	LabelValidator = "validator"
+	LabelChainNode = "chain-node"
 
 	AnnotationStateSyncTrustHeight = "apps.k8s.nibiru.org/state-sync-trust-height"
 	AnnotationStateSyncTrustHash   = "apps.k8s.nibiru.org/state-sync-trust-hash"
 
-	annotationSafeEvict        = "cluster-autoscaler.kubernetes.io/safe-to-evict"
-	annotationConfigHash       = "apps.k8s.nibiru.org/config-hash"
-	annotationDataInitialized  = "apps.k8s.nibiru.org/data-initialized"
-	annotationVaultKeyUploaded = "apps.k8s.nibiru.org/vault-key-uploaded"
+	annotationSafeEvict             = "cluster-autoscaler.kubernetes.io/safe-to-evict"
+	annotationConfigHash            = "apps.k8s.nibiru.org/config-hash"
+	annotationDataInitialized       = "apps.k8s.nibiru.org/data-initialized"
+	annotationVaultKeyUploaded      = "apps.k8s.nibiru.org/vault-key-uploaded"
+	annotationPvcSnapshotInProgress = "apps.k8s.nibiru.org/snapshotting-pvc"
+	annotationLastPvcSnapshot       = "apps.k8s.nibiru.org/last-pvc-snapshot"
+	annotationSnapshotRetention     = "apps.k8s.nibiru.org/snapshot-retention"
+	annotationPvcSnapshotReady      = "apps.k8s.nibiru.org/snapshot-ready"
 
 	timeoutPodRunning    = 5 * time.Minute
 	timeoutPodDeleted    = 30 * time.Second
@@ -46,6 +51,8 @@ const (
 
 	defaultStateSyncTrustPeriod = "168h0m0s"
 	defaultLogsLineCount        = 50
+
+	snapshotCheckPeriod = 15 * time.Second
 )
 
 var (

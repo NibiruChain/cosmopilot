@@ -13,6 +13,8 @@
 * [GenesisInitConfig](#genesisinitconfig)
 * [InitCommand](#initcommand)
 * [Peer](#peer)
+* [Persistence](#persistence)
+* [PvcSnapshot](#pvcsnapshot)
 * [ServiceMonitorSpec](#servicemonitorspec)
 * [SidecarSpec](#sidecarspec)
 * [StateSyncConfig](#statesyncconfig)
@@ -21,6 +23,7 @@
 * [TmKmsProvider](#tmkmsprovider)
 * [TmKmsVaultProvider](#tmkmsvaultprovider)
 * [ValidatorInfo](#validatorinfo)
+* [VolumeSnapshotsConfig](#volumesnapshotsconfig)
 
 #### AccountAssets
 
@@ -57,7 +60,7 @@ Config allows setting specific configurations for a chainnode such as overrides 
 | sidecars | Sidecars allow configuring additional containers to run alongside the node | [][SidecarSpec](#sidecarspec) | false |
 | imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
 | blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy | *string | false |
-| reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `1m`. | *string | false |
+| reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `30s`. | *string | false |
 | stateSync | StateSync configures statesync snapshots for this node. | *[StateSyncConfig](#statesyncconfig) | false |
 | seedMode | SeedMode configures this node to run on seed mode. Defaults to `false`. | *bool | false |
 | env | Env refers to the list of environment variables to set in the app container. | []corev1.EnvVar | false |
@@ -146,6 +149,36 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | port | Port is the P2P port to be used. Defaults to `26656`. | *int | false |
 | unconditional | Unconditional marks this peer as unconditional. | *bool | false |
 | private | Private marks this peer as private. | *bool | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### Persistence
+
+Persistence configuration for this node
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| size | Size of the persistent volume for storing data. Can't be updated when autoResize is enabled. Defaults to `50Gi`. | *string | false |
+| storageClass | StorageClassName specifies the name of the storage class to use to create persistent volumes. | *string | false |
+| autoResize | AutoResize specifies configurations to automatically resize PVC. Defaults to `true`. | *bool | false |
+| autoResizeThreshold | AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur. Defaults to `80`. | *int | false |
+| autoResizeIncrement | AutoResizeIncrement specifies the size increment on each auto-resize event. Defaults to `50Gi`. | *string | false |
+| autoResizeMaxSize | AutoResizeMaxSize specifies the maximum size the PVC can have. Defaults to `2Ti`. | *string | false |
+| additionalInitCommands | AdditionalInitCommands are additional commands to run on data initialization. Useful for downloading and extracting snapshots. App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
+| snapshots | Snapshots indicates that the operator should create volume snapshots according to this config. | *[VolumeSnapshotsConfig](#volumesnapshotsconfig) | false |
+| restoreFromSnapshot | RestoreFromSnapshot indicates that the operator should restore from the specified snapshot when creating the PVC for this node. | *[PvcSnapshot](#pvcsnapshot) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### PvcSnapshot
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name is the name of resource being referenced | string | true |
+| kind | Kind is the type of resource being referenced. Defaults to `VolumeSnapshot`. | *string | false |
+| apiGroup | APIGroup is the group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -247,5 +280,18 @@ ValidatorInfo contains information about this validator.
 | details | Details of this validator. | *string | false |
 | website | Website indicates this validator's website. | *string | false |
 | identity | Identity signature of this validator. | *string | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### VolumeSnapshotsConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| frequency | Frequency indicates how often a snapshot should be created. Specified as a duration with suffix `s`, `m` or `h`. | string | true |
+| retention | Retention indicates for how long a snapshot should be retained. Default is indefinite retention. Specified as a duration with suffix `s`, `m` or `h`. | *string | false |
+| snapshotClass | SnapshotClassName is the name of the volume snapshot class to be used. | *string | false |
+| stopNode | StopNode indicates that the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)

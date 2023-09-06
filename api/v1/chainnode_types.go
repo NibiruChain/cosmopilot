@@ -14,13 +14,14 @@ type ChainNodePhase string
 
 // These are the valid phases for nodes.
 const (
-	PhaseChainNodeInitData    ChainNodePhase = "InitializingData"
-	PhaseChainNodeInitGenesis ChainNodePhase = "InitGenesis"
-	PhaseChainNodeStarting    ChainNodePhase = "Starting"
-	PhaseChainNodeRunning     ChainNodePhase = "Running"
-	PhaseChainNodeSyncing     ChainNodePhase = "Syncing"
-	PhaseChainNodeRestarting  ChainNodePhase = "Restarting"
-	PhaseChainNodeError       ChainNodePhase = "Error"
+	PhaseChainNodeInitData     ChainNodePhase = "InitializingData"
+	PhaseChainNodeInitGenesis  ChainNodePhase = "InitGenesis"
+	PhaseChainNodeStarting     ChainNodePhase = "Starting"
+	PhaseChainNodeRunning      ChainNodePhase = "Running"
+	PhaseChainNodeSyncing      ChainNodePhase = "Syncing"
+	PhaseChainNodeRestarting   ChainNodePhase = "Restarting"
+	PhaseChainNodeError        ChainNodePhase = "Error"
+	PhaseChainNodeSnapshotting ChainNodePhase = "Snapshotting"
 )
 
 //+kubebuilder:object:root=true
@@ -178,50 +179,4 @@ type ValidatorConfig struct {
 	// When configured, .spec.validator.privateKeySecret will not be mounted on the validator node.
 	// +optional
 	TmKMS *TmKMS `json:"tmKMS,omitempty"`
-}
-
-// Persistence configuration for this node
-type Persistence struct {
-	// Size of the persistent volume for storing data. Can't be updated when autoResize is enabled.
-	// Defaults to `50Gi`.
-	// +optional
-	// +default="50Gi"
-	// +kubebuilder:validation:MinLength=1
-	Size *string `json:"size,omitempty"`
-
-	// StorageClassName specifies the name of the storage class to use
-	// to create persistent volumes.
-	// +optional
-	StorageClassName *string `json:"storageClass,omitempty"`
-
-	// AutoResize specifies configurations to automatically resize PVC.
-	// Defaults to `true`.
-	// +optional
-	// +default=true
-	AutoResize *bool `json:"autoResize,omitempty"`
-
-	// AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur.
-	// Defaults to `80`.
-	// +optional
-	// +default=80
-	AutoResizeThreshold *int `json:"autoResizeThreshold,omitempty"`
-
-	// AutoResizeIncrement specifies the size increment on each auto-resize event.
-	// Defaults to `50Gi`.
-	// +optional
-	// +default=50Gi
-	AutoResizeIncrement *string `json:"autoResizeIncrement,omitempty"`
-
-	// AutoResizeMaxSize specifies the maximum size the PVC can have.
-	// Defaults to `2Ti`.
-	// +optional
-	// +default=2Ti
-	AutoResizeMaxSize *string `json:"autoResizeMaxSize,omitempty"`
-
-	// AdditionalInitCommands are additional commands to run on data initialization. Useful for downloading and
-	// extracting snapshots.
-	// App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume
-	// shared by all init containers.
-	// +optional
-	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
 }

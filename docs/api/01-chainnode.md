@@ -8,7 +8,6 @@
 * [ChainNodeList](#chainnodelist)
 * [ChainNodeSpec](#chainnodespec)
 * [ChainNodeStatus](#chainnodestatus)
-* [Persistence](#persistence)
 * [ValidatorConfig](#validatorconfig)
 
 #### ChainNode
@@ -43,7 +42,7 @@ ChainNodeSpec defines the desired state of ChainNode
 | genesis | Genesis indicates where this node will get the genesis from. Can be omitted when .spec.validator.init is specified. | *GenesisConfig | true |
 | app | App specifies image and binary name of the chain application to run | AppSpec | true |
 | config | Config allows setting specific configurations for this node | *Config | false |
-| persistence | Persistence configures pvc for persisting data on nodes | *[Persistence](#persistence) | false |
+| persistence | Persistence configures pvc for persisting data on nodes | *Persistence | false |
 | validator | Validator configures this node as a validator and configures it. | *[ValidatorConfig](#validatorconfig) | false |
 | autoDiscoverPeers | AutoDiscoverPeers ensures peers with same chain ID are connected with each other. By default, it is enabled. | *bool | false |
 | stateSyncRestore | StateSyncRestore configures this node to find a state-sync snapshot on the network and restore from it. This is disabled by default. | *bool | false |
@@ -75,22 +74,6 @@ ChainNodeStatus defines the observed state of ChainNode
 | appVersion | AppVersion is the application version currently deployed | string | false |
 | latestHeight | LatestHeight is the last height read on the node by the operator. | int64 | false |
 | seedMode | SeedMode indicates if this node is running with seed mode enabled. | bool | false |
-
-[Back to Custom Resources](#custom-resources)
-
-#### Persistence
-
-Persistence configuration for this node
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| size | Size of the persistent volume for storing data. Can't be updated when autoResize is enabled. Defaults to `50Gi`. | *string | false |
-| storageClass | StorageClassName specifies the name of the storage class to use to create persistent volumes. | *string | false |
-| autoResize | AutoResize specifies configurations to automatically resize PVC. Defaults to `true`. | *bool | false |
-| autoResizeThreshold | AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur. Defaults to `80`. | *int | false |
-| autoResizeIncrement | AutoResizeIncrement specifies the size increment on each auto-resize event. Defaults to `50Gi`. | *string | false |
-| autoResizeMaxSize | AutoResizeMaxSize specifies the maximum size the PVC can have. Defaults to `2Ti`. | *string | false |
-| additionalInitCommands | AdditionalInitCommands are additional commands to run on data initialization. Useful for downloading and extracting snapshots. App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume shared by all init containers. | []InitCommand | false |
 
 [Back to Custom Resources](#custom-resources)
 

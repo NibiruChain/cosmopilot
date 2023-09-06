@@ -92,6 +92,14 @@ func (chainNode *ChainNode) GetPersistenceInitCommands() []InitCommand {
 	return []InitCommand{}
 }
 
+func (chainNode *ChainNode) SnapshotsEnabled() bool {
+	return chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.Snapshots != nil
+}
+
+func (chainNode *ChainNode) ShouldRestoreFromSnapshot() bool {
+	return chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.RestoreFromSnapshot != nil
+}
+
 func (chainNode *ChainNode) IsValidator() bool {
 	return chainNode.Spec.Validator != nil
 }

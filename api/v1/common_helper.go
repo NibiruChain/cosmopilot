@@ -6,12 +6,13 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 
 	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
 )
 
 const (
-	DefaultReconcilePeriod     = time.Minute
+	DefaultReconcilePeriod     = 30 * time.Second
 	DefaultImageVersion        = "latest"
 	DefaultBlockThreshold      = "30s"
 	DefaultP2pExpose           = false
@@ -24,6 +25,8 @@ const (
 	DefaultP2pPort             = 26656
 	DefaultStateSyncKeepRecent = 2
 	DefaultSdkVersion          = V0_47
+	DefaultDataSourceKind      = "VolumeSnapshot"
+	DefaultDataSourceApiGroup  = "snapshot.storage.k8s.io"
 )
 
 var (
@@ -221,4 +224,29 @@ func (gg *FromNodeRPCConfig) GetGenesisFromRPCUrl() string {
 	}
 
 	return fmt.Sprintf("%s%s:%d/genesis", protocol, hostname, port)
+}
+
+// PvcSnapshot helper methods
+
+func (ds *PvcSnapshot) GetKind() string {
+	if ds != nil && ds.Kind != nil {
+		return *ds.Kind
+	}
+	return DefaultDataSourceKind
+}
+
+func (ds *PvcSnapshot) GetApiGroup() *string {
+	if ds != nil && ds.APIGroup != nil {
+		return ds.APIGroup
+	}
+	return pointer.String(DefaultDataSourceApiGroup)
+}
+
+// VolumeSnapshotsConfig helper methods
+
+func (s *VolumeSnapshotsConfig) ShouldStopNode() bool {
+	if s != nil && s.StopNode != nil {
+		return *s.StopNode
+	}
+	return false
 }

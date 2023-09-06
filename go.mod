@@ -3,6 +3,7 @@ module github.com/NibiruChain/nibiru-operator
 go 1.19
 
 require (
+	emperror.dev/errors v0.8.0
 	github.com/BurntSushi/toml v1.2.1
 	github.com/RaveNoX/go-jsonmerge v1.0.0
 	github.com/banzaicloud/k8s-objectmatcher v1.8.0
@@ -11,6 +12,7 @@ require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/jellydator/ttlcache/v3 v3.0.1
+	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.2.0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
@@ -31,7 +33,6 @@ require (
 	cosmossdk.io/depinject v1.0.0-alpha.3 // indirect
 	cosmossdk.io/errors v1.0.0-beta.7 // indirect
 	cosmossdk.io/math v1.0.1 // indirect
-	emperror.dev/errors v0.8.0 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
@@ -77,7 +78,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/google/gnostic v0.5.7-v3refs // indirect
+	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect

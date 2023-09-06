@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -38,6 +39,11 @@ func main() {
 
 	if err := monitoring.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "unable to add prometheus crds to scheme")
+		os.Exit(1)
+	}
+
+	if err := snapshotv1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "unable to add volumesnapshot crds to scheme")
 		os.Exit(1)
 	}
 

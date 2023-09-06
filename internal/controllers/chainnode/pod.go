@@ -87,7 +87,9 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 		}
 		return r.recreatePod(ctx, chainNode, pod)
 	}
-
+	if volumeSnapshotInProgress(chainNode) {
+		return nil
+	}
 	return r.setPhaseRunningOrSyncing(ctx, chainNode)
 }
 

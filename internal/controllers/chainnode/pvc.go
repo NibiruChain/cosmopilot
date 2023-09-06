@@ -95,7 +95,7 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 					Namespace: chainNode.GetNamespace(),
 					Labels:    WithChainNodeLabels(chainNode),
 					Annotations: map[string]string{
-						annotationDataInitialized: strconv.FormatBool(false),
+						annotationDataInitialized: strconv.FormatBool(chainNode.ShouldRestoreFromSnapshot()),
 					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -109,6 +109,13 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 					},
 					StorageClassName: chainNode.GetPersistenceStorageClass(),
 				},
+			}
+			if chainNode.ShouldRestoreFromSnapshot() {
+				pvc.Spec.DataSource = &corev1.TypedLocalObjectReference{
+					APIGroup: chainNode.Spec.Persistence.RestoreFromSnapshot.GetApiGroup(),
+					Kind:     chainNode.Spec.Persistence.RestoreFromSnapshot.GetKind(),
+					Name:     chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
+				}
 			}
 			return pvc, r.Create(ctx, pvc)
 		}

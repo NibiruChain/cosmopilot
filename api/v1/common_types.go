@@ -37,6 +37,9 @@ const (
 	ReasonGenesisWrongHash   = "GenesisWrongHash"
 	ReasonNoTrustHeight      = "NoTrustHeight"
 	ReasonNoPeers            = "NoPeers"
+	ReasonStartedSnapshot    = "SnapshotStarted"
+	ReasonFinishedSnapshot   = "SnapshotFinished"
+	ReasonDeletedSnapshot    = "SnapshotDeleted"
 )
 
 // SdkVersion specifies the cosmos-sdk version.
@@ -93,9 +96,9 @@ type Config struct {
 	BlockThreshold *string `json:"blockThreshold,omitempty"`
 
 	// ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode.
-	// Defaults to `1m`.
+	// Defaults to `30s`.
 	// +optional
-	// +default=1m
+	// +default=30s
 	ReconcilePeriod *string `json:"reconcilePeriod,omitempty"`
 
 	// StateSync configures statesync snapshots for this node.
@@ -384,4 +387,89 @@ type FromNodeRPCConfig struct {
 	// TCP port used for RPC queries on the RPC server. Defaults to `26657`.
 	// +optional
 	Port *int `json:"port,omitempty"`
+}
+
+// Persistence configuration for this node
+type Persistence struct {
+	// Size of the persistent volume for storing data. Can't be updated when autoResize is enabled.
+	// Defaults to `50Gi`.
+	// +optional
+	// +default="50Gi"
+	// +kubebuilder:validation:MinLength=1
+	Size *string `json:"size,omitempty"`
+
+	// StorageClassName specifies the name of the storage class to use
+	// to create persistent volumes.
+	// +optional
+	StorageClassName *string `json:"storageClass,omitempty"`
+
+	// AutoResize specifies configurations to automatically resize PVC.
+	// Defaults to `true`.
+	// +optional
+	// +default=true
+	AutoResize *bool `json:"autoResize,omitempty"`
+
+	// AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur.
+	// Defaults to `80`.
+	// +optional
+	// +default=80
+	AutoResizeThreshold *int `json:"autoResizeThreshold,omitempty"`
+
+	// AutoResizeIncrement specifies the size increment on each auto-resize event.
+	// Defaults to `50Gi`.
+	// +optional
+	// +default=50Gi
+	AutoResizeIncrement *string `json:"autoResizeIncrement,omitempty"`
+
+	// AutoResizeMaxSize specifies the maximum size the PVC can have.
+	// Defaults to `2Ti`.
+	// +optional
+	// +default=2Ti
+	AutoResizeMaxSize *string `json:"autoResizeMaxSize,omitempty"`
+
+	// AdditionalInitCommands are additional commands to run on data initialization. Useful for downloading and
+	// extracting snapshots.
+	// App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume
+	// shared by all init containers.
+	// +optional
+	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
+
+	// Snapshots indicates that the operator should create volume snapshots according to this config.
+	// +optional
+	Snapshots *VolumeSnapshotsConfig `json:"snapshots,omitempty"`
+
+	// RestoreFromSnapshot indicates that the operator should restore from the specified snapshot when creating
+	// the PVC for this node.
+	// +optional
+	RestoreFromSnapshot *PvcSnapshot `json:"restoreFromSnapshot,omitempty"`
+}
+
+type VolumeSnapshotsConfig struct {
+	// Frequency indicates how often a snapshot should be created. Specified as a duration with suffix `s`, `m` or `h`.
+	Frequency string `json:"frequency"`
+
+	// Retention indicates for how long a snapshot should be retained. Default is indefinite retention.
+	// Specified as a duration with suffix `s`, `m` or `h`.
+	// +optional
+	Retention *string `json:"retention,omitempty"`
+
+	// SnapshotClassName is the name of the volume snapshot class to be used.
+	// +optional
+	SnapshotClassName *string `json:"snapshotClass,omitempty"`
+
+	// StopNode indicates that the node should be stopped while the snapshot is taken. Defaults to `false`.
+	// +optional
+	StopNode *bool `json:"stopNode,omitempty"`
+}
+
+type PvcSnapshot struct {
+	// Name is the name of resource being referenced
+	Name string `json:"name"`
+
+	// Kind is the type of resource being referenced. Defaults to `VolumeSnapshot`.
+	// +optional
+	Kind *string `json:"kind,omitempty"`
+
+	// APIGroup is the group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`.
+	APIGroup *string `json:"apiGroup,omitempty"`
 }

@@ -1157,7 +1157,7 @@ spec:
                           x-kubernetes-preserve-unknown-fields: true
                         reconcilePeriod:
                           description: ReconcilePeriod is the period at which a reconcile
-                            loop will happen for this ChainNode. Defaults to `1m`.
+                            loop will happen for this ChainNode. Defaults to `30s`.
                           type: string
                         safeToEvict:
                           description: SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict
@@ -1754,12 +1754,57 @@ spec:
                             usage at which an auto-resize event should occur. Defaults
                             to `80`.
                           type: integer
+                        restoreFromSnapshot:
+                          description: RestoreFromSnapshot indicates that the operator
+                            should restore from the specified snapshot when creating
+                            the PVC for this node.
+                          properties:
+                            apiGroup:
+                              description: APIGroup is the group for the resource
+                                being referenced. Defaults to `snapshot.storage.k8s.io`.
+                              type: string
+                            kind:
+                              description: Kind is the type of resource being referenced.
+                                Defaults to `VolumeSnapshot`.
+                              type: string
+                            name:
+                              description: Name is the name of resource being referenced
+                              type: string
+                          required:
+                          - name
+                          type: object
                         size:
                           description: Size of the persistent volume for storing data.
                             Can't be updated when autoResize is enabled. Defaults
                             to `50Gi`.
                           minLength: 1
                           type: string
+                        snapshots:
+                          description: Snapshots indicates that the operator should
+                            create volume snapshots according to this config.
+                          properties:
+                            frequency:
+                              description: Frequency indicates how often a snapshot
+                                should be created. Specified as a duration with suffix
+                                `s`, `m` or `h`.
+                              type: string
+                            retention:
+                              description: Retention indicates for how long a snapshot
+                                should be retained. Default is indefinite retention.
+                                Specified as a duration with suffix `s`, `m` or `h`.
+                              type: string
+                            snapshotClass:
+                              description: SnapshotClassName is the name of the volume
+                                snapshot class to be used.
+                              type: string
+                            stopNode:
+                              description: StopNode indicates that the node should
+                                be stopped while the snapshot is taken. Defaults to
+                                `false`.
+                              type: boolean
+                          required:
+                          - frequency
+                          type: object
                         storageClass:
                           description: StorageClassName specifies the name of the
                             storage class to use to create persistent volumes.
@@ -2862,7 +2907,7 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       reconcilePeriod:
                         description: ReconcilePeriod is the period at which a reconcile
-                          loop will happen for this ChainNode. Defaults to `1m`.
+                          loop will happen for this ChainNode. Defaults to `30s`.
                         type: string
                       safeToEvict:
                         description: SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict
@@ -3476,12 +3521,56 @@ spec:
                           usage at which an auto-resize event should occur. Defaults
                           to `80`.
                         type: integer
+                      restoreFromSnapshot:
+                        description: RestoreFromSnapshot indicates that the operator
+                          should restore from the specified snapshot when creating
+                          the PVC for this node.
+                        properties:
+                          apiGroup:
+                            description: APIGroup is the group for the resource being
+                              referenced. Defaults to `snapshot.storage.k8s.io`.
+                            type: string
+                          kind:
+                            description: Kind is the type of resource being referenced.
+                              Defaults to `VolumeSnapshot`.
+                            type: string
+                          name:
+                            description: Name is the name of resource being referenced
+                            type: string
+                        required:
+                        - name
+                        type: object
                       size:
                         description: Size of the persistent volume for storing data.
                           Can't be updated when autoResize is enabled. Defaults to
                           `50Gi`.
                         minLength: 1
                         type: string
+                      snapshots:
+                        description: Snapshots indicates that the operator should
+                          create volume snapshots according to this config.
+                        properties:
+                          frequency:
+                            description: Frequency indicates how often a snapshot
+                              should be created. Specified as a duration with suffix
+                              `s`, `m` or `h`.
+                            type: string
+                          retention:
+                            description: Retention indicates for how long a snapshot
+                              should be retained. Default is indefinite retention.
+                              Specified as a duration with suffix `s`, `m` or `h`.
+                            type: string
+                          snapshotClass:
+                            description: SnapshotClassName is the name of the volume
+                              snapshot class to be used.
+                            type: string
+                          stopNode:
+                            description: StopNode indicates that the node should be
+                              stopped while the snapshot is taken. Defaults to `false`.
+                            type: boolean
+                        required:
+                        - frequency
+                        type: object
                       storageClass:
                         description: StorageClassName specifies the name of the storage
                           class to use to create persistent volumes.
