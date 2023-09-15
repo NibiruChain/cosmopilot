@@ -9,37 +9,41 @@ import (
 
 // Reasons for events
 const (
-	ReasonPvcResized         = "PvcResized"
-	ReasonPvcMaxReached      = "PvcMaxSizeReached"
-	ReasonDataInitialized    = "DataInitialized"
-	ReasonNodeKeyCreated     = "NodeKeyCreated"
-	ReasonNodeKeyImported    = "NodeKeyImported"
-	ReasonPrivateKeyCreated  = "PrivateKeyCreated"
-	ReasonPrivateKeyImported = "PrivateKeyImported"
-	ReasonAccountCreated     = "AccountCreated"
-	ReasonAccountImported    = "AccountImported"
-	ReasonGenesisInitialized = "GenesisCreated"
-	ReasonGenesisImported    = "GenesisImported"
-	ReasonConfigsCreated     = "ConfigsCreated"
-	ReasonConfigsUpdated     = "ConfigsUpdated"
-	ReasonNodeStarted        = "NodeStarted"
-	ReasonNodeRestarted      = "NodeRestarted"
-	ReasonNodeError          = "NodeError"
-	ReasonNodeSyncing        = "NodeSyncing"
-	ReasonNodeRunning        = "NodeRunning"
-	ReasonValidatorJailed    = "ValidatorJailed"
-	ReasonValidatorUnjailed  = "ValidatorUnjailed"
-	ReasonNodeCreated        = "NodeCreated"
-	ReasonNodeUpdated        = "NodeUpdated"
-	ReasonNodeDeleted        = "NodeDeleted"
-	ReasonInitGenesisFailure = "InitGenesisFail"
-	ReasonUploadFailure      = "UploadFailed"
-	ReasonGenesisWrongHash   = "GenesisWrongHash"
-	ReasonNoTrustHeight      = "NoTrustHeight"
-	ReasonNoPeers            = "NoPeers"
-	ReasonStartedSnapshot    = "SnapshotStarted"
-	ReasonFinishedSnapshot   = "SnapshotFinished"
-	ReasonDeletedSnapshot    = "SnapshotDeleted"
+	ReasonPvcResized          = "PvcResized"
+	ReasonPvcMaxReached       = "PvcMaxSizeReached"
+	ReasonDataInitialized     = "DataInitialized"
+	ReasonNodeKeyCreated      = "NodeKeyCreated"
+	ReasonNodeKeyImported     = "NodeKeyImported"
+	ReasonPrivateKeyCreated   = "PrivateKeyCreated"
+	ReasonPrivateKeyImported  = "PrivateKeyImported"
+	ReasonAccountCreated      = "AccountCreated"
+	ReasonAccountImported     = "AccountImported"
+	ReasonGenesisInitialized  = "GenesisCreated"
+	ReasonGenesisImported     = "GenesisImported"
+	ReasonConfigsCreated      = "ConfigsCreated"
+	ReasonConfigsUpdated      = "ConfigsUpdated"
+	ReasonNodeStarted         = "NodeStarted"
+	ReasonNodeRestarted       = "NodeRestarted"
+	ReasonNodeError           = "NodeError"
+	ReasonNodeSyncing         = "NodeSyncing"
+	ReasonNodeRunning         = "NodeRunning"
+	ReasonValidatorJailed     = "ValidatorJailed"
+	ReasonValidatorUnjailed   = "ValidatorUnjailed"
+	ReasonNodeCreated         = "NodeCreated"
+	ReasonNodeUpdated         = "NodeUpdated"
+	ReasonNodeDeleted         = "NodeDeleted"
+	ReasonInitGenesisFailure  = "InitGenesisFail"
+	ReasonUploadFailure       = "UploadFailed"
+	ReasonGenesisWrongHash    = "GenesisWrongHash"
+	ReasonNoTrustHeight       = "NoTrustHeight"
+	ReasonNoPeers             = "NoPeers"
+	ReasonStartedSnapshot     = "SnapshotStarted"
+	ReasonFinishedSnapshot    = "SnapshotFinished"
+	ReasonDeletedSnapshot     = "SnapshotDeleted"
+	ReasonTarballExportStart  = "ExportingTarball"
+	ReasonTarballExportFinish = "TarballFinished"
+	ReasonTarballDeleted      = "TarballDeleted"
+	ReasonTarballExportError  = "TarballExportError"
 )
 
 // SdkVersion specifies the cosmos-sdk version.
@@ -460,6 +464,10 @@ type VolumeSnapshotsConfig struct {
 	// StopNode indicates that the node should be stopped while the snapshot is taken. Defaults to `false`.
 	// +optional
 	StopNode *bool `json:"stopNode,omitempty"`
+
+	// ExportTarball creates a tarball of data directory in each snapshot and uploads it to external storage.
+	// +optional
+	ExportTarball *ExportTarballConfig `json:"exportTarball,omitempty"`
 }
 
 type PvcSnapshot struct {
@@ -472,4 +480,26 @@ type PvcSnapshot struct {
 
 	// APIGroup is the group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`.
 	APIGroup *string `json:"apiGroup,omitempty"`
+}
+
+type ExportTarballConfig struct {
+	// Suffix to add to archive name. The name of the tarball is `<chain-id>-<timestamp>-<suffix>`.
+	// +optional
+	Suffix *string `json:"suffix,omitempty"`
+
+	// DeleteOnExpire makes sure the tarball is deleted when the snapshot expires. Default is `false`.
+	// +optional
+	DeleteOnExpire *bool `json:"deleteOnExpire,omitempty"`
+
+	// GCS allows configuring to upload tarballs to a GCS bucket
+	// +optional
+	GCS *GcsExportConfig `json:"gcs,omitempty"`
+}
+
+type GcsExportConfig struct {
+	// Name of the bucket to upload tarballs to.
+	Bucket string `json:"bucket"`
+
+	// CredentialsSecret is the secret that contains the credentials to upload to bucket.
+	CredentialsSecret *corev1.SecretKeySelector `json:"credentialsSecret"`
 }

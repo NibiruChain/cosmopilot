@@ -1665,6 +1665,53 @@ spec:
                     description: Snapshots indicates that the operator should create
                       volume snapshots according to this config.
                     properties:
+                      exportTarball:
+                        description: ExportTarball creates a tarball of data directory
+                          in each snapshot and uploads it to external storage.
+                        properties:
+                          deleteOnExpire:
+                            description: DeleteOnExpire makes sure the tarball is
+                              deleted when the snapshot expires. Default is `false`.
+                            type: boolean
+                          gcs:
+                            description: GCS allows configuring to upload tarballs
+                              to a GCS bucket
+                            properties:
+                              bucket:
+                                description: Name of the bucket to upload tarballs
+                                  to.
+                                type: string
+                              credentialsSecret:
+                                description: CredentialsSecret is the secret that
+                                  contains the credentials to upload to bucket.
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.  Must
+                                      be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info:
+                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind,
+                                      uid?'
+                                    type: string
+                                  optional:
+                                    description: Specify whether the Secret or its
+                                      key must be defined
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            required:
+                            - bucket
+                            - credentialsSecret
+                            type: object
+                          suffix:
+                            description: Suffix to add to archive name. The name of
+                              the tarball is `<chain-id>-<timestamp>-<suffix>`.
+                            type: string
+                        type: object
                       frequency:
                         description: Frequency indicates how often a snapshot should
                           be created. Specified as a duration with suffix `s`, `m`

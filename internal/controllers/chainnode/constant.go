@@ -14,6 +14,7 @@ const (
 	genesisFilename    = "genesis.json"
 	genesisLocation    = "data/genesis.json"
 	mnemonicKey        = "mnemonic"
+	tarballFinished    = "finished"
 
 	LabelNodeID    = "node-id"
 	LabelChainID   = "chain-id"
@@ -31,6 +32,7 @@ const (
 	annotationLastPvcSnapshot       = "apps.k8s.nibiru.org/last-pvc-snapshot"
 	annotationSnapshotRetention     = "apps.k8s.nibiru.org/snapshot-retention"
 	annotationPvcSnapshotReady      = "apps.k8s.nibiru.org/snapshot-ready"
+	annotationExportingTarball      = "apps.k8s.nibiru.org/exporting-tarball"
 
 	timeoutPodRunning    = 5 * time.Minute
 	timeoutPodDeleted    = 30 * time.Second

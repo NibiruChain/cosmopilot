@@ -250,3 +250,26 @@ func (s *VolumeSnapshotsConfig) ShouldStopNode() bool {
 	}
 	return false
 }
+
+func (s *VolumeSnapshotsConfig) ShouldExportTarballs() bool {
+	if s != nil && s.ExportTarball != nil {
+		return true
+	}
+	return false
+}
+
+// ExportTarballConfig helper methods
+
+func (e *ExportTarballConfig) GetSuffix() string {
+	if e != nil && e.Suffix != nil {
+		return *e.Suffix
+	}
+	return ""
+}
+
+func (e *ExportTarballConfig) DeleteWhenExpired() bool {
+	if e != nil && e.DeleteOnExpire != nil {
+		return *e.DeleteOnExpire
+	}
+	return false
+}

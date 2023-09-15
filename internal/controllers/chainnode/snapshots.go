@@ -16,6 +16,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnodeset"
+	"github.com/NibiruChain/nibiru-operator/internal/datasnapshot"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
@@ -38,25 +39,81 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 	}
 
 	for _, snapshot := range list.Items {
-		if snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(false) {
-			if isSnapshotReady(&snapshot) {
-				logger.Info("snapshot is ready", "snapshot", snapshot.GetName())
-				snapshot.ObjectMeta.Annotations[annotationPvcSnapshotReady] = strconv.FormatBool(true)
-				if err := r.Update(ctx, &snapshot); err != nil {
-					return err
-				}
-				setSnapshotInProgress(chainNode, false)
-				setSnapshotTime(chainNode, snapshot.CreationTimestamp.Time)
-				if err := r.Update(ctx, chainNode); err != nil {
+		switch {
+
+		// If the snapshot does not have the ready annotation, we haven't processed it yet. So we check if it's ready
+		// and if it is, we mark it as ready and register its timestamp in chainnode.
+		// In case tarball export is enabled, we also start the export right away.
+		case snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(false) && isSnapshotReady(&snapshot):
+			logger.Info("snapshot is ready", "snapshot", snapshot.GetName())
+			snapshot.ObjectMeta.Annotations[annotationPvcSnapshotReady] = strconv.FormatBool(true)
+			if err := r.Update(ctx, &snapshot); err != nil {
+				return err
+			}
+			setSnapshotInProgress(chainNode, false)
+			setSnapshotTime(chainNode, snapshot.CreationTimestamp.Time)
+			if err := r.Update(ctx, chainNode); err != nil {
+				return err
+			}
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeNormal,
+				appsv1.ReasonFinishedSnapshot,
+				"Finished PVC snapshot %s", snapshot.GetName(),
+			)
+			if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
+				if err := r.exportTarball(ctx, chainNode, &snapshot); err != nil {
 					return err
 				}
 				r.recorder.Eventf(chainNode,
 					corev1.EventTypeNormal,
-					appsv1.ReasonFinishedSnapshot,
-					"Finished PVC snapshot %s", snapshot.GetName(),
+					appsv1.ReasonTarballExportStart,
+					"Exporting tarball %s from snapshot", getTarballName(chainNode, &snapshot),
 				)
 			}
-		} else {
+
+		// If for some reason, there is an error starting the export above, it is never retried. So we do it here.
+		case chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() &&
+			snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(true) &&
+			snapshot.Annotations[annotationExportingTarball] == "":
+			if err := r.exportTarball(ctx, chainNode, &snapshot); err != nil {
+				return err
+			}
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeNormal,
+				appsv1.ReasonTarballExportStart,
+				"Exporting tarball %s from snapshot", getTarballName(chainNode, &snapshot),
+			)
+
+		// If the exporting-tarball annotation is set to true, then the export was started. We need to check if it
+		// has finished, and if it is, we set the export-tarballl annotation to finished so that it won't be processed
+		// again
+		case chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() &&
+			snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(true) &&
+			snapshot.Annotations[annotationExportingTarball] == strconv.FormatBool(true):
+			ready, err := r.isTarballReady(ctx, chainNode, &snapshot)
+			if err != nil {
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeWarning,
+					appsv1.ReasonTarballExportError,
+					"Error on tarball export %v", err,
+				)
+				return err
+			}
+			if ready {
+				snapshot.Annotations[annotationExportingTarball] = tarballFinished
+				if err := r.Update(ctx, &snapshot); err != nil {
+					return err
+				}
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeNormal,
+					appsv1.ReasonTarballExportFinish,
+					"Finished exporting tarball %s", getTarballName(chainNode, &snapshot),
+				)
+			}
+
+		// Default case is checking if snapshot has expired. If tarball is also set for deletion on expire it is also
+		// taken care here.
+		default:
 			expired, err := isSnapshotExpired(&snapshot)
 			if err != nil {
 				return err
@@ -71,6 +128,16 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 					appsv1.ReasonDeletedSnapshot,
 					"Deleted expired PVC snapshot %s", snapshot.GetName(),
 				)
+				if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && chainNode.Spec.Persistence.Snapshots.ExportTarball.DeleteWhenExpired() {
+					if err := r.deleteTarball(ctx, chainNode, &snapshot); err != nil {
+						return err
+					}
+					r.recorder.Eventf(chainNode,
+						corev1.EventTypeNormal,
+						appsv1.ReasonTarballDeleted,
+						"Deleted expired tarball %s", getTarballName(chainNode, &snapshot),
+					)
+				}
 			}
 		}
 	}
@@ -224,4 +291,67 @@ func getSnapshotName(chainNode *appsv1.ChainNode) string {
 
 	}
 	return fmt.Sprintf("%s-%s", name, time.Now().UTC().Format(timeLayout))
+}
+
+func (r *Reconciler) getTarballExportProvider(chainNode *appsv1.ChainNode) (datasnapshot.SnapshotProvider, error) {
+	switch {
+	case chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS != nil:
+		return datasnapshot.NewGcsSnapshotProvider(
+			r.ClientSet,
+			r.Scheme,
+			chainNode,
+			chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS.Bucket,
+			chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS.CredentialsSecret,
+		), nil
+
+	default:
+		return nil, fmt.Errorf("no upload target defined")
+	}
+}
+
+func (r *Reconciler) exportTarball(ctx context.Context, chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnapshot) error {
+	exporter, err := r.getTarballExportProvider(chainNode)
+	if err != nil {
+		return err
+	}
+
+	if err := exporter.CreateSnapshot(ctx, getTarballName(chainNode, snapshot), snapshot); err != nil {
+		return err
+	}
+
+	snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
+	return r.Update(ctx, snapshot)
+}
+
+func (r *Reconciler) isTarballReady(ctx context.Context, chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnapshot) (bool, error) {
+	exporter, err := r.getTarballExportProvider(chainNode)
+	if err != nil {
+		return false, err
+	}
+
+	status, err := exporter.GetSnapshotStatus(ctx, getTarballName(chainNode, snapshot))
+	if err != nil {
+		return false, err
+	}
+
+	if status == datasnapshot.SnapshotSucceeded {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (r *Reconciler) deleteTarball(ctx context.Context, chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnapshot) error {
+	exporter, err := r.getTarballExportProvider(chainNode)
+	if err != nil {
+		return err
+	}
+	return exporter.DeleteSnapshot(ctx, getTarballName(chainNode, snapshot))
+}
+
+func getTarballName(chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnapshot) string {
+	name := fmt.Sprintf("%s-%s", chainNode.Status.ChainID, snapshot.CreationTimestamp.UTC().Format(timeLayout))
+	if chainNode.Spec.Persistence.Snapshots.ExportTarball.Suffix != nil {
+		name += "-" + *chainNode.Spec.Persistence.Snapshots.ExportTarball.Suffix
+	}
+	return name
 }

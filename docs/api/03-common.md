@@ -7,8 +7,10 @@
 * [AccountAssets](#accountassets)
 * [AppSpec](#appspec)
 * [Config](#config)
+* [ExportTarballConfig](#exporttarballconfig)
 * [ExposeConfig](#exposeconfig)
 * [FromNodeRPCConfig](#fromnoderpcconfig)
+* [GcsExportConfig](#gcsexportconfig)
 * [GenesisConfig](#genesisconfig)
 * [GenesisInitConfig](#genesisinitconfig)
 * [InitCommand](#initcommand)
@@ -69,6 +71,18 @@ Config allows setting specific configurations for a chainnode such as overrides 
 
 [Back to Custom Resources](#custom-resources)
 
+#### ExportTarballConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| suffix | Suffix to add to archive name. The name of the tarball is `<chain-id>-<timestamp>-<suffix>`. | *string | false |
+| deleteOnExpire | DeleteOnExpire makes sure the tarball is deleted when the snapshot expires. Default is `false`. | *bool | false |
+| gcs | GCS allows configuring to upload tarballs to a GCS bucket | *[GcsExportConfig](#gcsexportconfig) | false |
+
+[Back to Custom Resources](#custom-resources)
+
 #### ExposeConfig
 
 
@@ -89,6 +103,17 @@ Config allows setting specific configurations for a chainnode such as overrides 
 | secure | Defines protocol to use. Defaults to false. | bool | false |
 | hostname | Hostname or IP address of the RPC server | string | true |
 | port | TCP port used for RPC queries on the RPC server. Defaults to `26657`. | *int | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### GcsExportConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| bucket | Name of the bucket to upload tarballs to. | string | true |
+| credentialsSecret | CredentialsSecret is the secret that contains the credentials to upload to bucket. | *corev1.SecretKeySelector | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -293,5 +318,6 @@ ValidatorInfo contains information about this validator.
 | retention | Retention indicates for how long a snapshot should be retained. Default is indefinite retention. Specified as a duration with suffix `s`, `m` or `h`. | *string | false |
 | snapshotClass | SnapshotClassName is the name of the volume snapshot class to be used. | *string | false |
 | stopNode | StopNode indicates that the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
+| exportTarball | ExportTarball creates a tarball of data directory in each snapshot and uploads it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
