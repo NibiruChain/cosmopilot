@@ -7,6 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	"github.com/NibiruChain/nibiru-operator/pkg/nodeutils"
 )
 
 func (r *Reconciler) updateJailedStatus(ctx context.Context, chainNode *appsv1.ChainNode) error {
@@ -45,16 +46,10 @@ func (r *Reconciler) updateJailedStatus(ctx context.Context, chainNode *appsv1.C
 }
 
 func (r *Reconciler) updateLatestHeight(ctx context.Context, chainNode *appsv1.ChainNode) error {
-	client, err := r.getQueryClient(chainNode)
+	height, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetLatestHeight()
 	if err != nil {
 		return err
 	}
-
-	block, err := client.GetLatestBlock(ctx)
-	if err != nil {
-		return err
-	}
-
-	chainNode.Status.LatestHeight = block.Header.Height
+	chainNode.Status.LatestHeight = height
 	return r.Status().Update(ctx, chainNode)
 }

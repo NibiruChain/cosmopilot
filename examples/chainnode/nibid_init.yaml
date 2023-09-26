@@ -17,7 +17,7 @@ spec:
       assets: [ "1000000000000000unibi" ]
       stakeAmount: 100000000unibi
       unbondingTime: 86400s
-      votingPeriod: 7200s
+      votingPeriod: 30s
       additionalInitCommands:
         - image: ghcr.io/nibiruchain/node-tools
           command: [ "sh" , "-c" ]

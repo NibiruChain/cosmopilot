@@ -301,7 +301,7 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
 	logger := log.FromContext(ctx)
 
-	configs, err := r.getConfigsFromCache(chainNode.Spec.App.GetImage())
+	configs, err := r.getConfigsFromCache(chainNode.GetAppImage())
 	if err != nil {
 		return nil, err
 	}
@@ -324,8 +324,8 @@ func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.Ap
 		}
 	}
 
-	r.storeConfigsInCache(chainNode.Spec.App.GetImage(), decodedConfigs)
-	return r.getConfigsFromCache(chainNode.Spec.App.GetImage())
+	r.storeConfigsInCache(chainNode.GetAppImage(), decodedConfigs)
+	return r.getConfigsFromCache(chainNode.GetAppImage())
 }
 
 func (r *Reconciler) storeConfigsInCache(key string, configs map[string]interface{}) {

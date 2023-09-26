@@ -20,6 +20,7 @@ import (
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
+	"github.com/NibiruChain/nibiru-operator/pkg/nodeutils"
 )
 
 func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) error {
@@ -58,18 +59,6 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 		return err
 	}
 
-	// Re-create pod if config changed
-	if currentPod.Annotations[annotationConfigHash] != configHash {
-		logger.Info("config changed")
-		return r.recreatePod(ctx, chainNode, pod)
-	}
-
-	// Re-create pod if spec changes
-	if podSpecChanged(currentPod, pod) {
-		logger.Info("pod spec changed")
-		return r.recreatePod(ctx, chainNode, pod)
-	}
-
 	// Recreate pod if it is in failed state
 	if podInFailedState(currentPod) {
 		logger.Info("pod is in failed state")
@@ -87,6 +76,77 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 		}
 		return r.recreatePod(ctx, chainNode, pod)
 	}
+
+	if err := r.updateLatestHeight(ctx, chainNode); err != nil {
+		return err
+	}
+
+	// Check if the node is waiting for an upgrade
+	requiresUpgrade, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).RequiresUpgrade()
+	if err != nil {
+		return err
+	}
+
+	if requiresUpgrade {
+		// Get upgrade from scheduled upgrades list
+		upgrade := r.getUpgrade(chainNode, chainNode.Status.LatestHeight)
+
+		// If we don't have upgrade info for this upgrade, or it is incomplete, lets through an error
+		if upgrade == nil || upgrade.Status == appsv1.UpgradeImageMissing {
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeWarning,
+				appsv1.ReasonUpgradeMissingData,
+				"Missing upgrade or image for upgrade at height %d",
+				chainNode.Status.LatestHeight,
+			)
+			return fmt.Errorf("missing upgrade for height %d", chainNode.Status.LatestHeight)
+		}
+
+		logger.Info("upgrading node")
+		if err := r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeOnGoing); err != nil {
+			return err
+		}
+		// Make sure we update the upgrades configmap before recreating the pod
+		if err := r.ensureUpgradesConfig(ctx, chainNode); err != nil {
+			return err
+		}
+
+		pod.Spec.Containers[0].Image = upgrade.Image
+		if err = r.recreatePod(ctx, chainNode, pod); err != nil {
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeWarning,
+				appsv1.ReasonUpgradeFailed,
+				"Upgrade failed: %v",
+				err,
+			)
+			if err := r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.ReasonUpgradeFailed); err != nil {
+				logger.Error(err, "failed to update upgrade status")
+			}
+			return err
+		}
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonUpgradeCompleted,
+			"Upgraded node to %s on height %d",
+			upgrade.Image, upgrade.Height,
+		)
+		// Update app version and upgrade status
+		chainNode.Status.AppVersion = upgrade.GetVersion()
+		return r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeCompleted)
+	}
+
+	// Re-create pod if spec changes
+	if podSpecChanged(currentPod, pod) {
+		logger.Info("pod spec changed")
+		return r.recreatePod(ctx, chainNode, pod)
+	}
+
+	// Re-create pod if config changed
+	if currentPod.Annotations[annotationConfigHash] != configHash {
+		logger.Info("config changed")
+		return r.recreatePod(ctx, chainNode, pod)
+	}
+
 	if volumeSnapshotInProgress(chainNode) {
 		return nil
 	}
@@ -167,15 +227,48 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
+				{
+					Name: "trace",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "upgrades-config",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: fmt.Sprintf("%s-upgrades", chainNode.GetName()),
+							},
+						},
+					},
+				},
+			},
+			InitContainers: []corev1.Container{
+				{
+					Name:    "init-trace-fifo",
+					Image:   "busybox",
+					Command: []string{"mkfifo"},
+					Args:    []string{"/trace/trace.fifo"},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "trace",
+							MountPath: "/trace",
+						},
+					},
+				},
 			},
 			Containers: []corev1.Container{
 				{
 					Name:            chainNode.Spec.App.App,
-					Image:           chainNode.Spec.App.GetImage(),
+					Image:           chainNode.GetAppImage(),
 					ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
 					Command:         []string{chainNode.Spec.App.App},
-					Args:            []string{"start", "--home", "/home/app"},
-					Env:             chainNode.Spec.Config.GetEnv(),
+					Args: []string{"start",
+						"--home", "/home/app",
+						"--trace-store", "/trace/trace.fifo",
+					},
+					Env: chainNode.Spec.Config.GetEnv(),
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          chainutils.P2pPortName,
@@ -221,6 +314,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						{
 							Name:      "config-empty-dir",
 							MountPath: "/home/app/config",
+						},
+						{
+							Name:      "trace",
+							MountPath: "/trace",
 						},
 					}, configFilesMounts...),
 					StartupProbe: &corev1.Probe{
@@ -283,6 +380,14 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 							Name:      "data",
 							MountPath: "/home/app/data",
 							ReadOnly:  true,
+						},
+						{
+							Name:      "trace",
+							MountPath: "/trace",
+						},
+						{
+							Name:      "upgrades-config",
+							MountPath: "/config",
 						},
 					},
 					Env: []corev1.EnvVar{
@@ -527,7 +632,7 @@ func (r *Reconciler) setPhaseRunningOrSyncing(ctx context.Context, chainNode *ap
 			appsv1.ReasonNodeRunning,
 			"Node is synced and running",
 		)
-		chainNode.Status.AppVersion = chainNode.Spec.App.GetImageVersion()
+		chainNode.Status.AppVersion = chainNode.GetAppVersion()
 		return r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeRunning)
 	}
 

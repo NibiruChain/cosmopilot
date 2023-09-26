@@ -8,6 +8,8 @@ func defaultOptions() *Options {
 		Host:           "0.0.0.0",
 		Port:           8000,
 		BlockThreshold: 0,
+		UpgradesConfig: "/config/upgrades.json",
+		TraceStore:     "/trace/trace.fifo",
 	}
 }
 
@@ -16,6 +18,8 @@ type Options struct {
 	Port           int
 	DataPath       string
 	BlockThreshold time.Duration
+	UpgradesConfig string
+	TraceStore     string
 }
 
 type Option func(*Options)
@@ -38,8 +42,20 @@ func WithDataPath(path string) Option {
 	}
 }
 
+func WithUpgradesConfig(path string) Option {
+	return func(opts *Options) {
+		opts.UpgradesConfig = path
+	}
+}
+
 func WithBlockThreshold(n time.Duration) Option {
 	return func(opts *Options) {
 		opts.BlockThreshold = n
+	}
+}
+
+func WithTraceStore(path string) Option {
+	return func(opts *Options) {
+		opts.TraceStore = path
 	}
 }

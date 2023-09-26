@@ -899,6 +899,10 @@ spec:
                     description: App is the name of the binary of the application
                       to be run
                     type: string
+                  checkGovUpgrades:
+                    description: CheckGovUpgrades indicates that operator should query
+                      gov proposals to find and schedule upgrades. Defaults to `true`.
+                    type: boolean
                   image:
                     description: Image indicates the docker image to be used
                     minLength: 1
@@ -915,6 +919,22 @@ spec:
                     - v0.45
                     - v0.47
                     type: string
+                  upgrades:
+                    description: Upgrades contains manually scheduled upgrades
+                    items:
+                      properties:
+                        height:
+                          description: Height at which the upgrade should occur.
+                          format: int64
+                          type: integer
+                        image:
+                          description: Image replacement to be used in the upgrade.
+                          type: string
+                      required:
+                      - height
+                      - image
+                      type: object
+                    type: array
                   version:
                     description: Version is the image tag to be used. Defaults to
                       `latest`.
@@ -933,7 +953,7 @@ spec:
                 properties:
                   blockThreshold:
                     description: BlockThreshold specifies the time to wait for a block
-                      before considering node unhealthy
+                      before considering node unhealthy. Defaults to `15s`.
                     type: string
                   env:
                     description: Env refers to the list of environment variables to
@@ -1071,7 +1091,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   reconcilePeriod:
                     description: ReconcilePeriod is the period at which a reconcile
-                      loop will happen for this ChainNode. Defaults to `30s`.
+                      loop will happen for this ChainNode. Defaults to `15s`.
                     type: string
                   safeToEvict:
                     description: SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict
@@ -2053,6 +2073,32 @@ spec:
                 description: SeedMode indicates if this node is running with seed
                   mode enabled.
                 type: boolean
+              upgrades:
+                description: Upgrades contains all scheduled/completed upgrades performed
+                  by the operator on this ChainNode.
+                items:
+                  properties:
+                    height:
+                      description: Height at which the upgrade should occur.
+                      format: int64
+                      type: integer
+                    image:
+                      description: Image replacement to be used in the upgrade.
+                      type: string
+                    source:
+                      description: Source indicates where the operator got this upgrade
+                        from.
+                      type: string
+                    status:
+                      description: Status indicates the upgrade status.
+                      type: string
+                  required:
+                  - height
+                  - image
+                  - source
+                  - status
+                  type: object
+                type: array
               validator:
                 description: Validator indicates if this node is a validator.
                 type: boolean

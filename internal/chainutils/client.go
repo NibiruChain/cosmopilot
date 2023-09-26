@@ -10,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/codec"
 	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -18,6 +19,7 @@ type QueryClient struct {
 	grpcConn      *grpc.ClientConn
 	stakingClient stakingTypes.QueryClient
 	nodeClient    tmservice.ServiceClient
+	upgradeClient upgradetypes.QueryClient
 }
 
 func NewQueryClient(grpcAddress string) (*QueryClient, error) {
@@ -29,10 +31,12 @@ func NewQueryClient(grpcAddress string) (*QueryClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to grpc server")
 	}
+
 	return &QueryClient{
 		grpcConn:      grpcConn,
 		stakingClient: stakingTypes.NewQueryClient(grpcConn),
 		nodeClient:    tmservice.NewServiceClient(grpcConn),
+		upgradeClient: upgradetypes.NewQueryClient(grpcConn),
 	}, nil
 }
 
@@ -82,4 +86,12 @@ func (c *QueryClient) NodeInfo(ctx context.Context) (*p2p.DefaultNodeInfo, error
 		return nil, err
 	}
 	return response.DefaultNodeInfo, nil
+}
+
+func (c *QueryClient) GetNextUpgrade(ctx context.Context) (*upgradetypes.Plan, error) {
+	response, err := c.upgradeClient.CurrentPlan(ctx, &upgradetypes.QueryCurrentPlanRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return response.Plan, err
 }

@@ -199,7 +199,7 @@ func (a *App) NewGenesis(ctx context.Context,
 					Image:   "apteno/alpine-jq",
 					Command: []string{"sh", "-c"},
 					Args: []string{
-						fmt.Sprintf("jq '.app_state.gov.voting_params.voting_period = %q' /home/app/config/genesis.json > /tmp/genesis.tmp && mv /tmp/genesis.tmp /home/app/config/genesis.json", params.VotingPeriod),
+						fmt.Sprintf("jq '.app_state.gov.params.voting_period = %q' /home/app/config/genesis.json > /tmp/genesis.tmp && mv /tmp/genesis.tmp /home/app/config/genesis.json", params.VotingPeriod),
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{

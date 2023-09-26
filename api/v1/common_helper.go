@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	DefaultReconcilePeriod     = 30 * time.Second
+	DefaultReconcilePeriod     = 15 * time.Second
 	DefaultImageVersion        = "latest"
-	DefaultBlockThreshold      = "30s"
+	DefaultBlockThreshold      = "15s"
 	DefaultP2pExpose           = false
 	DefaultP2pServiceType      = corev1.ServiceTypeNodePort
 	DefaultUnbondingTime       = "1814400s"
@@ -64,6 +64,13 @@ func (app *AppSpec) GetSdkVersion() SdkVersion {
 		return *app.SdkVersion
 	}
 	return DefaultSdkVersion
+}
+
+func (app *AppSpec) ShouldQueryGovUpgrades() bool {
+	if app.CheckGovUpgrades != nil {
+		return *app.CheckGovUpgrades
+	}
+	return true
 }
 
 // GenesisConfig helper methods
@@ -272,4 +279,20 @@ func (e *ExportTarballConfig) DeleteWhenExpired() bool {
 		return *e.DeleteOnExpire
 	}
 	return false
+}
+
+// Upgrade helper methods
+
+func (u *UpgradeSpec) GetVersion() string {
+	if parts := strings.Split(u.Image, ":"); len(parts) == 2 {
+		return parts[1]
+	}
+	return DefaultImageVersion
+}
+
+func (u *Upgrade) GetVersion() string {
+	if parts := strings.Split(u.Image, ":"); len(parts) == 2 {
+		return parts[1]
+	}
+	return DefaultImageVersion
 }

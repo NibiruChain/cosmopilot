@@ -26,4 +26,19 @@ func init() {
 		environ.GetDuration("BLOCK_THRESHOLD", 0),
 		"the time to wait for a block before considering node unhealthy",
 	)
+
+	flag.StringVar(&upgradesConfig, "upgrades-config",
+		environ.GetString("UPGRADES_CONFIG", "/config/upgrades.json"),
+		"the file containing upgrades configuration",
+	)
+
+	flag.StringVar(&traceStore, "trace-store",
+		environ.GetString("TRACE_STORE", "/trace/trace.fifo"),
+		"file or fifo to watch for traces",
+	)
+
+	flag.StringVar(&logLevel, "log-level",
+		environ.GetString("LOG_LEVEL", "info"),
+		"log level",
+	)
 }

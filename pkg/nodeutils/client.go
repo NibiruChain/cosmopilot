@@ -33,3 +33,41 @@ func (c *Client) GetDataSize() (int64, error) {
 
 	return strconv.ParseInt(string(body), 10, 64)
 }
+
+func (c *Client) GetLatestHeight() (int64, error) {
+	response, err := http.Get(c.url + "/latest_height")
+	if err != nil {
+		return 0, err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf(string(body))
+	}
+
+	return strconv.ParseInt(string(body), 10, 64)
+}
+
+func (c *Client) RequiresUpgrade() (bool, error) {
+	response, err := http.Get(c.url + "/must_upgrade")
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return false, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return false, fmt.Errorf(string(body))
+	}
+
+	return strconv.ParseBool(string(body))
+}

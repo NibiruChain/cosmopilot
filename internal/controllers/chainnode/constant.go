@@ -7,14 +7,16 @@ import (
 )
 
 const (
-	nodeKeyFilename    = "node_key.json"
-	privKeyFilename    = "priv_validator_key.json"
-	appTomlFilename    = "app.toml"
-	configTomlFilename = "config.toml"
-	genesisFilename    = "genesis.json"
-	genesisLocation    = "data/genesis.json"
-	mnemonicKey        = "mnemonic"
-	tarballFinished    = "finished"
+	nodeKeyFilename             = "node_key.json"
+	privKeyFilename             = "priv_validator_key.json"
+	appTomlFilename             = "app.toml"
+	configTomlFilename          = "config.toml"
+	genesisFilename             = "genesis.json"
+	genesisLocation             = "data/genesis.json"
+	mnemonicKey                 = "mnemonic"
+	tarballFinished             = "finished"
+	upgradesConfigFile          = "upgrades.json"
+	softwareUpgradeProposalType = "SoftwareUpgrade"
 
 	LabelNodeID    = "node-id"
 	LabelChainID   = "chain-id"

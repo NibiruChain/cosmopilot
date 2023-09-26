@@ -167,6 +167,26 @@ func (chainNode *ChainNode) GetMoniker() string {
 	return chainNode.GetName()
 }
 
+func (chainNode *ChainNode) HasCompletedUpgrades() bool {
+	for _, upgrade := range chainNode.Status.Upgrades {
+		if upgrade.Status == UpgradeCompleted {
+			return true
+		}
+	}
+	return false
+}
+
+func (chainNode *ChainNode) GetAppVersion() string {
+	if chainNode.HasCompletedUpgrades() {
+		return chainNode.Status.AppVersion
+	}
+	return chainNode.Spec.App.GetImageVersion()
+}
+
+func (chainNode *ChainNode) GetAppImage() string {
+	return fmt.Sprintf("%s:%s", chainNode.Spec.App.Image, chainNode.GetAppVersion())
+}
+
 // Validator methods
 
 func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {

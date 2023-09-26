@@ -44,6 +44,9 @@ const (
 	ReasonTarballExportFinish = "TarballFinished"
 	ReasonTarballDeleted      = "TarballDeleted"
 	ReasonTarballExportError  = "TarballExportError"
+	ReasonUpgradeCompleted    = "UpgradeCompleted"
+	ReasonUpgradeFailed       = "UpgradeFailed"
+	ReasonUpgradeMissingData  = "UpgradeMissingData"
 )
 
 // SdkVersion specifies the cosmos-sdk version.
@@ -77,6 +80,16 @@ type AppSpec struct {
 	// SdkVersion specifies the version of cosmos-sdk used by this app. Defaults to `v0.47`.
 	// +optional
 	SdkVersion *SdkVersion `json:"sdkVersion,omitempty"`
+
+	// CheckGovUpgrades indicates that operator should query gov proposals to find and schedule upgrades.
+	// Defaults to `true`.
+	// +optional
+	// +default=true
+	CheckGovUpgrades *bool `json:"checkGovUpgrades,omitempty"`
+
+	// Upgrades contains manually scheduled upgrades
+	// +optional
+	Upgrades []UpgradeSpec `json:"upgrades,omitempty"`
 }
 
 // Config allows setting specific configurations for a chainnode such as overrides to app.toml and config.toml
@@ -95,14 +108,16 @@ type Config struct {
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
-	// BlockThreshold specifies the time to wait for a block before considering node unhealthy
+	// BlockThreshold specifies the time to wait for a block before considering node unhealthy.
+	// Defaults to `15s`.
 	// +optional
+	// +default=15s
 	BlockThreshold *string `json:"blockThreshold,omitempty"`
 
 	// ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode.
-	// Defaults to `30s`.
+	// Defaults to `15s`.
 	// +optional
-	// +default=30s
+	// +default=15s
 	ReconcilePeriod *string `json:"reconcilePeriod,omitempty"`
 
 	// StateSync configures statesync snapshots for this node.
@@ -502,4 +517,44 @@ type GcsExportConfig struct {
 
 	// CredentialsSecret is the secret that contains the credentials to upload to bucket.
 	CredentialsSecret *corev1.SecretKeySelector `json:"credentialsSecret"`
+}
+
+// Upgrades
+
+type UpgradePhase string
+
+const (
+	UpgradeImageMissing UpgradePhase = "image-missing"
+	UpgradeScheduled    UpgradePhase = "scheduled"
+	UpgradeOnGoing      UpgradePhase = "ongoing"
+	UpgradeCompleted    UpgradePhase = "completed"
+)
+
+type UpgradeSource string
+
+const (
+	OnChainUpgrade UpgradeSource = "on-chain"
+	ManualUpgrade  UpgradeSource = "manual"
+)
+
+type UpgradeSpec struct {
+	// Height at which the upgrade should occur.
+	Height int64 `json:"height"`
+
+	// Image replacement to be used in the upgrade.
+	Image string `json:"image"`
+}
+
+type Upgrade struct {
+	// Height at which the upgrade should occur.
+	Height int64 `json:"height"`
+
+	// Image replacement to be used in the upgrade.
+	Image string `json:"image"`
+
+	// Status indicates the upgrade status.
+	Status UpgradePhase `json:"status"`
+
+	// Source indicates where the operator got this upgrade from.
+	Source UpgradeSource `json:"source"`
 }

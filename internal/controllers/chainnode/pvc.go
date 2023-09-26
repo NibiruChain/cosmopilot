@@ -37,7 +37,7 @@ func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App,
 			if c.Image != nil {
 				initCommands[i].Image = *c.Image
 			} else {
-				initCommands[i].Image = chainNode.Spec.App.GetImage()
+				initCommands[i].Image = chainNode.GetAppImage()
 			}
 		}
 

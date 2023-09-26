@@ -74,6 +74,7 @@ ChainNodeStatus defines the observed state of ChainNode
 | appVersion | AppVersion is the application version currently deployed | string | false |
 | latestHeight | LatestHeight is the last height read on the node by the operator. | int64 | false |
 | seedMode | SeedMode indicates if this node is running with seed mode enabled. | bool | false |
+| upgrades | Upgrades contains all scheduled/completed upgrades performed by the operator on this ChainNode. | []Upgrade | false |
 
 [Back to Custom Resources](#custom-resources)
 

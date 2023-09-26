@@ -1,6 +1,7 @@
 package nodeutils
 
 import (
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,7 +12,15 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
-func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
+func (s *NodeUtils) registerRoutes() {
+	s.router.HandleFunc("/ready", s.ready).Methods(http.MethodGet)
+	s.router.HandleFunc("/health", s.health).Methods(http.MethodGet)
+	s.router.HandleFunc("/data_size", s.dataSize).Methods(http.MethodGet)
+	s.router.HandleFunc("/latest_height", s.latestHeight).Methods(http.MethodGet)
+	s.router.HandleFunc("/must_upgrade", s.mustUpgrade).Methods(http.MethodGet)
+}
+
+func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
 	isSyncing, err := s.client.IsNodeSyncing(r.Context())
 	if err != nil {
 		log.Errorf("error getting syncing status: %v", err)
@@ -52,9 +61,18 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+func (s *NodeUtils) health(w http.ResponseWriter, r *http.Request) {
 	// TODO: this only makes sure node is listening on gRPC.
 	// We should check for possible issues with the node.
+
+	// Ensure LCD endpoint is available
+	timeout := 1 * time.Second
+	_, err := net.DialTimeout("tcp", "127.0.0.1:1317", timeout)
+	if err != nil {
+		log.Errorf("lcd enpoint is unavailable: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	nodeInfo, err := s.client.NodeInfo(r.Context())
 	if err != nil {
@@ -75,7 +93,7 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func (s *Server) dataSize(w http.ResponseWriter, r *http.Request) {
+func (s *NodeUtils) dataSize(w http.ResponseWriter, r *http.Request) {
 	size, err := utils.DirSize(s.cfg.DataPath)
 	if err != nil {
 		log.Errorf("error getting data directory size: %v", err)
@@ -85,4 +103,16 @@ func (s *Server) dataSize(w http.ResponseWriter, r *http.Request) {
 	log.WithField("size", size).Info("retrieved data size")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strconv.FormatInt(size, 10)))
+}
+
+func (s *NodeUtils) latestHeight(w http.ResponseWriter, r *http.Request) {
+	log.WithField("size", s.latestBlockHeight.Load()).Info("retrieved latest height")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(strconv.FormatInt(s.latestBlockHeight.Load(), 10)))
+}
+
+func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
+	log.WithField("must-upgrade", s.requiresUpgrade).Info("checked if should upgrade")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(strconv.FormatBool(s.requiresUpgrade)))
 }

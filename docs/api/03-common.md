@@ -24,6 +24,8 @@
 * [TmKmsKeyFormat](#tmkmskeyformat)
 * [TmKmsProvider](#tmkmsprovider)
 * [TmKmsVaultProvider](#tmkmsvaultprovider)
+* [Upgrade](#upgrade)
+* [UpgradeSpec](#upgradespec)
 * [ValidatorInfo](#validatorinfo)
 * [VolumeSnapshotsConfig](#volumesnapshotsconfig)
 
@@ -49,6 +51,8 @@ AppSpec specifies the source image and binary name of the app to run
 | imagePullPolicy | ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
 | app | App is the name of the binary of the application to be run | string | true |
 | sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Defaults to `v0.47`. | *SdkVersion | false |
+| checkGovUpgrades | CheckGovUpgrades indicates that operator should query gov proposals to find and schedule upgrades. Defaults to `true`. | *bool | false |
+| upgrades | Upgrades contains manually scheduled upgrades | [][UpgradeSpec](#upgradespec) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -61,8 +65,8 @@ Config allows setting specific configurations for a chainnode such as overrides 
 | override | Override allows overriding configs on toml configuration files | *map[string]runtime.RawExtension | false |
 | sidecars | Sidecars allow configuring additional containers to run alongside the node | [][SidecarSpec](#sidecarspec) | false |
 | imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
-| blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy | *string | false |
-| reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `30s`. | *string | false |
+| blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy. Defaults to `15s`. | *string | false |
+| reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `15s`. | *string | false |
 | stateSync | StateSync configures statesync snapshots for this node. | *[StateSyncConfig](#statesyncconfig) | false |
 | seedMode | SeedMode configures this node to run on seed mode. Defaults to `false`. | *bool | false |
 | env | Env refers to the list of environment variables to set in the app container. | []corev1.EnvVar | false |
@@ -292,6 +296,30 @@ SidecarSpec allow configuring additional containers to run alongside the node
 | certificateSecret | Secret containing the CA certificate of the Vault cluster. | *corev1.SecretKeySelector | false |
 | tokenSecret | Secret containing the token to be used. | *corev1.SecretKeySelector | true |
 | uploadGenerated | UploadGenerated indicates if the controller should upload the generated private key to vault. Defaults to `false`. Will be set to `true` if this validator is initializing a new genesis. This should not be used in production. | bool | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### Upgrade
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| height | Height at which the upgrade should occur. | int64 | true |
+| image | Image replacement to be used in the upgrade. | string | true |
+| status | Status indicates the upgrade status. | UpgradePhase | true |
+| source | Source indicates where the operator got this upgrade from. | UpgradeSource | true |
+
+[Back to Custom Resources](#custom-resources)
+
+#### UpgradeSpec
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| height | Height at which the upgrade should occur. | int64 | true |
+| image | Image replacement to be used in the upgrade. | string | true |
 
 [Back to Custom Resources](#custom-resources)
 
