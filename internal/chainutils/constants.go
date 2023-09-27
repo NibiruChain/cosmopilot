@@ -20,4 +20,11 @@ const (
 	PrivValPort     = 26659
 
 	nonRootId = 1000
+
+	none               = "none"
+	defaultAccountName = "account"
+	defaultHome        = "/home/app"
+	defaultData        = "data"
+	defaultConfig      = "config"
+	defaultGenesisFile = "config/genesis.json"
 )

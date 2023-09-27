@@ -79,6 +79,7 @@ type AppSpec struct {
 
 	// SdkVersion specifies the version of cosmos-sdk used by this app. Defaults to `v0.47`.
 	// +optional
+	// +default=v0.47
 	SdkVersion *SdkVersion `json:"sdkVersion,omitempty"`
 
 	// CheckGovUpgrades indicates that operator should query gov proposals to find and schedule upgrades.

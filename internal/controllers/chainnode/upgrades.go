@@ -44,6 +44,7 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 		})
 	}
 
+	// Sort upgrades by height
 	sort.Slice(chainNode.Status.Upgrades, func(i, j int) bool {
 		return chainNode.Status.Upgrades[i].Height < chainNode.Status.Upgrades[j].Height
 	})

@@ -1,0 +1,76 @@
+package sdkargs
+
+import (
+	"fmt"
+	"strings"
+
+	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+)
+
+func init() {
+	sdkCreator := func(globalOptions ...Option) SDK {
+		options := newDefaultOptions()
+		for _, option := range globalOptions {
+			option(options)
+		}
+		return &v0_45{options: options}
+	}
+	RegisterSDK(appsv1.V0_45, sdkCreator)
+}
+
+type v0_45 struct {
+	options *Options
+}
+
+func (sdk *v0_45) InitArgs(moniker, chainID string) []string {
+	return append(
+		[]string{"init", moniker, "--chain-id", chainID},
+		sdk.options.GlobalArgs...,
+	)
+}
+
+func (sdk *v0_45) RecoverAccountArgs(account string) []string {
+	return append(
+		[]string{"keys", "add", account, "--recover",
+			"--keyring-backend", "test",
+		},
+		sdk.options.GlobalArgs...,
+	)
+}
+
+func (sdk *v0_45) AddGenesisAccountArgs(account string, assets []string) []string {
+	return append(
+		[]string{"add-genesis-account", account, strings.Join(assets, ",")},
+		sdk.options.GlobalArgs...,
+	)
+}
+
+func (sdk *v0_45) GenTxArgs(account, moniker, stakeAmount, chainID string, options ...*ArgOption) []string {
+	args := []string{
+		"gentx", account, stakeAmount,
+		"--moniker", moniker,
+		"--chain-id", chainID,
+		"--yes",
+	}
+	args = applyArgOptions(args, options)
+	return append(args, sdk.options.GlobalArgs...)
+}
+
+func (sdk *v0_45) CollectGenTxsArgs() []string {
+	return append(
+		[]string{"collect-gentxs"},
+		sdk.options.GlobalArgs...,
+	)
+}
+
+func (sdk *v0_45) GenesisSetUnbondingTimeCmd(unbondingTime, genesisFile string) string {
+	return fmt.Sprintf("jq '.app_state.staking.params.unbonding_time = %q' %s > /tmp/genesis.tmp && mv /tmp/genesis.tmp %s",
+		unbondingTime, genesisFile, genesisFile,
+	)
+}
+
+func (sdk *v0_45) GenesisSetVotingPeriodCmd(votingPeriod, genesisFile string) string {
+	return fmt.Sprintf("jq '.app_state.gov.voting_params.voting_period = %q' %s > /tmp/genesis.tmp && mv /tmp/genesis.tmp %s",
+		votingPeriod, genesisFile, genesisFile,
+	)
+}

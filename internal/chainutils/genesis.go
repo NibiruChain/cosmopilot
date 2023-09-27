@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"path/filepath"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -13,7 +13,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkargs"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
@@ -63,22 +63,20 @@ func (a *App) NewGenesis(ctx context.Context,
 	initCommands ...*InitCommand,
 ) (string, error) {
 
-	addGenesisAccountArgs := make([]string, 0)
-	gentxArgs := make([]string, 0)
-	collectGentxsArgs := make([]string, 0)
-
-	switch a.sdkVersion {
-	case appsv1.V0_45:
-		addGenesisAccountArgs = append(addGenesisAccountArgs, "add-genesis-account")
-		gentxArgs = append(gentxArgs, "gentx")
-		collectGentxsArgs = append(collectGentxsArgs, "collect-gentxs")
-	case appsv1.V0_47:
-		fallthrough
-	default:
-		addGenesisAccountArgs = append(addGenesisAccountArgs, []string{"genesis", "add-genesis-account"}...)
-		gentxArgs = append(gentxArgs, []string{"genesis", "gentx"}...)
-		collectGentxsArgs = append(collectGentxsArgs, []string{"genesis", "collect-gentxs"}...)
-	}
+	var (
+		dataVolumeMount = corev1.VolumeMount{
+			Name:      "data",
+			MountPath: defaultHome,
+		}
+		privKeyVolumeMount = corev1.VolumeMount{
+			Name:      "priv-key",
+			MountPath: "/secrets",
+		}
+		tempVolumeMount = corev1.VolumeMount{
+			Name:      "temp",
+			MountPath: "/temp",
+		}
+	)
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -89,19 +87,19 @@ func (a *App) NewGenesis(ctx context.Context,
 			RestartPolicy: corev1.RestartPolicyNever,
 			Volumes: []corev1.Volume{
 				{
-					Name: "data",
+					Name: dataVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				{
-					Name: "temp",
+					Name: tempVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				{
-					Name: "priv-key",
+					Name: privKeyVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: privkeySecret,
@@ -115,112 +113,56 @@ func (a *App) NewGenesis(ctx context.Context,
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args: []string{"init", "test",
-						"--chain-id", params.ChainID,
-						"--home", "/home/app",
-					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app",
-						},
-					},
+					Args:            a.sdk.InitArgs(nodeInfo.Moniker, params.ChainID),
+					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 				},
 				{
-					Name:    "load-priv-key",
-					Image:   "busybox",
-					Command: []string{"/bin/sh"},
-					Args: []string{
-						"-c",
-						"cp /secrets/priv_validator_key.json /home/app/config/priv_validator_key.json",
-					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app",
-						},
-						{
-							Name:      "priv-key",
-							MountPath: "/secrets",
-						},
-					},
+					Name:         "load-priv-key",
+					Image:        "busybox",
+					Command:      []string{"/bin/sh"},
+					Args:         []string{"-c", "cp /secrets/priv_validator_key.json /home/app/config/priv_validator_key.json"},
+					VolumeMounts: []corev1.VolumeMount{dataVolumeMount, privKeyVolumeMount},
 				},
 				{
 					Name:            "load-account",
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args: []string{"keys", "add", "account", "--recover",
-						"--keyring-backend", "test",
-						"--home", "/home/app",
-					},
-					Stdin:     true,
-					StdinOnce: true,
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app",
-						},
-					},
+					Args:            a.sdk.RecoverAccountArgs(defaultAccountName),
+					Stdin:           true,
+					StdinOnce:       true,
+					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 				},
 				{
 					Name:            "add-validator-account",
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args: append(addGenesisAccountArgs, []string{
-						account.Address,
-						strings.Join(params.Assets, ","),
-						"--home", "/home/app",
-					}...),
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app",
-						},
-					},
+					Args:            a.sdk.AddGenesisAccountArgs(account.Address, params.Assets),
+					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 				},
 				{
-					Name:    "set-unbonding-time",
-					Image:   "apteno/alpine-jq",
-					Command: []string{"sh", "-c"},
-					Args: []string{
-						fmt.Sprintf("jq '.app_state.staking.params.unbonding_time = %q' /home/app/config/genesis.json > /tmp/genesis.tmp && mv /tmp/genesis.tmp /home/app/config/genesis.json", params.UnbondingTime),
-					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app",
-						},
-					},
+					Name:         "set-unbonding-time",
+					Image:        "apteno/alpine-jq",
+					Command:      []string{"sh", "-c"},
+					Args:         []string{a.sdk.GenesisSetUnbondingTimeCmd(params.UnbondingTime, filepath.Join(defaultHome, defaultGenesisFile))},
+					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 				},
 				{
-					Name:    "set-voting-period",
-					Image:   "apteno/alpine-jq",
-					Command: []string{"sh", "-c"},
-					Args: []string{
-						fmt.Sprintf("jq '.app_state.gov.params.voting_period = %q' /home/app/config/genesis.json > /tmp/genesis.tmp && mv /tmp/genesis.tmp /home/app/config/genesis.json", params.VotingPeriod),
-					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app",
-						},
-					},
+					Name:         "set-voting-period",
+					Image:        "apteno/alpine-jq",
+					Command:      []string{"sh", "-c"},
+					Args:         []string{a.sdk.GenesisSetVotingPeriodCmd(params.VotingPeriod, filepath.Join(defaultHome, defaultGenesisFile))},
+					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 				},
 			},
 			Containers: []corev1.Container{
 				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"cat"},
-					Stdin:   true,
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app",
-						},
-					},
+					Name:         "busybox",
+					Image:        "busybox",
+					Command:      []string{"cat"},
+					Stdin:        true,
+					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 				},
 			},
 			TerminationGracePeriodSeconds: pointer.Int64(0),
@@ -234,70 +176,34 @@ func (a *App) NewGenesis(ctx context.Context,
 			Image:           a.image,
 			ImagePullPolicy: a.pullPolicy,
 			Command:         []string{a.binary},
-			Args: append(addGenesisAccountArgs, []string{
-				acc.Address,
-				strings.Join(acc.Assets, ","),
-				"--home", "/home/app",
-			}...),
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "data",
-					MountPath: "/home/app",
-				},
-			},
+			Args:            a.sdk.AddGenesisAccountArgs(acc.Address, acc.Assets),
+			VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 		})
 	}
 
 	// Add additional commands
 	for i, cmd := range initCommands {
 		pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
-			Name:    fmt.Sprintf("init-command-%d", i),
-			Image:   cmd.Image,
-			Command: cmd.Command,
-			Args:    cmd.Args,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "data",
-					MountPath: "/home/app",
-				},
-				{
-					Name:      "temp",
-					MountPath: "/temp",
-				},
-			},
+			Name:         fmt.Sprintf("init-command-%d", i),
+			Image:        cmd.Image,
+			Command:      cmd.Command,
+			Args:         cmd.Args,
+			VolumeMounts: []corev1.VolumeMount{dataVolumeMount, tempVolumeMount},
 		})
 	}
 
 	// Add gentx container
-	gentxCommand := append(gentxArgs, []string{
-		"account", params.StakeAmount,
-		"--chain-id", params.ChainID,
-		"--home", "/home/app",
-		"--keyring-backend", "test",
-		"--yes",
-		"--moniker", nodeInfo.Moniker,
-	}...)
-	if nodeInfo.Details != nil {
-		gentxCommand = append(gentxCommand, "--details", *nodeInfo.Details)
-	}
-	if nodeInfo.Website != nil {
-		gentxCommand = append(gentxCommand, "--website", *nodeInfo.Website)
-	}
-	if nodeInfo.Identity != nil {
-		gentxCommand = append(gentxCommand, "--identity", *nodeInfo.Identity)
-	}
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
 		Name:            "gentx",
 		Image:           a.image,
 		ImagePullPolicy: a.pullPolicy,
 		Command:         []string{a.binary},
-		Args:            gentxCommand,
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "data",
-				MountPath: "/home/app",
-			},
-		},
+		Args: a.sdk.GenTxArgs(defaultAccountName, nodeInfo.Moniker, params.StakeAmount, params.ChainID,
+			sdkargs.WithOptionalArg(sdkargs.Details, nodeInfo.Details),
+			sdkargs.WithOptionalArg(sdkargs.Website, nodeInfo.Website),
+			sdkargs.WithOptionalArg(sdkargs.Identity, nodeInfo.Identity),
+		),
+		VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 	})
 
 	// Add collect-gentxs container
@@ -306,13 +212,8 @@ func (a *App) NewGenesis(ctx context.Context,
 		Image:           a.image,
 		ImagePullPolicy: a.pullPolicy,
 		Command:         []string{a.binary},
-		Args:            append(collectGentxsArgs, []string{"--home", "/home/app"}...),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "data",
-				MountPath: "/home/app",
-			},
-		},
+		Args:            a.sdk.CollectGenTxsArgs(),
+		VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 	})
 
 	if err := controllerutil.SetControllerReference(a.owner, pod, a.scheme); err != nil {
@@ -349,6 +250,6 @@ func (a *App) NewGenesis(ctx context.Context,
 		return "", err
 	}
 
-	genesis, _, err := ph.Exec(ctx, "busybox", []string{"cat", "/home/app/config/genesis.json"})
+	genesis, _, err := ph.Exec(ctx, "busybox", []string{"cat", filepath.Join(defaultHome, defaultGenesisFile)})
 	return genesis, err
 }

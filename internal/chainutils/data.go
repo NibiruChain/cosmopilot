@@ -3,6 +3,7 @@ package chainutils
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +15,22 @@ import (
 )
 
 func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim, initCommands ...*InitCommand) error {
+
+	var (
+		homeVolumeMount = corev1.VolumeMount{
+			Name:      "home",
+			MountPath: defaultHome,
+		}
+		dataVolumeMount = corev1.VolumeMount{
+			Name:      "data",
+			MountPath: filepath.Join(defaultHome, defaultData),
+		}
+		tempVolumeMount = corev1.VolumeMount{
+			Name:      "temp",
+			MountPath: "/temp",
+		}
+	)
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-init-data", a.owner.GetName()),
@@ -28,7 +45,7 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 			},
 			Volumes: []corev1.Volume{
 				{
-					Name: "data",
+					Name: dataVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: pvc.GetName(),
@@ -36,13 +53,13 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 					},
 				},
 				{
-					Name: "home",
+					Name: homeVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				{
-					Name: "temp",
+					Name: tempVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
@@ -54,17 +71,8 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args:            []string{"init", "test", "--home", "/home/app"},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "home",
-							MountPath: "/home/app",
-						},
-						{
-							Name:      "data",
-							MountPath: "/home/app/data",
-						},
-					},
+					Args:            a.sdk.InitArgs(none, none),
+					VolumeMounts:    []corev1.VolumeMount{homeVolumeMount, dataVolumeMount},
 				},
 			},
 			Containers: []corev1.Container{
@@ -82,24 +90,11 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 	// Add additional commands
 	for i, cmd := range initCommands {
 		pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
-			Name:    fmt.Sprintf("init-command-%d", i),
-			Image:   cmd.Image,
-			Command: cmd.Command,
-			Args:    cmd.Args,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "home",
-					MountPath: "/home/app",
-				},
-				{
-					Name:      "data",
-					MountPath: "/home/app/data",
-				},
-				{
-					Name:      "temp",
-					MountPath: "/temp",
-				},
-			},
+			Name:         fmt.Sprintf("init-command-%d", i),
+			Image:        cmd.Image,
+			Command:      cmd.Command,
+			Args:         cmd.Args,
+			VolumeMounts: []corev1.VolumeMount{homeVolumeMount, dataVolumeMount, tempVolumeMount},
 		})
 	}
 

@@ -102,12 +102,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	app := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
+	app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
 		chainNode.Spec.App.GetSdkVersion(),
 		chainutils.WithImage(chainNode.GetAppImage()),
 		chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
 		chainutils.WithBinary(chainNode.Spec.App.App),
 	)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// Create a private key for signing and an account for this node if it is a validator
 	// We also check for an existing chainID which means the genesis already exists (initialized

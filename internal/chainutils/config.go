@@ -3,6 +3,7 @@ package chainutils
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,6 +16,17 @@ import (
 )
 
 func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error) {
+	var (
+		homeVolumeMount = corev1.VolumeMount{
+			Name:      "home",
+			MountPath: defaultHome,
+		}
+		configVolumeMount = corev1.VolumeMount{
+			Name:      "config",
+			MountPath: filepath.Join(defaultHome, defaultConfig),
+		}
+	)
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-config-generator", a.owner.GetName()),
@@ -29,13 +41,13 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 			},
 			Volumes: []corev1.Volume{
 				{
-					Name: "config",
+					Name: configVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				{
-					Name: "home",
+					Name: homeVolumeMount.Name,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
@@ -47,31 +59,17 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args:            []string{"init", "test", "--home", "/home/app"},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "home",
-							MountPath: "/home/app",
-						},
-						{
-							Name:      "config",
-							MountPath: "/home/app/config",
-						},
-					},
+					Args:            a.sdk.InitArgs(none, none),
+					VolumeMounts:    []corev1.VolumeMount{homeVolumeMount, configVolumeMount},
 				},
 			},
 			Containers: []corev1.Container{
 				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"cat"},
-					Stdin:   true,
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "config",
-							MountPath: "/home/app/config",
-						},
-					},
+					Name:         "busybox",
+					Image:        "busybox",
+					Command:      []string{"cat"},
+					Stdin:        true,
+					VolumeMounts: []corev1.VolumeMount{configVolumeMount},
 				},
 			},
 			TerminationGracePeriodSeconds: pointer.Int64(0),
@@ -102,7 +100,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 	// Grab list of config files
 	out, _, err := ph.Exec(ctx,
 		"busybox",
-		[]string{"sh", "-c", "find /home/app/config -type f -name '*.toml' -exec basename {} \\;"},
+		[]string{"sh", "-c", fmt.Sprintf("find %s -type f -name '*.toml' -exec basename {} \\;", filepath.Join(defaultHome, defaultConfig))},
 	)
 	if err != nil {
 		return nil, err
@@ -112,7 +110,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 	// Get each config file content
 	configs := make(map[string]string)
 	for _, filename := range filenames {
-		configs[filename], _, err = ph.Exec(ctx, "busybox", []string{"cat", "/home/app/config/" + filename})
+		configs[filename], _, err = ph.Exec(ctx, "busybox", []string{"cat", filepath.Join(defaultHome, defaultConfig, filename)})
 		if err != nil {
 			return nil, err
 		}
