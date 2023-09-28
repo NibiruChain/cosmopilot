@@ -71,7 +71,7 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args:            a.sdk.InitArgs(none, none),
+					Args:            a.cmd.InitArgs(none, none),
 					VolumeMounts:    []corev1.VolumeMount{homeVolumeMount, dataVolumeMount},
 				},
 			},

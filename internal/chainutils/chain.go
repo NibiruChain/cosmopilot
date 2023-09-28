@@ -8,14 +8,14 @@ import (
 	"k8s.io/client-go/rest"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkargs"
+	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkcmd"
 )
 
 type App struct {
 	client     *kubernetes.Clientset
 	scheme     *runtime.Scheme
 	restConfig *rest.Config
-	sdk        sdkargs.SDK
+	cmd        sdkcmd.SDK
 
 	owner      metav1.Object
 	binary     string
@@ -25,7 +25,7 @@ type App struct {
 }
 
 func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config, owner metav1.Object, sdkVersion appsv1.SdkVersion, options ...Option) (*App, error) {
-	sdk, err := sdkargs.GetSDK(sdkVersion, sdkargs.WithGlobalArg(sdkargs.Home, defaultHome))
+	cmd, err := sdkcmd.GetSDK(sdkVersion, sdkcmd.WithGlobalArg(sdkcmd.Home, defaultHome))
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Conf
 		owner:      owner,
 		scheme:     scheme,
 		restConfig: cfg,
-		sdk:        sdk,
+		cmd:        cmd,
 		sdkVersion: sdkVersion,
 	}
 	applyOptions(app, options)

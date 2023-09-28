@@ -13,7 +13,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkargs"
+	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkcmd"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
@@ -113,7 +113,7 @@ func (a *App) NewGenesis(ctx context.Context,
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args:            a.sdk.InitArgs(nodeInfo.Moniker, params.ChainID),
+					Args:            a.cmd.InitArgs(nodeInfo.Moniker, params.ChainID),
 					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 				},
 				{
@@ -128,7 +128,7 @@ func (a *App) NewGenesis(ctx context.Context,
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args:            a.sdk.RecoverAccountArgs(defaultAccountName),
+					Args:            a.cmd.RecoverAccountArgs(defaultAccountName),
 					Stdin:           true,
 					StdinOnce:       true,
 					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
@@ -138,21 +138,21 @@ func (a *App) NewGenesis(ctx context.Context,
 					Image:           a.image,
 					ImagePullPolicy: a.pullPolicy,
 					Command:         []string{a.binary},
-					Args:            a.sdk.AddGenesisAccountArgs(account.Address, params.Assets),
+					Args:            a.cmd.AddGenesisAccountArgs(account.Address, params.Assets),
 					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 				},
 				{
 					Name:         "set-unbonding-time",
 					Image:        "apteno/alpine-jq",
 					Command:      []string{"sh", "-c"},
-					Args:         []string{a.sdk.GenesisSetUnbondingTimeCmd(params.UnbondingTime, filepath.Join(defaultHome, defaultGenesisFile))},
+					Args:         []string{a.cmd.GenesisSetUnbondingTimeCmd(params.UnbondingTime, filepath.Join(defaultHome, defaultGenesisFile))},
 					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 				},
 				{
 					Name:         "set-voting-period",
 					Image:        "apteno/alpine-jq",
 					Command:      []string{"sh", "-c"},
-					Args:         []string{a.sdk.GenesisSetVotingPeriodCmd(params.VotingPeriod, filepath.Join(defaultHome, defaultGenesisFile))},
+					Args:         []string{a.cmd.GenesisSetVotingPeriodCmd(params.VotingPeriod, filepath.Join(defaultHome, defaultGenesisFile))},
 					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 				},
 			},
@@ -176,7 +176,7 @@ func (a *App) NewGenesis(ctx context.Context,
 			Image:           a.image,
 			ImagePullPolicy: a.pullPolicy,
 			Command:         []string{a.binary},
-			Args:            a.sdk.AddGenesisAccountArgs(acc.Address, acc.Assets),
+			Args:            a.cmd.AddGenesisAccountArgs(acc.Address, acc.Assets),
 			VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 		})
 	}
@@ -198,10 +198,10 @@ func (a *App) NewGenesis(ctx context.Context,
 		Image:           a.image,
 		ImagePullPolicy: a.pullPolicy,
 		Command:         []string{a.binary},
-		Args: a.sdk.GenTxArgs(defaultAccountName, nodeInfo.Moniker, params.StakeAmount, params.ChainID,
-			sdkargs.WithOptionalArg(sdkargs.Details, nodeInfo.Details),
-			sdkargs.WithOptionalArg(sdkargs.Website, nodeInfo.Website),
-			sdkargs.WithOptionalArg(sdkargs.Identity, nodeInfo.Identity),
+		Args: a.cmd.GenTxArgs(defaultAccountName, nodeInfo.Moniker, params.StakeAmount, params.ChainID,
+			sdkcmd.WithOptionalArg(sdkcmd.Details, nodeInfo.Details),
+			sdkcmd.WithOptionalArg(sdkcmd.Website, nodeInfo.Website),
+			sdkcmd.WithOptionalArg(sdkcmd.Identity, nodeInfo.Identity),
 		),
 		VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 	})
@@ -212,7 +212,7 @@ func (a *App) NewGenesis(ctx context.Context,
 		Image:           a.image,
 		ImagePullPolicy: a.pullPolicy,
 		Command:         []string{a.binary},
-		Args:            a.sdk.CollectGenTxsArgs(),
+		Args:            a.cmd.CollectGenTxsArgs(),
 		VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
 	})
 

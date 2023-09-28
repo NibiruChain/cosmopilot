@@ -1,4 +1,4 @@
-package sdkargs
+package sdkcmd
 
 import (
 	"fmt"
