@@ -22,6 +22,7 @@ const (
 	PhaseChainNodeRestarting   ChainNodePhase = "Restarting"
 	PhaseChainNodeError        ChainNodePhase = "Error"
 	PhaseChainNodeSnapshotting ChainNodePhase = "Snapshotting"
+	PhaseChainNodeUpgrading    ChainNodePhase = "Upgrading"
 )
 
 //+kubebuilder:object:root=true

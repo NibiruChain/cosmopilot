@@ -74,7 +74,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 				logger.Info("app error: " + strings.Join(logLines, "/n"))
 			}
 		}
-		return r.recreatePod(ctx, chainNode, pod)
+		return r.recreatePod(ctx, chainNode, pod, false)
 	}
 
 	if err := r.updateLatestHeight(ctx, chainNode); err != nil {
@@ -112,7 +112,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 		}
 
 		pod.Spec.Containers[0].Image = upgrade.Image
-		if err = r.recreatePod(ctx, chainNode, pod); err != nil {
+		if err = r.recreatePod(ctx, chainNode, pod, true); err != nil {
 			r.recorder.Eventf(chainNode,
 				corev1.EventTypeWarning,
 				appsv1.ReasonUpgradeFailed,
@@ -138,13 +138,13 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 	// Re-create pod if spec changes
 	if podSpecChanged(currentPod, pod) {
 		logger.Info("pod spec changed")
-		return r.recreatePod(ctx, chainNode, pod)
+		return r.recreatePod(ctx, chainNode, pod, false)
 	}
 
 	// Re-create pod if config changed
 	if currentPod.Annotations[annotationConfigHash] != configHash {
 		logger.Info("config changed")
-		return r.recreatePod(ctx, chainNode, pod)
+		return r.recreatePod(ctx, chainNode, pod, false)
 	}
 
 	if volumeSnapshotInProgress(chainNode) {
@@ -530,12 +530,15 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
 }
 
-func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
+func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod, isUpgrade bool) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("recreating pod")
-
-	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeRestarting); err != nil {
+	phase := appsv1.PhaseChainNodeRestarting
+	if isUpgrade {
+		phase = appsv1.PhaseChainNodeUpgrading
+	}
+	if err := r.updatePhase(ctx, chainNode, phase); err != nil {
 		return err
 	}
 
