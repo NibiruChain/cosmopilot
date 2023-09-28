@@ -406,6 +406,20 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 							corev1.ResourceMemory: nodeUtilsMemoryResources,
 						},
 					},
+					ReadinessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/must_upgrade",
+								Port: intstr.IntOrString{
+									Type:   intstr.Int,
+									IntVal: nodeUtilsPort,
+								},
+								Scheme: "HTTP",
+							},
+						},
+						FailureThreshold: 1,
+						PeriodSeconds:    2,
+					},
 				},
 			},
 		},

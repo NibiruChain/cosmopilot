@@ -65,7 +65,7 @@ func (c *Client) RequiresUpgrade() (bool, error) {
 		return false, err
 	}
 
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusUpgradeRequired {
 		return false, fmt.Errorf(string(body))
 	}
 

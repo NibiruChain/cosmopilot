@@ -113,6 +113,10 @@ func (s *NodeUtils) latestHeight(w http.ResponseWriter, r *http.Request) {
 
 func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
 	log.WithField("must-upgrade", s.requiresUpgrade).Info("checked if should upgrade")
-	w.WriteHeader(http.StatusOK)
+	if s.requiresUpgrade {
+		w.WriteHeader(http.StatusUpgradeRequired)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
 	w.Write([]byte(strconv.FormatBool(s.requiresUpgrade)))
 }
