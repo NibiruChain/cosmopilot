@@ -36,10 +36,11 @@ const (
 	annotationPvcSnapshotReady      = "apps.k8s.nibiru.org/snapshot-ready"
 	annotationExportingTarball      = "apps.k8s.nibiru.org/exporting-tarball"
 
-	timeoutPodRunning    = 5 * time.Minute
-	timeoutPodDeleted    = 30 * time.Second
-	startupTimeout       = 1 * time.Hour
-	timeoutWaitServiceIP = 5 * time.Minute
+	timeoutPodRunning              = 5 * time.Minute
+	timeoutPodDeleted              = 30 * time.Second
+	startupTimeout                 = 1 * time.Hour
+	timeoutWaitServiceIP           = 5 * time.Minute
+	minimumTimeBeforeFirstSnapshot = 10 * time.Minute
 
 	prometheusScrapeInterval = "15s"
 

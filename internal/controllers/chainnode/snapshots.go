@@ -199,6 +199,9 @@ func shouldSnapshot(chainNode *appsv1.ChainNode) bool {
 		return false
 	}
 	lastSnapshotTime := getLastSnapshotTime(chainNode)
+	if lastSnapshotTime.IsZero() {
+		return chainNode.CreationTimestamp.UTC().Add(minimumTimeBeforeFirstSnapshot).Before(time.Now().UTC())
+	}
 	return lastSnapshotTime.Add(period).Before(time.Now().UTC())
 }
 
