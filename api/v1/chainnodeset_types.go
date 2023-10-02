@@ -155,6 +155,11 @@ type NodeSetValidatorConfig struct {
 	// When configured, .spec.validator.privateKeySecret will not be mounted on the validator node.
 	// +optional
 	TmKMS *TmKMS `json:"tmKMS,omitempty"`
+
+	// StateSyncRestore configures this node to find a state-sync snapshot on the network and restore from it.
+	// This is disabled by default.
+	// +optional
+	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group

@@ -63,9 +63,10 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 				Init:             nodeSet.Spec.Validator.Init,
 				TmKMS:            nodeSet.Spec.Validator.TmKMS,
 			},
-			Resources:    nodeSet.Spec.Validator.Resources,
-			Affinity:     nodeSet.Spec.Validator.Affinity,
-			NodeSelector: nodeSet.Spec.Validator.NodeSelector,
+			Resources:        nodeSet.Spec.Validator.Resources,
+			Affinity:         nodeSet.Spec.Validator.Affinity,
+			NodeSelector:     nodeSet.Spec.Validator.NodeSelector,
+			StateSyncRestore: nodeSet.Spec.Validator.StateSyncRestore,
 		},
 	}
 	setChainNodeServiceMonitor(nodeSet, validator)
