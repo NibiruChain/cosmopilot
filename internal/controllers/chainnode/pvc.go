@@ -122,16 +122,20 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 		return nil, err
 	}
 
-	if pvc.Spec.Resources.Requests.Storage().Equal(storageSize) {
+	switch pvc.Spec.Resources.Requests.Storage().Cmp(storageSize) {
+	case -1:
+		pvc.Spec.Resources.Requests = corev1.ResourceList{
+			corev1.ResourceStorage: storageSize,
+		}
+		logger.Info("updating pvc size", "size", storageSize)
+		return pvc, r.Update(ctx, pvc)
+	case 1:
+		fallthrough
+	case 0:
+		fallthrough
+	default:
 		return pvc, nil
 	}
-
-	pvc.Spec.Resources.Requests = corev1.ResourceList{
-		corev1.ResourceStorage: storageSize,
-	}
-
-	logger.Info("updating pvc size", "size", storageSize)
-	return pvc, r.Update(ctx, pvc)
 }
 
 func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.ChainNode) (resource.Quantity, error) {
