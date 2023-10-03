@@ -75,6 +75,8 @@ ChainNodeStatus defines the observed state of ChainNode
 | latestHeight | LatestHeight is the last height read on the node by the operator. | int64 | false |
 | seedMode | SeedMode indicates if this node is running with seed mode enabled. | bool | false |
 | upgrades | Upgrades contains all scheduled/completed upgrades performed by the operator on this ChainNode. | []Upgrade | false |
+| pubKey | PubKey of the validator. | string | false |
+| validatorStatus | ValidatorStatus indicates the current status of validator if this node is one. | ValidatorStatus | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -88,5 +90,6 @@ ValidatorConfig turns this node into a validator and specifies how it will do it
 | info | Info contains information details about this validator. | *ValidatorInfo | false |
 | init | Init specifies configs and initialization commands for creating a new chain and its genesis. | *GenesisInitConfig | false |
 | tmKMS | TmKMS configuration for signing commits for this validator. When configured, .spec.validator.privateKeySecret will not be mounted on the validator node. | *TmKMS | false |
+| createValidator | CreateValidator indicates that operator should run create-validator tx to make this node a validator. | *CreateValidatorConfig | false |
 
 [Back to Custom Resources](#custom-resources)

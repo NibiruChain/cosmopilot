@@ -73,3 +73,17 @@ func AccountFromMnemonic(mnemonic, accPrefix, valPrefix, hdPath string) (*Accoun
 		ValidatorAddress: valBech32,
 	}, nil
 }
+
+func AccountAddressFromValidatorAddress(valAddr, valPrefix, accPrefix string) (string, error) {
+	valBytes, err := sdk.GetFromBech32(valAddr, valPrefix)
+	if err != nil {
+		return "", err
+	}
+
+	accAddr, err := sdk.Bech32ifyAddressBytes(accPrefix, valBytes)
+	if err != nil {
+		return "", err
+	}
+
+	return accAddr, nil
+}

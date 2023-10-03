@@ -17,33 +17,6 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
-type GenesisParams struct {
-	ChainID       string
-	Assets        []string
-	StakeAmount   string
-	Accounts      []AccountAssets
-	UnbondingTime string
-	VotingPeriod  string
-}
-
-type NodeInfo struct {
-	Moniker  string
-	Details  *string
-	Website  *string
-	Identity *string
-}
-
-type AccountAssets struct {
-	Address string
-	Assets  []string
-}
-
-type InitCommand struct {
-	Image   string
-	Command []string
-	Args    []string
-}
-
 func ExtractChainIdFromGenesis(genesis string) (string, error) {
 	var genesisJson map[string]interface{}
 	if err := json.Unmarshal([]byte(genesis), &genesisJson); err != nil {
@@ -59,7 +32,7 @@ func (a *App) NewGenesis(ctx context.Context,
 	privkeySecret string,
 	account *Account,
 	nodeInfo *NodeInfo,
-	params *GenesisParams,
+	params *Params,
 	initCommands ...*InitCommand,
 ) (string, error) {
 
@@ -199,6 +172,10 @@ func (a *App) NewGenesis(ctx context.Context,
 		ImagePullPolicy: a.pullPolicy,
 		Command:         []string{a.binary},
 		Args: a.cmd.GenTxArgs(defaultAccountName, nodeInfo.Moniker, params.StakeAmount, params.ChainID,
+			sdkcmd.WithArg(sdkcmd.CommissionMaxChangeRate, params.CommissionMaxChangeRate),
+			sdkcmd.WithArg(sdkcmd.CommissionMaxRate, params.CommissionMaxRate),
+			sdkcmd.WithArg(sdkcmd.CommissionRate, params.CommissionRate),
+			sdkcmd.WithArg(sdkcmd.MinSelfDelegation, params.MinSelfDelegation),
 			sdkcmd.WithOptionalArg(sdkcmd.Details, nodeInfo.Details),
 			sdkcmd.WithOptionalArg(sdkcmd.Website, nodeInfo.Website),
 			sdkcmd.WithOptionalArg(sdkcmd.Identity, nodeInfo.Identity),

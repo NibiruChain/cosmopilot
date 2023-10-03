@@ -33,3 +33,21 @@ func TestAccountFromMnemonic(t *testing.T) {
 		assert.Equal(t, test.expected.Address, result.Address)
 	}
 }
+
+func TestAccountAddressFromValidatorAddress(t *testing.T) {
+	tests := []struct {
+		provided string
+		expected string
+	}{
+		{
+			provided: "nibivaloper1efeydq3s4wgrv5yslxcevsstwtrkmkel5zkqgx",
+			expected: "nibi1efeydq3s4wgrv5yslxcevsstwtrkmkelaecmum",
+		},
+	}
+
+	for _, test := range tests {
+		result, err := AccountAddressFromValidatorAddress(test.provided, appsv1.DefaultValPrefix, appsv1.DefaultAccountPrefix)
+		assert.NoError(t, err)
+		assert.Equal(t, test.expected, result)
+	}
+}

@@ -78,6 +78,8 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet
 | appVersion | AppVersion is the application version currently deployed | string | false |
 | nodes | Nodes indicates which nodes are available on this nodeset. Excludes validator node. | [][ChainNodeSetNodeStatus](#chainnodesetnodestatus) | false |
 | validatorAddress | ValidatorAddress is the valoper address of the validator in this ChainNodeSet if one is available. Omitted when no validator is present in the ChainNodeSet. | string | false |
+| validatorStatus | ValidatorStatus indicates the current status of validator if this node is one. | ValidatorStatus | false |
+| pubKey | PubKey of the validator. | string | false |
 
 [Back to Custom Resources](#custom-resources)
 

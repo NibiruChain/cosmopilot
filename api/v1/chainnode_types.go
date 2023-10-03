@@ -41,6 +41,7 @@ type ChainNodeList struct {
 //+kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.appVersion`
 //+kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
 //+kubebuilder:printcolumn:name="Validator",type=boolean,JSONPath=`.status.validator`
+//+kubebuilder:printcolumn:name="BondStatus",type=string,JSONPath=`.status.validatorStatus`
 //+kubebuilder:printcolumn:name="Jailed",type=boolean,JSONPath=`.status.jailed`
 //+kubebuilder:printcolumn:name="DataUsage",type=string,JSONPath=`.status.dataUsage`
 //+kubebuilder:printcolumn:name="LatestHeight",type=integer,JSONPath=`.status.latestHeight`
@@ -161,7 +162,15 @@ type ChainNodeStatus struct {
 	SeedMode bool `json:"seedMode,omitempty"`
 
 	// Upgrades contains all scheduled/completed upgrades performed by the operator on this ChainNode.
+	// +optional
 	Upgrades []Upgrade `json:"upgrades,omitempty"`
+
+	// PubKey of the validator.
+	// +optional
+	PubKey string `json:"pubKey,omitempty"`
+
+	// ValidatorStatus indicates the current status of validator if this node is one.
+	ValidatorStatus ValidatorStatus `json:"validatorStatus,omitempty"`
 }
 
 // ValidatorConfig turns this node into a validator and specifies how it will do it.
@@ -183,4 +192,8 @@ type ValidatorConfig struct {
 	// When configured, .spec.validator.privateKeySecret will not be mounted on the validator node.
 	// +optional
 	TmKMS *TmKMS `json:"tmKMS,omitempty"`
+
+	// CreateValidator indicates that operator should run create-validator tx to make this node a validator.
+	// +optional
+	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
 }

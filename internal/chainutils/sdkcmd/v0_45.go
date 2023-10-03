@@ -50,6 +50,7 @@ func (sdk *v0_45) GenTxArgs(account, moniker, stakeAmount, chainID string, optio
 		"gentx", account, stakeAmount,
 		"--moniker", moniker,
 		"--chain-id", chainID,
+		"--keyring-backend", "test",
 		"--yes",
 	}
 	args = applyArgOptions(args, options)
@@ -61,6 +62,22 @@ func (sdk *v0_45) CollectGenTxsArgs() []string {
 		[]string{"collect-gentxs"},
 		sdk.options.GlobalArgs...,
 	)
+}
+
+func (sdk *v0_45) CreateValidatorArgs(account, pubKey, moniker, stakeAmount, chainID, gasPrices string, options ...*ArgOption) []string {
+	args := []string{
+		"tx", "staking", "create-validator",
+		"--amount", stakeAmount,
+		"--moniker", moniker,
+		"--chain-id", chainID,
+		"--pubkey", pubKey,
+		"--gas-prices", gasPrices,
+		"--from", account,
+		"--keyring-backend", "test",
+		"--yes",
+	}
+	args = applyArgOptions(args, options)
+	return append(args, sdk.options.GlobalArgs...)
 }
 
 func (sdk *v0_45) GenesisSetUnbondingTimeCmd(unbondingTime, genesisFile string) string {

@@ -184,13 +184,17 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 	logger := log.FromContext(ctx)
 
 	logger.Info("initializing new genesis")
-	genesisParams := &chainutils.GenesisParams{
-		ChainID:       chainNode.Spec.Validator.Init.ChainID,
-		Assets:        chainNode.Spec.Validator.Init.Assets,
-		StakeAmount:   chainNode.Spec.Validator.Init.StakeAmount,
-		Accounts:      make([]chainutils.AccountAssets, len(chainNode.Spec.Validator.Init.Accounts)),
-		UnbondingTime: chainNode.Spec.Validator.GetInitUnbondingTime(),
-		VotingPeriod:  chainNode.Spec.Validator.GetInitVotingPeriod(),
+	genesisParams := &chainutils.Params{
+		ChainID:                 chainNode.Spec.Validator.Init.ChainID,
+		Assets:                  chainNode.Spec.Validator.Init.Assets,
+		StakeAmount:             chainNode.Spec.Validator.Init.StakeAmount,
+		Accounts:                make([]chainutils.AccountAssets, len(chainNode.Spec.Validator.Init.Accounts)),
+		CommissionMaxChangeRate: chainNode.Spec.Validator.GetCommissionMaxChangeRate(),
+		CommissionMaxRate:       chainNode.Spec.Validator.GetCommissionMaxRate(),
+		CommissionRate:          chainNode.Spec.Validator.GetCommissionRate(),
+		MinSelfDelegation:       chainNode.Spec.Validator.GetMinSelfDelegation(),
+		UnbondingTime:           chainNode.Spec.Validator.GetInitUnbondingTime(),
+		VotingPeriod:            chainNode.Spec.Validator.GetInitVotingPeriod(),
 	}
 
 	for i, a := range chainNode.Spec.Validator.Init.Accounts {
@@ -226,14 +230,8 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 
 	// Gather validator info
 	nodeInfo := &chainutils.NodeInfo{}
-	if chainNode.Spec.Validator.Info == nil {
-		nodeInfo.Moniker = chainNode.GetName()
-	} else {
-		if chainNode.Spec.Validator.Info.Moniker == nil {
-			nodeInfo.Moniker = chainNode.GetName()
-		} else {
-			nodeInfo.Moniker = *chainNode.Spec.Validator.Info.Moniker
-		}
+	nodeInfo.Moniker = chainNode.GetMoniker()
+	if chainNode.Spec.Validator.Info != nil {
 		nodeInfo.Details = chainNode.Spec.Validator.Info.Details
 		nodeInfo.Website = chainNode.Spec.Validator.Info.Website
 		nodeInfo.Identity = chainNode.Spec.Validator.Info.Identity

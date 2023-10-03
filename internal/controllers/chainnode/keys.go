@@ -158,9 +158,15 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 		}
 	}
 
+	pubKey, err := cometbft.GetPubKey(secret.Data[privKeyFilename])
+	if err != nil {
+		return err
+	}
+
 	// update validator in status if required
-	if !chainNode.Status.Validator {
+	if !chainNode.Status.Validator || chainNode.Status.PubKey != pubKey {
 		chainNode.Status.Validator = true
+		chainNode.Status.PubKey = pubKey
 		if err := r.Status().Update(ctx, chainNode); err != nil {
 			return err
 		}

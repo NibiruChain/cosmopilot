@@ -9,44 +9,46 @@ import (
 
 // Reasons for events
 const (
-	ReasonPvcResized          = "PvcResized"
-	ReasonPvcMaxReached       = "PvcMaxSizeReached"
-	ReasonDataInitialized     = "DataInitialized"
-	ReasonNodeKeyCreated      = "NodeKeyCreated"
-	ReasonNodeKeyImported     = "NodeKeyImported"
-	ReasonPrivateKeyCreated   = "PrivateKeyCreated"
-	ReasonPrivateKeyImported  = "PrivateKeyImported"
-	ReasonAccountCreated      = "AccountCreated"
-	ReasonAccountImported     = "AccountImported"
-	ReasonGenesisInitialized  = "GenesisCreated"
-	ReasonGenesisImported     = "GenesisImported"
-	ReasonConfigsCreated      = "ConfigsCreated"
-	ReasonConfigsUpdated      = "ConfigsUpdated"
-	ReasonNodeStarted         = "NodeStarted"
-	ReasonNodeRestarted       = "NodeRestarted"
-	ReasonNodeError           = "NodeError"
-	ReasonNodeSyncing         = "NodeSyncing"
-	ReasonNodeRunning         = "NodeRunning"
-	ReasonValidatorJailed     = "ValidatorJailed"
-	ReasonValidatorUnjailed   = "ValidatorUnjailed"
-	ReasonNodeCreated         = "NodeCreated"
-	ReasonNodeUpdated         = "NodeUpdated"
-	ReasonNodeDeleted         = "NodeDeleted"
-	ReasonInitGenesisFailure  = "InitGenesisFail"
-	ReasonUploadFailure       = "UploadFailed"
-	ReasonGenesisWrongHash    = "GenesisWrongHash"
-	ReasonNoTrustHeight       = "NoTrustHeight"
-	ReasonNoPeers             = "NoPeers"
-	ReasonStartedSnapshot     = "SnapshotStarted"
-	ReasonFinishedSnapshot    = "SnapshotFinished"
-	ReasonDeletedSnapshot     = "SnapshotDeleted"
-	ReasonTarballExportStart  = "ExportingTarball"
-	ReasonTarballExportFinish = "TarballFinished"
-	ReasonTarballDeleted      = "TarballDeleted"
-	ReasonTarballExportError  = "TarballExportError"
-	ReasonUpgradeCompleted    = "UpgradeCompleted"
-	ReasonUpgradeFailed       = "UpgradeFailed"
-	ReasonUpgradeMissingData  = "UpgradeMissingData"
+	ReasonPvcResized             = "PvcResized"
+	ReasonPvcMaxReached          = "PvcMaxSizeReached"
+	ReasonDataInitialized        = "DataInitialized"
+	ReasonNodeKeyCreated         = "NodeKeyCreated"
+	ReasonNodeKeyImported        = "NodeKeyImported"
+	ReasonPrivateKeyCreated      = "PrivateKeyCreated"
+	ReasonPrivateKeyImported     = "PrivateKeyImported"
+	ReasonAccountCreated         = "AccountCreated"
+	ReasonAccountImported        = "AccountImported"
+	ReasonGenesisInitialized     = "GenesisCreated"
+	ReasonGenesisImported        = "GenesisImported"
+	ReasonConfigsCreated         = "ConfigsCreated"
+	ReasonConfigsUpdated         = "ConfigsUpdated"
+	ReasonNodeStarted            = "NodeStarted"
+	ReasonNodeRestarted          = "NodeRestarted"
+	ReasonNodeError              = "NodeError"
+	ReasonNodeSyncing            = "NodeSyncing"
+	ReasonNodeRunning            = "NodeRunning"
+	ReasonValidatorJailed        = "ValidatorJailed"
+	ReasonValidatorUnjailed      = "ValidatorUnjailed"
+	ReasonNodeCreated            = "NodeCreated"
+	ReasonNodeUpdated            = "NodeUpdated"
+	ReasonNodeDeleted            = "NodeDeleted"
+	ReasonInitGenesisFailure     = "InitGenesisFail"
+	ReasonUploadFailure          = "UploadFailed"
+	ReasonGenesisWrongHash       = "GenesisWrongHash"
+	ReasonNoTrustHeight          = "NoTrustHeight"
+	ReasonNoPeers                = "NoPeers"
+	ReasonStartedSnapshot        = "SnapshotStarted"
+	ReasonFinishedSnapshot       = "SnapshotFinished"
+	ReasonDeletedSnapshot        = "SnapshotDeleted"
+	ReasonTarballExportStart     = "ExportingTarball"
+	ReasonTarballExportFinish    = "TarballFinished"
+	ReasonTarballDeleted         = "TarballDeleted"
+	ReasonTarballExportError     = "TarballExportError"
+	ReasonUpgradeCompleted       = "UpgradeCompleted"
+	ReasonUpgradeFailed          = "UpgradeFailed"
+	ReasonUpgradeMissingData     = "UpgradeMissingData"
+	ReasonCreateValidatorFailure = "FailedCreateValidator"
+	ReasonCreateValidatorSuccess = "CreateValidatorSuccess"
 )
 
 // SdkVersion specifies the cosmos-sdk version.
@@ -56,6 +58,15 @@ type SdkVersion string
 const (
 	V0_47 SdkVersion = "v0.47"
 	V0_45 SdkVersion = "v0.45"
+)
+
+type ValidatorStatus string
+
+const (
+	ValidatorStatusBonded    = "bonded"
+	ValidatorStatusUnbonded  = "unbonded"
+	ValidatorStatusUnbonding = "unbonding"
+	ValidatorStatusUnknown   = "unknown"
 )
 
 // AppSpec specifies the source image and binary name of the app to run
@@ -233,6 +244,26 @@ type GenesisInitConfig struct {
 	// ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`.
 	// +optional
 	ValPrefix *string `json:"valPrefix,omitempty"`
+
+	// CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`.
+	// +optional
+	// +default="0.1"
+	CommissionMaxChangeRate *string `json:"commissionMaxChangeRate,omitempty"`
+
+	// CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`.
+	// +optional
+	// +default="0.1"
+	CommissionMaxRate *string `json:"commissionMaxRate,omitempty"`
+
+	// CommissionRate is the initial commission rate percentage. Defaults to `0.1`.
+	// +optional
+	// +default="0.1"
+	CommissionRate *string `json:"commissionRate,omitempty"`
+
+	// MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`.
+	// +optional
+	// +default="0.1"
+	MinSelfDelegation *string `json:"minSelfDelegation,omitempty"`
 
 	// Assets is the list of tokens and their amounts to be assigned to this validators account.
 	Assets []string `json:"assets"`
@@ -558,4 +589,48 @@ type Upgrade struct {
 
 	// Source indicates where the operator got this upgrade from.
 	Source UpgradeSource `json:"source"`
+}
+
+type CreateValidatorConfig struct {
+	// AccountMnemonicSecret is the name of the secret containing the mnemonic of the account to be used by
+	// this validator. Defaults to `<chainnode>-account`. Will be created if does not exist.
+	AccountMnemonicSecret *string `json:"accountMnemonicSecret,omitempty"`
+
+	// AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`.
+	// +optional
+	AccountHDPath *string `json:"accountHDPath,omitempty"`
+
+	// AccountPrefix is the prefix for accounts. Defaults to `nibi`.
+	// +optional
+	AccountPrefix *string `json:"accountPrefix,omitempty"`
+
+	// ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`.
+	// +optional
+	ValPrefix *string `json:"valPrefix,omitempty"`
+
+	// StakeAmount represents the amount to be staked by this validator.
+	StakeAmount string `json:"stakeAmount"`
+
+	// GasPrices in decimal format to determine the transaction fee.
+	GasPrices string `json:"gasPrices"`
+
+	// CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`.
+	// +optional
+	// +default="0.1"
+	CommissionMaxChangeRate *string `json:"commissionMaxChangeRate,omitempty"`
+
+	// CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`.
+	// +optional
+	// +default="0.1"
+	CommissionMaxRate *string `json:"commissionMaxRate,omitempty"`
+
+	// CommissionRate is the initial commission rate percentage. Defaults to `0.1`.
+	// +optional
+	// +default="0.1"
+	CommissionRate *string `json:"commissionRate,omitempty"`
+
+	// MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`.
+	// +optional
+	// +default="0.1"
+	MinSelfDelegation *string `json:"minSelfDelegation,omitempty"`
 }

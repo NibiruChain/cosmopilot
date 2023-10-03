@@ -20,6 +20,7 @@ import (
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers"
+	"github.com/NibiruChain/nibiru-operator/pkg/nodeutils"
 )
 
 // Reconciler reconciles a ChainNode object
@@ -112,16 +113,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	// Create a private key for signing and an account for this node if it is a validator
-	// We also check for an existing chainID which means the genesis already exists (initialized
-	// by us or not) and so the account and private key can't be regenerated anyway.
-	if chainNode.Status.ChainID == "" && chainNode.IsValidator() {
-		if chainNode.ShouldCreatePrivKey() {
-			if err := r.ensureSigningKey(ctx, chainNode); err != nil {
-				return ctrl.Result{}, err
-			}
+	if chainNode.RequiresPrivKey() {
+		if err := r.ensureSigningKey(ctx, chainNode); err != nil {
+			return ctrl.Result{}, err
 		}
+	}
 
+	if chainNode.RequiresAccount() {
 		if err := r.ensureAccount(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -188,6 +186,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
+	if chainNode.ShouldCreateValidator() && chainNode.Status.ValidatorStatus == "" {
+		if err := r.createValidator(ctx, app, chainNode); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Update jailed status
 	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && chainNode.IsValidator() {
 		if err := r.updateJailedStatus(ctx, chainNode); err != nil {
@@ -226,4 +230,13 @@ func (r *Reconciler) getQueryClient(chainNode *appsv1.ChainNode) (*chainutils.Qu
 	}
 	r.queryClients[address] = c
 	return r.queryClients[address], nil
+}
+
+func (r *Reconciler) updateLatestHeight(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	height, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetLatestHeight()
+	if err != nil {
+		return err
+	}
+	chainNode.Status.LatestHeight = height
+	return r.Status().Update(ctx, chainNode)
 }

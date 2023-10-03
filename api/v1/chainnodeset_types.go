@@ -89,6 +89,13 @@ type ChainNodeSetStatus struct {
 	// Omitted when no validator is present in the ChainNodeSet.
 	// +optional
 	ValidatorAddress string `json:"validatorAddress,omitempty"`
+
+	// ValidatorStatus indicates the current status of validator if this node is one.
+	ValidatorStatus ValidatorStatus `json:"validatorStatus,omitempty"`
+
+	// PubKey of the validator.
+	// +optional
+	PubKey string `json:"pubKey,omitempty"`
 }
 
 type ChainNodeSetNodeStatus struct {
@@ -160,6 +167,10 @@ type NodeSetValidatorConfig struct {
 	// This is disabled by default.
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
+
+	// CreateValidator indicates that operator should run create-validator tx to make this node a validator.
+	// +optional
+	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group

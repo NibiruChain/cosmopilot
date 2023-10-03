@@ -12,21 +12,25 @@ import (
 )
 
 const (
-	DefaultReconcilePeriod     = 15 * time.Second
-	DefaultImageVersion        = "latest"
-	DefaultBlockThreshold      = "15s"
-	DefaultP2pExpose           = false
-	DefaultP2pServiceType      = corev1.ServiceTypeNodePort
-	DefaultUnbondingTime       = "1814400s"
-	DefaultVotingPeriod        = "120h"
-	DefaultHDPath              = "m/44'/118'/0'/0/0"
-	DefaultAccountPrefix       = "nibi"
-	DefaultValPrefix           = "nibivaloper"
-	DefaultP2pPort             = 26656
-	DefaultStateSyncKeepRecent = 2
-	DefaultSdkVersion          = V0_47
-	DefaultDataSourceKind      = "VolumeSnapshot"
-	DefaultDataSourceApiGroup  = "snapshot.storage.k8s.io"
+	DefaultReconcilePeriod         = 15 * time.Second
+	DefaultImageVersion            = "latest"
+	DefaultBlockThreshold          = "15s"
+	DefaultP2pExpose               = false
+	DefaultP2pServiceType          = corev1.ServiceTypeNodePort
+	DefaultUnbondingTime           = "1814400s"
+	DefaultVotingPeriod            = "120h"
+	DefaultHDPath                  = "m/44'/118'/0'/0/0"
+	DefaultAccountPrefix           = "nibi"
+	DefaultValPrefix               = "nibivaloper"
+	DefaultP2pPort                 = 26656
+	DefaultStateSyncKeepRecent     = 2
+	DefaultSdkVersion              = V0_47
+	DefaultDataSourceKind          = "VolumeSnapshot"
+	DefaultDataSourceApiGroup      = "snapshot.storage.k8s.io"
+	DefaultCommissionMaxChangeRate = "0.1"
+	DefaultCommissionMaxRate       = "0.1"
+	DefaultCommissionRate          = "0.1"
+	DefaultMinimumSelfDelegation   = "1"
 )
 
 var (

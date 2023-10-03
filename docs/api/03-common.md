@@ -7,6 +7,7 @@
 * [AccountAssets](#accountassets)
 * [AppSpec](#appspec)
 * [Config](#config)
+* [CreateValidatorConfig](#createvalidatorconfig)
 * [ExportTarballConfig](#exporttarballconfig)
 * [ExposeConfig](#exposeconfig)
 * [FromNodeRPCConfig](#fromnoderpcconfig)
@@ -72,6 +73,25 @@ Config allows setting specific configurations for a chainnode such as overrides 
 | env | Env refers to the list of environment variables to set in the app container. | []corev1.EnvVar | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 | serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### CreateValidatorConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| accountMnemonicSecret | AccountMnemonicSecret is the name of the secret containing the mnemonic of the account to be used by this validator. Defaults to `<chainnode>-account`. Will be created if does not exist. | *string | false |
+| accountHDPath | AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
+| accountPrefix | AccountPrefix is the prefix for accounts. Defaults to `nibi`. | *string | false |
+| valPrefix | ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`. | *string | false |
+| stakeAmount | StakeAmount represents the amount to be staked by this validator. | string | true |
+| gasPrices | GasPrices in decimal format to determine the transaction fee. | string | true |
+| commissionMaxChangeRate | CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
+| commissionMaxRate | CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`. | *string | false |
+| commissionRate | CommissionRate is the initial commission rate percentage. Defaults to `0.1`. | *string | false |
+| minSelfDelegation | MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -146,6 +166,10 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | accountHDPath | AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
 | accountPrefix | AccountPrefix is the prefix for accounts. Defaults to `nibi`. | *string | false |
 | valPrefix | ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`. | *string | false |
+| commissionMaxChangeRate | CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
+| commissionMaxRate | CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`. | *string | false |
+| commissionRate | CommissionRate is the initial commission rate percentage. Defaults to `0.1`. | *string | false |
+| minSelfDelegation | MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`. | *string | false |
 | assets | Assets is the list of tokens and their amounts to be assigned to this validators account. | []string | true |
 | stakeAmount | StakeAmount represents the amount to be staked by this validator. | string | true |
 | accounts | Accounts specify additional accounts and respective assets to be added to this chain. | [][AccountAssets](#accountassets) | false |

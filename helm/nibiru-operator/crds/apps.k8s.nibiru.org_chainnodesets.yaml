@@ -3517,6 +3517,22 @@ spec:
                       chainID:
                         description: ChainID of the chain to initialize.
                         type: string
+                      commissionMaxChangeRate:
+                        description: CommissionMaxChangeRate is the maximum commission
+                          change rate percentage (per day). Defaults to `0.1`.
+                        type: string
+                      commissionMaxRate:
+                        description: CommissionMaxRate is the maximum commission rate
+                          percentage. Defaults to `0.1`.
+                        type: string
+                      commissionRate:
+                        description: CommissionRate is the initial commission rate
+                          percentage. Defaults to `0.1`.
+                        type: string
+                      minSelfDelegation:
+                        description: MinSelfDelegation is the minimum self delegation
+                          required on the validator. Defaults to `1`.
+                        type: string
                       stakeAmount:
                         description: StakeAmount represents the amount to be staked
                           by this validator.
@@ -3912,10 +3928,17 @@ spec:
               phase:
                 description: Phase indicates the current phase for this ChainNodeSet.
                 type: string
+              pubKey:
+                description: PubKey of the validator.
+                type: string
               validatorAddress:
                 description: ValidatorAddress is the valoper address of the validator
                   in this ChainNodeSet if one is available. Omitted when no validator
                   is present in the ChainNodeSet.
+                type: string
+              validatorStatus:
+                description: ValidatorStatus indicates the current status of validator
+                  if this node is one.
                 type: string
             type: object
         type: object

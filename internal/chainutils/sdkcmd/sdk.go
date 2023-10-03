@@ -30,6 +30,7 @@ type SDK interface {
 	AddGenesisAccountArgs(account string, assets []string) []string
 	GenTxArgs(account, moniker, stakeAmount, chainID string, options ...*ArgOption) []string
 	CollectGenTxsArgs() []string
+	CreateValidatorArgs(account, pubKey, moniker, stakeAmount, chainID, gasPrices string, options ...*ArgOption) []string
 
 	GenesisSetUnbondingTimeCmd(unbondingTime, genesisFile string) string
 	GenesisSetVotingPeriodCmd(votingPeriod, genesisFile string) string

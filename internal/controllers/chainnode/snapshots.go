@@ -287,8 +287,8 @@ func getSnapshotName(chainNode *appsv1.ChainNode) string {
 
 	// When taking snapshots from a chainnode that belongs to chainnodeset group, we will only snapshot
 	// from one of the group nodes, so we give it the group name instead.
-	if group, ok := chainNode.Labels[chainnodeset.LabelChainNodeSetGroup]; ok {
-		if nodeset, ok := chainNode.Labels[chainnodeset.LabelChainNodeSet]; ok {
+	if group, ok := chainNode.Labels[chainnodeset.LabelChainNodeSetGroup]; ok && group != "" {
+		if nodeset, ok := chainNode.Labels[chainnodeset.LabelChainNodeSet]; ok && nodeset != "" {
 			name = fmt.Sprintf("%s-%s", nodeset, group)
 		}
 

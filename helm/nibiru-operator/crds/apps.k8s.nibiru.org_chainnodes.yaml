@@ -31,6 +31,9 @@ spec:
     - jsonPath: .status.validator
       name: Validator
       type: boolean
+    - jsonPath: .status.validatorStatus
+      name: BondStatus
+      type: string
     - jsonPath: .status.jailed
       name: Jailed
       type: boolean
@@ -1815,6 +1818,56 @@ spec:
                 description: Validator configures this node as a validator and configures
                   it.
                 properties:
+                  createValidator:
+                    description: CreateValidator indicates that operator should run
+                      create-validator tx to make this node a validator.
+                    properties:
+                      accountHDPath:
+                        description: AccountHDPath is the HD path for the validator
+                          account. Defaults to `m/44'/118'/0'/0/0`.
+                        type: string
+                      accountMnemonicSecret:
+                        description: AccountMnemonicSecret is the name of the secret
+                          containing the mnemonic of the account to be used by this
+                          validator. Defaults to `<chainnode>-account`. Will be created
+                          if does not exist.
+                        type: string
+                      accountPrefix:
+                        description: AccountPrefix is the prefix for accounts. Defaults
+                          to `nibi`.
+                        type: string
+                      commissionMaxChangeRate:
+                        description: CommissionMaxChangeRate is the maximum commission
+                          change rate percentage (per day). Defaults to `0.1`.
+                        type: string
+                      commissionMaxRate:
+                        description: CommissionMaxRate is the maximum commission rate
+                          percentage. Defaults to `0.1`.
+                        type: string
+                      commissionRate:
+                        description: CommissionRate is the initial commission rate
+                          percentage. Defaults to `0.1`.
+                        type: string
+                      gasPrices:
+                        description: GasPrices in decimal format to determine the
+                          transaction fee.
+                        type: string
+                      minSelfDelegation:
+                        description: MinSelfDelegation is the minimum self delegation
+                          required on the validator. Defaults to `1`.
+                        type: string
+                      stakeAmount:
+                        description: StakeAmount represents the amount to be staked
+                          by this validator.
+                        type: string
+                      valPrefix:
+                        description: ValPrefix is the prefix for validator accounts.
+                          Defaults to `nibivaloper`.
+                        type: string
+                    required:
+                    - gasPrices
+                    - stakeAmount
+                    type: object
                   info:
                     description: Info contains information details about this validator.
                     properties:
@@ -1900,6 +1953,22 @@ spec:
                         type: array
                       chainID:
                         description: ChainID of the chain to initialize.
+                        type: string
+                      commissionMaxChangeRate:
+                        description: CommissionMaxChangeRate is the maximum commission
+                          change rate percentage (per day). Defaults to `0.1`.
+                        type: string
+                      commissionMaxRate:
+                        description: CommissionMaxRate is the maximum commission rate
+                          percentage. Defaults to `0.1`.
+                        type: string
+                      commissionRate:
+                        description: CommissionRate is the initial commission rate
+                          percentage. Defaults to `0.1`.
+                        type: string
+                      minSelfDelegation:
+                        description: MinSelfDelegation is the minimum self delegation
+                          required on the validator. Defaults to `1`.
                         type: string
                       stakeAmount:
                         description: StakeAmount represents the amount to be staked
@@ -2063,6 +2132,9 @@ spec:
               phase:
                 description: Phase indicates the current phase for this ChainNode.
                 type: string
+              pubKey:
+                description: PubKey of the validator.
+                type: string
               publicAddress:
                 description: PublicAddress for p2p when enabled.
                 type: string
@@ -2105,6 +2177,10 @@ spec:
               validatorAddress:
                 description: ValidatorAddress is the valoper address of this validator.
                   Omitted when not a validator
+                type: string
+              validatorStatus:
+                description: ValidatorStatus indicates the current status of validator
+                  if this node is one.
                 type: string
             required:
             - jailed

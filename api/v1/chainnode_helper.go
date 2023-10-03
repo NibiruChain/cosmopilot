@@ -124,23 +124,46 @@ func (chainNode *ChainNode) ShouldUploadVaultKey() bool {
 	return false
 }
 
-func (chainNode *ChainNode) ShouldCreatePrivKey() bool {
+func (chainNode *ChainNode) ShouldCreateValidator() bool {
+	return chainNode.Spec.Validator != nil && chainNode.Spec.Validator.CreateValidator != nil
+}
+
+func (chainNode *ChainNode) RequiresPrivKey() bool {
 	if !chainNode.IsValidator() {
 		return false
 	}
 
-	if chainNode.ShouldInitGenesis() {
+	if chainNode.Status.PubKey == "" && chainNode.ShouldInitGenesis() {
+		// For key upload when we are initializing a chain
 		if chainNode.Spec.Validator.TmKMS != nil && chainNode.Spec.Validator.TmKMS.Provider.Vault != nil {
 			chainNode.Spec.Validator.TmKMS.Provider.Vault.UploadGenerated = true
 		}
 		return true
 	}
 
-	if chainNode.UsesTmKms() {
-		if chainNode.Spec.Validator.TmKMS.Provider.Vault != nil && chainNode.Spec.Validator.TmKMS.Provider.Vault.UploadGenerated {
-			return true
-		}
+	if chainNode.Status.PubKey == "" && chainNode.ShouldCreateValidator() {
+		return true
+	}
+
+	return false
+}
+
+func (chainNode *ChainNode) RequiresAccount() bool {
+	// If we already have an account lets ignore this
+	if chainNode.Status.AccountAddress != "" {
 		return false
+	}
+
+	if !chainNode.IsValidator() {
+		return false
+	}
+
+	if chainNode.ShouldInitGenesis() {
+		return true
+	}
+
+	if chainNode.ShouldCreateValidator() {
+		return true
 	}
 
 	return false
@@ -200,6 +223,9 @@ func (val *ValidatorConfig) GetAccountHDPath() string {
 	if val.Init != nil && val.Init.AccountHDPath != nil {
 		return *val.Init.AccountHDPath
 	}
+	if val.CreateValidator != nil && val.CreateValidator.AccountHDPath != nil {
+		return *val.CreateValidator.AccountHDPath
+	}
 	return DefaultHDPath
 }
 
@@ -215,12 +241,18 @@ func (val *ValidatorConfig) GetAccountPrefix() string {
 	if val.Init != nil && val.Init.AccountPrefix != nil {
 		return *val.Init.AccountPrefix
 	}
+	if val.CreateValidator != nil && val.CreateValidator.AccountPrefix != nil {
+		return *val.CreateValidator.AccountPrefix
+	}
 	return DefaultAccountPrefix
 }
 
 func (val *ValidatorConfig) GetValPrefix() string {
 	if val.Init != nil && val.Init.ValPrefix != nil {
 		return *val.Init.ValPrefix
+	}
+	if val.CreateValidator != nil && val.CreateValidator.ValPrefix != nil {
+		return *val.CreateValidator.ValPrefix
 	}
 	return DefaultValPrefix
 }
@@ -237,4 +269,44 @@ func (val *ValidatorConfig) GetInitVotingPeriod() string {
 		return *val.Init.VotingPeriod
 	}
 	return DefaultVotingPeriod
+}
+
+func (val *ValidatorConfig) GetCommissionMaxChangeRate() string {
+	if val.Init != nil && val.Init.CommissionMaxChangeRate != nil {
+		return *val.Init.CommissionMaxChangeRate
+	}
+	if val.CreateValidator != nil && val.CreateValidator.CommissionMaxChangeRate != nil {
+		return *val.CreateValidator.CommissionMaxChangeRate
+	}
+	return DefaultCommissionMaxChangeRate
+}
+
+func (val *ValidatorConfig) GetCommissionMaxRate() string {
+	if val.Init != nil && val.Init.CommissionMaxRate != nil {
+		return *val.Init.CommissionMaxRate
+	}
+	if val.CreateValidator != nil && val.CreateValidator.CommissionMaxRate != nil {
+		return *val.CreateValidator.CommissionMaxRate
+	}
+	return DefaultCommissionMaxRate
+}
+
+func (val *ValidatorConfig) GetCommissionRate() string {
+	if val.Init != nil && val.Init.CommissionRate != nil {
+		return *val.Init.CommissionRate
+	}
+	if val.CreateValidator != nil && val.CreateValidator.CommissionRate != nil {
+		return *val.CreateValidator.CommissionRate
+	}
+	return DefaultCommissionRate
+}
+
+func (val *ValidatorConfig) GetMinSelfDelegation() string {
+	if val.Init != nil && val.Init.MinSelfDelegation != nil {
+		return *val.Init.MinSelfDelegation
+	}
+	if val.CreateValidator != nil && val.CreateValidator.MinSelfDelegation != nil {
+		return *val.CreateValidator.MinSelfDelegation
+	}
+	return DefaultMinimumSelfDelegation
 }

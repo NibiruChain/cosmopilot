@@ -36,6 +36,8 @@ func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainN
 	if !reflect.DeepEqual(nodeSet.Status, nodeSetCopy.Status) {
 		nodeSet.Status.ChainID = validator.Status.ChainID
 		nodeSet.Status.ValidatorAddress = validator.Status.ValidatorAddress
+		nodeSet.Status.ValidatorStatus = validator.Status.ValidatorStatus
+		nodeSet.Status.PubKey = validator.Status.PubKey
 		return r.Status().Update(ctx, nodeSet)
 	}
 	return nil
@@ -62,6 +64,7 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 				Info:             nodeSet.Spec.Validator.Info,
 				Init:             nodeSet.Spec.Validator.Init,
 				TmKMS:            nodeSet.Spec.Validator.TmKMS,
+				CreateValidator:  nodeSet.Spec.Validator.CreateValidator,
 			},
 			Resources:        nodeSet.Spec.Validator.Resources,
 			Affinity:         nodeSet.Spec.Validator.Affinity,

@@ -24,6 +24,38 @@ type App struct {
 	sdkVersion appsv1.SdkVersion
 }
 
+type Params struct {
+	ChainID                 string
+	Assets                  []string
+	StakeAmount             string
+	Accounts                []AccountAssets
+	UnbondingTime           string
+	VotingPeriod            string
+	CommissionMaxChangeRate string
+	CommissionMaxRate       string
+	CommissionRate          string
+	MinSelfDelegation       string
+	GasPrices               string
+}
+
+type NodeInfo struct {
+	Moniker  string
+	Details  *string
+	Website  *string
+	Identity *string
+}
+
+type AccountAssets struct {
+	Address string
+	Assets  []string
+}
+
+type InitCommand struct {
+	Image   string
+	Command []string
+	Args    []string
+}
+
 func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config, owner metav1.Object, sdkVersion appsv1.SdkVersion, options ...Option) (*App, error) {
 	cmd, err := sdkcmd.GetSDK(sdkVersion, sdkcmd.WithGlobalArg(sdkcmd.Home, defaultHome))
 	if err != nil {
