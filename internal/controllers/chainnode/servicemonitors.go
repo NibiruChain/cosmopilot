@@ -28,7 +28,7 @@ func (r *Reconciler) ensureServiceMonitors(ctx context.Context, chainNode *appsv
 		err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), current)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				logger.Info("creating service monitor")
+				logger.Info("creating service monitor", "servicemonitor", spec.GetName())
 				return r.Create(ctx, spec)
 			}
 			return err
@@ -42,7 +42,7 @@ func (r *Reconciler) ensureServiceMonitors(ctx context.Context, chainNode *appsv
 		if !patchResult.IsEmpty() {
 			spec.ObjectMeta.ResourceVersion = current.ObjectMeta.ResourceVersion
 
-			logger.Info("updating service monitor")
+			logger.Info("updating service monitor", "servicemonitor", spec.GetName())
 			return r.Update(ctx, spec)
 		}
 	} else {

@@ -60,6 +60,7 @@ func (r *Reconciler) ensureNodeKey(ctx context.Context, chainNode *appsv1.ChainN
 			return err
 		}
 		if chainNode.Status.NodeID == "" {
+			logger.Info("node key imported from secret", "secret", secret.GetName(), "nodeID", nodeID)
 			r.recorder.Eventf(chainNode,
 				corev1.EventTypeNormal,
 				appsv1.ReasonNodeKeyImported,
@@ -69,7 +70,7 @@ func (r *Reconciler) ensureNodeKey(ctx context.Context, chainNode *appsv1.ChainN
 	}
 
 	if mustCreate {
-		logger.Info("creating secret with node-key")
+		logger.Info("creating secret with node-key", "secret", secret.GetName())
 		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
@@ -79,7 +80,7 @@ func (r *Reconciler) ensureNodeKey(ctx context.Context, chainNode *appsv1.ChainN
 			"Node key created",
 		)
 	} else if mustUpdate {
-		logger.Info("updating secret with node-key")
+		logger.Info("updating secret with node-key", "secret", secret.GetName())
 		if err := r.Update(ctx, secret); err != nil {
 			return err
 		}
@@ -87,6 +88,7 @@ func (r *Reconciler) ensureNodeKey(ctx context.Context, chainNode *appsv1.ChainN
 
 	// update nodeID in status if required
 	if chainNode.Status.NodeID != nodeID {
+		logger.Info("updating .status.nodeID", "nodeID", nodeID)
 		chainNode.Status.NodeID = nodeID
 		if err := r.Status().Update(ctx, chainNode); err != nil {
 			return err
@@ -134,6 +136,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 		}
 		secret.Data[privKeyFilename] = key
 	} else if !chainNode.Status.Validator {
+		logger.Info("private key imported from secret", "secret", secret.GetName())
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeNormal,
 			appsv1.ReasonPrivateKeyImported,
@@ -142,7 +145,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 	}
 
 	if mustCreate {
-		logger.Info("creating secret with priv-key")
+		logger.Info("creating secret with priv-key", "secret", secret.GetName())
 		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
@@ -152,7 +155,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 			"Private key created for validating",
 		)
 	} else if mustUpdate {
-		logger.Info("updating secret with priv-key")
+		logger.Info("updating secret with priv-key", "secret", secret.GetName())
 		if err := r.Update(ctx, secret); err != nil {
 			return err
 		}
@@ -165,6 +168,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 
 	// update validator in status if required
 	if !chainNode.Status.Validator || chainNode.Status.PubKey != pubKey {
+		logger.Info("updating .status.validator and .status.pubKey")
 		chainNode.Status.Validator = true
 		chainNode.Status.PubKey = pubKey
 		if err := r.Status().Update(ctx, chainNode); err != nil {

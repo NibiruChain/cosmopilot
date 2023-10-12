@@ -77,7 +77,7 @@ spec:
 
   nodes:
     - name: fullnodes
-      instances: 1
+      instances: 2
 
       config:
         override:

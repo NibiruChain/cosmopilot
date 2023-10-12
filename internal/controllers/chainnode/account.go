@@ -76,6 +76,7 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 		}
 		validatorAddress = account.ValidatorAddress
 		accountAddress = account.Address
+		logger.Info("account imported from secret", "secret", secret.GetName())
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeNormal,
 			appsv1.ReasonAccountImported,
@@ -84,7 +85,7 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 	}
 
 	if mustCreate {
-		logger.Info("creating secret with account mnemonic")
+		logger.Info("creating secret with account mnemonic", "secret", secret.GetName())
 		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
@@ -94,14 +95,18 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 			"Validator account created",
 		)
 	} else if mustUpdate {
-		logger.Info("updating secret with account mnemonic")
+		logger.Info("updating secret with account mnemonic", "secret", secret.GetName())
 		if err := r.Update(ctx, secret); err != nil {
 			return err
 		}
 	}
 
 	// update status
-	chainNode.Status.ValidatorAddress = validatorAddress
-	chainNode.Status.AccountAddress = accountAddress
-	return r.Status().Update(ctx, chainNode)
+	if chainNode.Status.ValidatorAddress != validatorAddress || chainNode.Status.AccountAddress != accountAddress {
+		logger.Info("updating .status.validatorAddress and .status.accountAddress", "val", validatorAddress, "acc", accountAddress)
+		chainNode.Status.ValidatorAddress = validatorAddress
+		chainNode.Status.AccountAddress = accountAddress
+		return r.Status().Update(ctx, chainNode)
+	}
+	return nil
 }

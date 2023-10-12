@@ -36,7 +36,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), currentPod)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("creating pod")
+			logger.Info("creating pod", "pod", pod.GetName())
 			if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeStarting); err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 	}
 
 	if nodeUtilsIsInFailedState(pod) {
-		logger.Info("node-utils is in failed state")
+		logger.Info("node-utils is in failed state", "pod", pod.GetName())
 		ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, currentPod)
 		logs, err := ph.GetLogs(ctx, nodeUtilsContainerName)
 		if err != nil {
@@ -100,7 +100,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 			return fmt.Errorf("missing upgrade or image for height %d", chainNode.Status.LatestHeight)
 		}
 
-		logger.Info("upgrading node")
+		logger.Info("upgrading node", "pod", pod.GetName())
 		if err := r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeOnGoing); err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 
 	// Recreate pod if it is in failed state
 	if podInFailedState(currentPod) {
-		logger.Info("pod is in failed state")
+		logger.Info("pod is in failed state", "pod", pod.GetName())
 		ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, currentPod)
 		logs, err := ph.GetLogs(ctx, chainNode.Spec.App.App)
 		if err != nil {
@@ -153,13 +153,13 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 
 	// Re-create pod if spec changes
 	if podSpecChanged(currentPod, pod) {
-		logger.Info("pod spec changed")
+		logger.Info("pod spec changed", "pod", pod.GetName())
 		return r.recreatePod(ctx, chainNode, pod)
 	}
 
 	// Re-create pod if config changed
 	if currentPod.Annotations[annotationConfigHash] != configHash {
-		logger.Info("config changed")
+		logger.Info("config changed", "pod", pod.GetName())
 		return r.recreatePod(ctx, chainNode, pod)
 	}
 
@@ -545,7 +545,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info("recreating pod")
+	logger.Info("recreating pod", "pod", pod.GetName())
 	phase := appsv1.PhaseChainNodeRestarting
 	if err := r.updatePhase(ctx, chainNode, phase); err != nil {
 		return err
@@ -586,7 +586,7 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod, image string) (bool, error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("upgrading pod")
+	logger.Info("upgrading pod", "pod", pod.GetName())
 	phase := appsv1.PhaseChainNodeUpgrading
 	if err := r.updatePhase(ctx, chainNode, phase); err != nil {
 		return false, err

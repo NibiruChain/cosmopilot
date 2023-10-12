@@ -22,6 +22,8 @@ import (
 )
 
 func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	logger := log.FromContext(ctx)
+
 	// Ensure main service
 	svc, err := r.getServiceSpec(chainNode)
 	if err != nil {
@@ -34,6 +36,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 
 	// Update ChainNode IP address
 	if chainNode.Status.IP != svc.Spec.ClusterIP {
+		logger.Info("updating .status.IP", "IP", svc.Spec.ClusterIP)
 		chainNode.Status.IP = svc.Spec.ClusterIP
 		if err := r.Status().Update(ctx, chainNode); err != nil {
 			return err
@@ -67,6 +70,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 		switch chainNode.Spec.Expose.GetServiceType() {
 		case corev1.ServiceTypeNodePort:
 			// Wait for NodePort to be available
+			logger.V(1).Info("waiting for nodePort address to be available", "svc", p2p.GetName())
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
 				return svc.Spec.Ports[0].NodePort > 0, nil
 			}, timeoutWaitServiceIP); err != nil {
@@ -98,6 +102,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 
 		case corev1.ServiceTypeLoadBalancer:
 			// Wait for LoadBalancer to be available
+			logger.V(1).Info("waiting for load balancer address to be available", "svc", p2p.GetName())
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
 				return svc.Status.LoadBalancer.Ingress != nil && len(svc.Status.LoadBalancer.Ingress) > 0, nil
 			}, timeoutWaitServiceIP); err != nil {
@@ -107,6 +112,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 		}
 
 		if chainNode.Status.PublicAddress != externalAddress {
+			logger.Info("updating .status.publicAddress", "address", externalAddress)
 			chainNode.Status.PublicAddress = externalAddress
 			return r.Status().Update(ctx, chainNode)
 		}
@@ -117,6 +123,8 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 			if !errors.IsNotFound(err) {
 				return err
 			}
+		} else {
+			logger.Info("deleted service", "svc", p2p.GetName())
 		}
 	}
 
@@ -124,13 +132,13 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 }
 
 func (r *Reconciler) ensureService(ctx context.Context, svc *corev1.Service) error {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("svc", svc.GetName())
 
 	currentSvc := &corev1.Service{}
 	err := r.Get(ctx, client.ObjectKeyFromObject(svc), currentSvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("creating service", "name", svc.GetName())
+			logger.Info("creating service")
 			return r.Create(ctx, svc)
 		}
 		return err
@@ -142,8 +150,7 @@ func (r *Reconciler) ensureService(ctx context.Context, svc *corev1.Service) err
 	}
 
 	if !patchResult.IsEmpty() || !reflect.DeepEqual(currentSvc.Annotations, svc.Annotations) {
-		logger.Info("updating service", "name", svc.GetName())
-
+		logger.Info("updating service")
 		svc.ObjectMeta.ResourceVersion = currentSvc.ObjectMeta.ResourceVersion
 		return r.Update(ctx, svc)
 	}

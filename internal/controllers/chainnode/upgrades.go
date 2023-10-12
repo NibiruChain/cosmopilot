@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
@@ -23,6 +24,8 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 	if chainNode.Status.Upgrades == nil {
 		chainNode.Status.Upgrades = make([]appsv1.Upgrade, 0)
 	}
+
+	statusCopy := chainNode.Status.DeepCopy()
 
 	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && chainNode.Spec.App.ShouldQueryGovUpgrades() {
 		// Get gov upgrades
@@ -59,10 +62,16 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 		return err
 	}
 
-	return r.Status().Update(ctx, chainNode)
+	if !reflect.DeepEqual(chainNode.Status.Upgrades, statusCopy.Upgrades) {
+		logger.Info("updating .status.upgrades")
+		return r.Status().Update(ctx, chainNode)
+	}
+	return nil
 }
 
 func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	logger := log.FromContext(ctx)
+
 	upgrades := struct {
 		Upgrades []appsv1.Upgrade `json:"upgrades"`
 	}{
@@ -88,6 +97,7 @@ func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1
 	err = r.Get(ctx, client.ObjectKeyFromObject(spec), cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			logger.Info("creating configmap with upgrades", "configmap", cm.GetName())
 			return r.Create(ctx, spec)
 		}
 		return err
@@ -95,6 +105,7 @@ func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1
 
 	// Update when config changes
 	if cm.Data[upgradesConfigFile] != string(b) {
+		logger.Info("updating configmap with upgrades", "configmap", cm.GetName())
 		cm.Data[upgradesConfigFile] = string(b)
 		return r.Update(ctx, cm)
 	}
@@ -115,9 +126,12 @@ func (r *Reconciler) getUpgrade(chainNode *appsv1.ChainNode, height int64) *apps
 }
 
 func (r *Reconciler) setUpgradeStatus(ctx context.Context, chainNode *appsv1.ChainNode, upgrade *appsv1.Upgrade, status appsv1.UpgradePhase) error {
+	logger := log.FromContext(ctx)
+
 	for i, u := range chainNode.Status.Upgrades {
 		if u.Height == upgrade.Height {
 			chainNode.Status.Upgrades[i].Status = status
+			logger.Info("setting upgrade status", "height", upgrade.Height, "status", status)
 			if err := r.Status().Update(ctx, chainNode); err != nil {
 				return err
 			}

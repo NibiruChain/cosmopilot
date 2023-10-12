@@ -67,11 +67,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if nodeSet.Labels[controllers.LabelWorkerName] != r.workerName {
-		logger.Info("skipping chainnodeset due to worker-name mismatch.")
+		logger.V(1).Info("skipping chainnodeset due to worker-name mismatch.")
 		return ctrl.Result{}, nil
 	}
 
+	// Clearly log beginning and end of reconcile cycle
 	logger.Info("starting reconcile")
+	defer logger.Info("finishing reconcile")
 
 	if nodeSet.Status.ChainID == "" {
 		if err := r.updatePhase(ctx, nodeSet, appsv1.PhaseChainNodeSetInitialing); err != nil {
@@ -102,14 +104,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if nodeSet.Status.Phase != appsv1.PhaseChainNodeSetRunning || nodeSet.GetLastUpgradeVersion() != nodeSet.Status.AppVersion {
-		nodeSet.Status.Phase = appsv1.PhaseChainNodeSetRunning
+		log.FromContext(ctx).Info("updating .status.appVersion", "version", nodeSet.GetLastUpgradeVersion())
 		nodeSet.Status.AppVersion = nodeSet.GetLastUpgradeVersion()
-		return ctrl.Result{}, r.Status().Update(ctx, nodeSet)
+		return ctrl.Result{}, r.updatePhase(ctx, nodeSet, appsv1.PhaseChainNodeSetRunning)
 	}
 	return ctrl.Result{RequeueAfter: appsv1.DefaultReconcilePeriod}, nil
 }
 
 func (r *Reconciler) updatePhase(ctx context.Context, nodeSet *appsv1.ChainNodeSet, phase appsv1.ChainNodeSetPhase) error {
+	log.FromContext(ctx).Info("updating .status.phase", "phase", phase)
 	nodeSet.Status.Phase = phase
 	return r.Status().Update(ctx, nodeSet)
 }

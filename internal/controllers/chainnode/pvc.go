@@ -18,62 +18,54 @@ import (
 )
 
 func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
-	logger := log.FromContext(ctx)
-
 	pvc, err := r.ensurePvc(ctx, chainNode)
 	if err != nil {
 		return err
 	}
 
 	if pvc.Annotations[annotationDataInitialized] != "true" {
-		logger.Info("initializing data on pvc and updating status")
-		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeInitData); err != nil {
-			return err
-		}
-
-		initCommands := make([]*chainutils.InitCommand, len(chainNode.GetPersistenceInitCommands()))
-		for i, c := range chainNode.GetPersistenceInitCommands() {
-			initCommands[i] = &chainutils.InitCommand{Args: c.Args, Command: c.Command}
-			if c.Image != nil {
-				initCommands[i].Image = *c.Image
-			} else {
-				initCommands[i].Image = chainNode.GetAppImage()
-			}
-		}
-
-		if err := app.InitPvcData(ctx, pvc, initCommands...); err != nil {
-			return err
-		}
-		// Get the updated PVC for updating annotation
-		if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
-			return err
-		}
-		pvc.Annotations[annotationDataInitialized] = strconv.FormatBool(true)
-		if err := r.Update(ctx, pvc); err != nil {
-			return err
-		}
-		r.recorder.Eventf(chainNode,
-			corev1.EventTypeNormal,
-			appsv1.ReasonDataInitialized,
-			"Data volume was successfully initialized",
-		)
-		chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
-		return r.Status().Update(ctx, chainNode)
-	}
-
-	if chainNode.Status.PvcSize != pvc.Spec.Resources.Requests.Storage().String() {
-		chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
-		if err = r.Status().Update(ctx, chainNode); err != nil {
-			return err
-		}
-		r.recorder.Eventf(chainNode,
-			corev1.EventTypeNormal,
-			appsv1.ReasonPvcResized,
-			"Data volume was resized to %v", chainNode.Status.PvcSize,
-		)
+		return r.initializeData(ctx, app, chainNode, pvc)
 	}
 
 	return nil
+}
+
+func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, pvc *corev1.PersistentVolumeClaim) error {
+	logger := log.FromContext(ctx)
+
+	logger.Info("initializing data", "pvc", pvc.GetName())
+	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeInitData); err != nil {
+		return err
+	}
+
+	initCommands := make([]*chainutils.InitCommand, len(chainNode.GetPersistenceInitCommands()))
+	for i, c := range chainNode.GetPersistenceInitCommands() {
+		initCommands[i] = &chainutils.InitCommand{Args: c.Args, Command: c.Command}
+		if c.Image != nil {
+			initCommands[i].Image = *c.Image
+		} else {
+			initCommands[i].Image = chainNode.GetAppImage()
+		}
+	}
+
+	if err := app.InitPvcData(ctx, pvc, initCommands...); err != nil {
+		return err
+	}
+	// Get the updated PVC for updating annotation
+	if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
+		return err
+	}
+	pvc.Annotations[annotationDataInitialized] = strconv.FormatBool(true)
+	if err := r.Update(ctx, pvc); err != nil {
+		return err
+	}
+	r.recorder.Eventf(chainNode,
+		corev1.EventTypeNormal,
+		appsv1.ReasonDataInitialized,
+		"Data volume was successfully initialized",
+	)
+	chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
+	return r.Status().Update(ctx, chainNode)
 }
 
 func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.PersistentVolumeClaim, error) {
@@ -88,7 +80,7 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("creating pvc", "size", storageSize)
+			logger.Info("creating pvc", "pvc", pvc.GetName(), "size", storageSize)
 			pvc := &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      chainNode.GetName(),
@@ -124,15 +116,25 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 
 	switch pvc.Spec.Resources.Requests.Storage().Cmp(storageSize) {
 	case -1:
+		logger.Info("resizing pvc", "pvc", pvc.GetName(), "old-size", pvc.Spec.Resources.Requests.Storage(), "new-size", storageSize)
 		pvc.Spec.Resources.Requests = corev1.ResourceList{
 			corev1.ResourceStorage: storageSize,
 		}
-		logger.Info("updating pvc size", "size", storageSize)
-		return pvc, r.Update(ctx, pvc)
+		if err := r.Update(ctx, pvc); err != nil {
+			return nil, err
+		}
+		chainNode.Status.PvcSize = storageSize.String()
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonPvcResized,
+			"Data volume was resized to %v", chainNode.Status.PvcSize,
+		)
+		return pvc, r.Status().Update(ctx, chainNode)
+
 	case 1:
+		logger.Info("skipping pvc resize: new-size < old-size", "pvc", pvc.GetName(), "old-size", pvc.Spec.Resources.Requests.Storage(), "new-size", storageSize)
 		fallthrough
-	case 0:
-		fallthrough
+
 	default:
 		return pvc, nil
 	}
@@ -167,6 +169,7 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 		dataUsage := int(float64(dataSizeBytes) / float64(sizeBytes) * 100.0)
 		dataUsageStr := fmt.Sprintf("%d%%", dataUsage)
 		if chainNode.Status.DataUsage != dataUsageStr {
+			logger.Info("updating .status.dataUsage", "usage", dataUsageStr)
 			chainNode.Status.DataUsage = dataUsageStr
 			if err := r.Status().Update(ctx, chainNode); err != nil {
 				return resource.Quantity{}, err
@@ -189,6 +192,7 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 	dataUsage := int(float64(dataSizeBytes) / float64(currentSizeBytes) * 100.0)
 	dataUsageStr := fmt.Sprintf("%d%%", dataUsage)
 	if chainNode.Status.DataUsage != dataUsageStr {
+		logger.Info("updating .status.dataUsage", "usage", dataUsageStr)
 		chainNode.Status.DataUsage = dataUsageStr
 		if err := r.Status().Update(ctx, chainNode); err != nil {
 			return resource.Quantity{}, err
@@ -208,7 +212,7 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 		return resource.Quantity{}, err
 	}
 
-	max, err := resource.ParseQuantity(chainNode.GetPersistenceAutoResizeMaxSize())
+	maxSize, err := resource.ParseQuantity(chainNode.GetPersistenceAutoResizeMaxSize())
 	if err != nil {
 		return resource.Quantity{}, err
 	}
@@ -216,14 +220,14 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 	newSize := currentSize.DeepCopy()
 	newSize.Add(increment)
 
-	if newSize.Cmp(max) == 1 {
-		logger.Info("pvc reached maximum size")
+	if newSize.Cmp(maxSize) == 1 {
+		logger.Info("pvc reached maximum size", "current-size", currentSize, "max-size", maxSize)
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeWarning,
 			appsv1.ReasonPvcMaxReached,
-			"Data volume reached maximum allowed size (%v)", max.String(),
+			"Data volume reached maximum allowed size (%v)", maxSize.String(),
 		)
-		return max, nil
+		return maxSize, nil
 	}
 
 	return newSize, nil

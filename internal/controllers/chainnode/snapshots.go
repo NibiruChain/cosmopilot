@@ -45,7 +45,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		// and if it is, we mark it as ready and register its timestamp in chainnode.
 		// In case tarball export is enabled, we also start the export right away.
 		case snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(false) && isSnapshotReady(&snapshot):
-			logger.Info("snapshot is ready", "snapshot", snapshot.GetName())
+			logger.Info("pvc snapshot has finished", "snapshot", snapshot.GetName())
 			snapshot.ObjectMeta.Annotations[annotationPvcSnapshotReady] = strconv.FormatBool(true)
 			if err := r.Update(ctx, &snapshot); err != nil {
 				return err
@@ -61,6 +61,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				"Finished PVC snapshot %s", snapshot.GetName(),
 			)
 			if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
+				logger.Info("starting tarball export", "snapshot", snapshot.GetName())
 				if err := r.exportTarball(ctx, chainNode, &snapshot); err != nil {
 					return err
 				}
@@ -75,6 +76,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		case chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() &&
 			snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(true) &&
 			snapshot.Annotations[annotationExportingTarball] == "":
+			logger.Info("starting tarball export", "snapshot", snapshot.GetName())
 			if err := r.exportTarball(ctx, chainNode, &snapshot); err != nil {
 				return err
 			}
@@ -100,6 +102,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				return err
 			}
 			if ready {
+				logger.Info("finished tarball export", "snapshot", snapshot.GetName())
 				snapshot.Annotations[annotationExportingTarball] = tarballFinished
 				if err := r.Update(ctx, &snapshot); err != nil {
 					return err
@@ -114,7 +117,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				return err
 			}
 			if expired {
-				logger.Info("deleting expired pvc snapshot", "retention", snapshot.Annotations[annotationSnapshotRetention])
+				logger.Info("deleting expired pvc snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[annotationSnapshotRetention])
 				if err := r.Delete(ctx, &snapshot); err != nil {
 					return err
 				}
@@ -124,6 +127,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 					"Deleted expired PVC snapshot %s", snapshot.GetName(),
 				)
 				if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && chainNode.Spec.Persistence.Snapshots.ExportTarball.DeleteWhenExpired() {
+					logger.Info("deleting expired snapshot tarball", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[annotationSnapshotRetention])
 					if err := r.deleteTarball(ctx, chainNode, &snapshot); err != nil {
 						return err
 					}
@@ -144,7 +148,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 
 	// Create a snapshot if it's time for that
 	if shouldSnapshot(chainNode) {
-		logger.Info("creating pvc snapshot")
+		logger.Info("creating new pvc snapshot")
 		return r.createSnapshot(ctx, chainNode)
 	}
 

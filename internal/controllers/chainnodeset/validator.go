@@ -8,18 +8,21 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 )
 
 func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
+	logger := log.FromContext(ctx)
+
 	validator, err := r.getValidatorSpec(nodeSet)
 	if err != nil {
 		return err
 	}
 
-	if err := r.ensureNode(ctx, nodeSet, validator); err != nil {
+	if err := r.ensureNode(ctx, nodeSet, validator, true); err != nil {
 		return err
 	}
 
@@ -34,6 +37,12 @@ func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainN
 	})
 
 	if !reflect.DeepEqual(nodeSet.Status, nodeSetCopy.Status) {
+		logger.Info("updating .status fields",
+			"chainID", validator.Status.ChainID,
+			"validatorAddress", validator.Status.ValidatorAddress,
+			"validatorStatus", validator.Status.ValidatorStatus,
+			"pubKey", validator.Status.PubKey,
+		)
 		nodeSet.Status.ChainID = validator.Status.ChainID
 		nodeSet.Status.ValidatorAddress = validator.Status.ValidatorAddress
 		nodeSet.Status.ValidatorStatus = validator.Status.ValidatorStatus

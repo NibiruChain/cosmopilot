@@ -46,6 +46,7 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 	}
 
 	if !reflect.DeepEqual(nodeSet.Status, nodeSetCopy.Status) {
+		log.FromContext(ctx).Info("updating .status.instances", "instances", totalInstances)
 		nodeSet.Status.Instances = totalInstances
 		return r.Status().Update(ctx, nodeSet)
 	}
@@ -72,7 +73,7 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 	// Remove ChainNodes if necessary
 	for i := currentSize - 1; i >= desiredSize; i-- {
 		nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, i)
-		logger.Info("removing chainnode", "chainnode", nodeName)
+		logger.Info("removing chainnode", "group", group.Name, "chainnode", nodeName)
 		if err := r.removeNode(ctx, nodeSet, group, i); err != nil {
 			return err
 		}
@@ -83,7 +84,7 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 		if err != nil {
 			return err
 		}
-		if err := r.ensureNode(ctx, nodeSet, node); err != nil {
+		if err := r.ensureNode(ctx, nodeSet, node, false); err != nil {
 			return err
 		}
 
@@ -107,7 +108,7 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 	return nil
 }
 
-func (r *Reconciler) ensureNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, node *appsv1.ChainNode) error {
+func (r *Reconciler) ensureNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, node *appsv1.ChainNode, waitRunning bool) error {
 	logger := log.FromContext(ctx)
 
 	currentNode := &appsv1.ChainNode{}
@@ -123,7 +124,11 @@ func (r *Reconciler) ensureNode(ctx context.Context, nodeSet *appsv1.ChainNodeSe
 				"ChainNode %s created",
 				node.GetName(),
 			)
-			return r.waitChainNodeRunningOrSyncing(node)
+			if waitRunning {
+				logger.V(1).Info("waiting for chainnode", "chainnode", node.GetName())
+				return r.waitChainNodeRunningOrSyncing(node)
+			}
+			return nil
 		}
 		return err
 	}
@@ -145,7 +150,11 @@ func (r *Reconciler) ensureNode(ctx context.Context, nodeSet *appsv1.ChainNodeSe
 		*node = *currentNode
 	}
 
-	return r.waitChainNodeRunningOrSyncing(node)
+	if waitRunning {
+		logger.V(1).Info("waiting for chainnode", "chainnode", node.GetName())
+		return r.waitChainNodeRunningOrSyncing(node)
+	}
+	return nil
 }
 
 func (r *Reconciler) removeNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec, index int) error {

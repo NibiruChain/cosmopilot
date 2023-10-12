@@ -45,6 +45,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 	logger := log.FromContext(ctx)
 
 	if chainNode.Spec.Genesis.ConfigMap != nil {
+		logger.Info("retrieving genesis from configmap", "configmap", *chainNode.Spec.Genesis.ConfigMap)
 		cm := &corev1.ConfigMap{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name:      *chainNode.Spec.Genesis.ConfigMap,
@@ -70,7 +71,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 		)
 
 		// update chainID in status
-		logger.Info("updating status with chain id")
+		logger.Info("updating .status.chainID", "chainID", chainID)
 		chainNode.Status.ChainID = chainID
 		return r.Status().Update(ctx, chainNode)
 	}
@@ -111,7 +112,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 
 	if chainNode.Spec.Genesis.FromNodeRPC != nil {
 		genesisUrl := chainNode.Spec.Genesis.FromNodeRPC.GetGenesisFromRPCUrl()
-		logger.Info("retrieving genesis from node RPC", "url", genesisUrl)
+		logger.Info("retrieving genesis from node RPC", "endpoint", genesisUrl)
 		genesis, err = utils.GetGenesisFromNodeRPC(genesisUrl)
 		if err != nil {
 			return err
@@ -145,11 +146,11 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 	}
 
 	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
-		logger.Info("writing genesis to data volume")
 		pvc := &corev1.PersistentVolumeClaim{}
 		if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
 			return err
 		}
+		logger.Info("writing genesis to data volume", "pvc", pvc.GetName())
 		if err := k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).WriteToFile(ctx, genesis, genesisFilename); err != nil {
 			return err
 		}
@@ -168,14 +169,14 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 			return err
 		}
 
-		logger.Info("creating genesis configmap")
+		logger.Info("creating genesis configmap", "configmap", cm.GetName())
 		if err := r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
 			return err
 		}
 	}
 
 	// update chainID in status
-	logger.Info("updating status with chain id")
+	logger.Info("updating .status.chainID", "chainID", chainID)
 	chainNode.Status.ChainID = chainID
 	return r.Status().Update(ctx, chainNode)
 }
@@ -183,7 +184,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info("initializing new genesis")
+	logger.Info("initializing new genesis", "chainID", chainNode.Spec.Validator.Init.ChainID)
 	genesisParams := &chainutils.Params{
 		ChainID:                 chainNode.Spec.Validator.Init.ChainID,
 		Assets:                  chainNode.Spec.Validator.Init.Assets,
@@ -265,13 +266,13 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		return err
 	}
 
-	logger.Info("creating genesis configmap")
+	logger.Info("creating genesis configmap", "configmap", cm.GetName())
 	if err := r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
 	// update chainID in status
-	logger.Info("updating status with chain id")
+	logger.Info("updating .status.chainID", "chainID", chainNode.Spec.Validator.Init.ChainID)
 	chainNode.Status.ChainID = chainNode.Spec.Validator.Init.ChainID
 	return r.Status().Update(ctx, chainNode)
 }

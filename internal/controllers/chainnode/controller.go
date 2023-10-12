@@ -89,13 +89,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if chainNode.Labels[controllers.LabelWorkerName] != r.workerName {
-		logger.Info("skipping chainnode due to worker-name mismatch.")
+		logger.V(1).Info("skipping chainnode due to worker-name mismatch.")
 		return ctrl.Result{}, nil
 	}
 
+	// Clearly log beginning and end of reconcile cycle
 	logger.Info("starting reconcile")
+	defer logger.Info("finishing reconcile")
 
-	// Eventually update status seed mode
+	// Eventually update seed mode in .status
 	chainNode.Status.SeedMode = chainNode.Spec.Config.SeedModeEnabled()
 
 	// Create/update secret with node key for this node.
@@ -126,7 +128,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// If we don't have a PVC yet, lets create it before deploying the pod. But for any updates to the PVC
-	// we want to do it after the pod deployment because auto-resize feature requires the node running.
+	// we want to do it after the pod deployment because auto-resize feature requires the node to be running.
 	if chainNode.Status.PvcSize == "" {
 		if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
 			return ctrl.Result{}, err
@@ -140,6 +142,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// If the node will be down during snapshot, most methods below will fail.
 	if volumeSnapshotInProgress(chainNode) && chainNode.Spec.Persistence.Snapshots.ShouldStopNode() {
+		logger.Info("exiting reconcile cycle while snapshot is in progress")
 		return ctrl.Result{RequeueAfter: snapshotCheckPeriod}, nil
 	}
 
@@ -203,6 +206,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Reconciler) updatePhase(ctx context.Context, chainNode *appsv1.ChainNode, phase appsv1.ChainNodePhase) error {
+	log.FromContext(ctx).Info("updating .status.phase", "phase", phase)
 	chainNode.Status.Phase = phase
 	return r.Status().Update(ctx, chainNode)
 }

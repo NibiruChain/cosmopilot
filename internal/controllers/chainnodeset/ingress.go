@@ -79,7 +79,7 @@ func (r *Reconciler) ensureIngress(ctx context.Context, ingress *v1.Ingress) err
 	err := r.Get(ctx, client.ObjectKeyFromObject(ingress), currentIg)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("creating ingress", "name", ingress.GetName())
+			logger.Info("creating ingress", "ingress", ingress.GetName())
 			return r.Create(ctx, ingress)
 		}
 		return err
@@ -91,7 +91,7 @@ func (r *Reconciler) ensureIngress(ctx context.Context, ingress *v1.Ingress) err
 	}
 
 	if !patchResult.IsEmpty() {
-		logger.Info("updating ingress", "name", ingress.GetName())
+		logger.Info("updating ingress", "ingress", ingress.GetName())
 
 		ingress.ObjectMeta.ResourceVersion = currentIg.ObjectMeta.ResourceVersion
 		if err := r.Update(ctx, ingress); err != nil {

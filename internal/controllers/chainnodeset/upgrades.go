@@ -2,18 +2,24 @@ package chainnodeset
 
 import (
 	"context"
+	"reflect"
 	"sort"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 )
 
 func (r *Reconciler) ensureUpgrades(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
+	logger := log.FromContext(ctx)
+
 	if nodeSet.Status.Upgrades == nil {
 		nodeSet.Status.Upgrades = make([]appsv1.Upgrade, 0)
 	}
+
+	statusCopy := nodeSet.Status.DeepCopy()
 
 	// Grab all nodes for this ChainNodeSet
 	selector := labels.SelectorFromSet(map[string]string{
@@ -40,7 +46,11 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, nodeSet *appsv1.ChainNo
 		return nodeSet.Status.Upgrades[i].Height < nodeSet.Status.Upgrades[j].Height
 	})
 
-	return r.Status().Update(ctx, nodeSet)
+	if !reflect.DeepEqual(nodeSet.Status.Upgrades, statusCopy.Upgrades) {
+		logger.Info("updating .status.upgrades")
+		return r.Status().Update(ctx, nodeSet)
+	}
+	return nil
 }
 
 func AddOrUpdateUpgrade(upgrades []appsv1.Upgrade, upgrade appsv1.Upgrade) []appsv1.Upgrade {

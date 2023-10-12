@@ -189,6 +189,7 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 			}
 
 		default:
+			logger.Info("not restoring from state-sync: could not find other peers for this chain")
 			r.recorder.Event(chainNode,
 				corev1.EventTypeWarning,
 				appsv1.ReasonNoPeers,
@@ -199,12 +200,18 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 		if len(rpcServers) >= 2 {
 			trustHeight, trustHash := getMostRecentHeightFromServicesAnnotations(stateSyncAnnotations)
 			if trustHeight == 0 {
+				logger.Info("not restoring from state-sync: no chainnode with valid trust height config is available")
 				r.recorder.Event(chainNode,
 					corev1.EventTypeWarning,
 					appsv1.ReasonNoTrustHeight,
 					"not restoring from state-sync: no chainnode with valid trust height config is available",
 				)
 			} else {
+				logger.Info("configuring state-sync",
+					"rpc_servers", strings.Join(rpcServers, ","),
+					"trust_height", trustHeight,
+					"trust_hash", trustHash,
+				)
 				configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
 					"statesync": map[string]interface{}{
 						"enable":       true,
@@ -244,7 +251,7 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("creating configs configmap")
+			logger.Info("creating configs configmap", "configmap", cm.GetName(), "hash", hash)
 			cm = &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
@@ -282,7 +289,7 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 	}
 
 	if shouldUpdate {
-		logger.Info("updating configs configmap")
+		logger.Info("updating configs configmap", "configmap", cm.GetName(), "hash", hash)
 		cm.Annotations[annotationConfigHash] = hash
 		cm.Data = cmData
 		if err := r.Update(ctx, cm); err != nil {
@@ -307,10 +314,11 @@ func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.Ap
 	}
 
 	if configs != nil {
+		logger.Info("loaded configs from cache", "version", chainNode.GetAppVersion())
 		return configs, nil
 	}
 
-	logger.Info("generating new config files")
+	logger.Info("generating new config files", "version", chainNode.GetAppVersion())
 	configFiles, err := app.GenerateConfigFiles(ctx)
 	if err != nil {
 		return nil, err

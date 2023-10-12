@@ -81,8 +81,9 @@ build: manifests generate fmt vet ## Build manager binary.
 
 .PHONY: run
 run: WORKER_NAME?=
+run: WORKER_COUNT?=1
 run: manifests generate ## Run a controller from your host.
-	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)"
+	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)" -worker-count=$(WORKER_COUNT) -zap-devel
 
 .PHONY: mirrord
 mirrord: RELEASE_NAME?=nibiru-operator
@@ -97,7 +98,8 @@ mirrord: manifests generate
 		go -- run ./cmd/manager \
 			-nodeutils-image="$(NODE_UTILS_IMG)" \
 			-worker-count=$(WORKER_COUNT) \
-			-worker-name="$(WORKER_NAME)"
+			-worker-name="$(WORKER_NAME)" \
+			-zap-devel
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
