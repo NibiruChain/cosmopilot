@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"k8s.io/kube-openapi/pkg/validation/strfmt"
 )
 
 func GetString(key, fallback string) string {
@@ -54,7 +56,7 @@ func GetBool(key string, fallback bool) bool {
 
 func GetDuration(key string, fallback time.Duration) time.Duration {
 	if value, ok := os.LookupEnv(key); ok {
-		if t, err := time.ParseDuration(value); err == nil {
+		if t, err := strfmt.ParseDuration(value); err == nil {
 			return t
 		}
 	}

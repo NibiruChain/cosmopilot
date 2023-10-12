@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/kube-openapi/pkg/validation/strfmt"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,7 +32,7 @@ func (chainNode *ChainNode) Equal(n *ChainNode) bool {
 
 func (chainNode *ChainNode) GetReconcilePeriod() time.Duration {
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.ReconcilePeriod != nil {
-		if d, err := time.ParseDuration(*chainNode.Spec.Config.ReconcilePeriod); err == nil {
+		if d, err := strfmt.ParseDuration(*chainNode.Spec.Config.ReconcilePeriod); err == nil {
 			return d
 		}
 	}

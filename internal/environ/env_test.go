@@ -3,56 +3,139 @@ package environ
 import (
 	"os"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/pointer"
 )
 
-func TestEnviron(t *testing.T) {
-	if os.Getenv("integer") != "" {
-		t.Fatalf("wrong initialization")
-	}
+type envTest[K comparable] struct {
+	name     string
+	fallback K
+	set      *string
+	expected K
+}
 
-	if os.Getenv("unsigned") != "" {
-		t.Fatalf("wrong initialization")
+func testEnvGet[K comparable](t *testing.T, tests []envTest[K], fn func(string, K) K) {
+	for _, test := range tests {
+		if test.set != nil {
+			err := os.Setenv(test.name, *test.set)
+			assert.NoError(t, err)
+		}
+		assert.Equal(t, test.expected, fn(test.name, test.fallback))
 	}
+}
 
-	if os.Getenv("string") != "" {
-		t.Fatalf("wrong initialization")
+func TestGetBool(t *testing.T) {
+	tests := []envTest[bool]{
+		{
+			name:     "bool1",
+			fallback: true,
+			set:      nil,
+			expected: true,
+		},
+		{
+			name:     "bool2",
+			fallback: true,
+			set:      pointer.String("false"),
+			expected: false,
+		},
+		{
+			name:     "bool3",
+			fallback: false,
+			set:      pointer.String("true"),
+			expected: true,
+		},
 	}
+	testEnvGet(t, tests, GetBool)
+}
 
-	if GetInt("integer", -1) != -1 {
-		t.Fatalf("wanted -1")
+func TestGetDuration(t *testing.T) {
+	tests := []envTest[time.Duration]{
+		{
+			name:     "duration1",
+			fallback: time.Minute,
+			set:      nil,
+			expected: time.Minute,
+		},
+		{
+			name:     "duration2",
+			fallback: time.Minute,
+			set:      pointer.String("1d"),
+			expected: 24 * time.Hour,
+		},
 	}
+	testEnvGet(t, tests, GetDuration)
+}
 
-	if GetUint64("unsigned", 10) != 10 {
-		t.Fatalf("wanted 10")
+func TestGetInt(t *testing.T) {
+	tests := []envTest[int]{
+		{
+			name:     "int1",
+			fallback: 10,
+			set:      nil,
+			expected: 10,
+		},
+		{
+			name:     "int2",
+			fallback: 0,
+			set:      pointer.String("10"),
+			expected: 10,
+		},
 	}
+	testEnvGet(t, tests, GetInt)
+}
 
-	if GetString("string", "example") != "example" {
-		t.Fatalf("wanted example")
+func TestGetInt64(t *testing.T) {
+	tests := []envTest[int64]{
+		{
+			name:     "int64_1",
+			fallback: 10,
+			set:      nil,
+			expected: 10,
+		},
+		{
+			name:     "int64_2",
+			fallback: 0,
+			set:      pointer.String("10"),
+			expected: 10,
+		},
 	}
+	testEnvGet(t, tests, GetInt64)
+}
 
-	integer, unsigned, str := "-1", "10", "example"
-
-	if err := os.Setenv("integer", integer); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestGetUint64(t *testing.T) {
+	tests := []envTest[uint64]{
+		{
+			name:     "uint64_1",
+			fallback: 10,
+			set:      nil,
+			expected: 10,
+		},
+		{
+			name:     "uint64_2",
+			fallback: 0,
+			set:      pointer.String("10"),
+			expected: 10,
+		},
 	}
+	testEnvGet(t, tests, GetUint64)
+}
 
-	if err := os.Setenv("unsigned", unsigned); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestGetString(t *testing.T) {
+	tests := []envTest[string]{
+		{
+			name:     "string1",
+			fallback: "hello",
+			set:      nil,
+			expected: "hello",
+		},
+		{
+			name:     "string2",
+			fallback: "hello",
+			set:      pointer.String("world"),
+			expected: "world",
+		},
 	}
-
-	if err := os.Setenv("string", str); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if GetInt("integer", -5) != -1 {
-		t.Fatalf("wanted -1")
-	}
-
-	if GetUint64("unsigned", 15) != 10 {
-		t.Fatalf("wanted 10")
-	}
-
-	if GetString("string", "invalid") != "example" {
-		t.Fatalf("wanted example")
-	}
+	testEnvGet(t, tests, GetString)
 }

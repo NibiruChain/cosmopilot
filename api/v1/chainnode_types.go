@@ -12,7 +12,7 @@ func init() {
 // ChainNodePhase is a label for the condition of a node at the current time.
 type ChainNodePhase string
 
-// These are the valid phases for nodes.
+// These are the valid phases for ChainNodes.
 const (
 	PhaseChainNodeInitData     ChainNodePhase = "InitializingData"
 	PhaseChainNodeInitGenesis  ChainNodePhase = "InitGenesis"
@@ -27,7 +27,7 @@ const (
 
 //+kubebuilder:object:root=true
 
-// ChainNodeList contains a list of ChainNode
+// ChainNodeList contains a list of ChainNode.
 type ChainNodeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -47,7 +47,7 @@ type ChainNodeList struct {
 //+kubebuilder:printcolumn:name="LatestHeight",type=integer,JSONPath=`.status.latestHeight`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// ChainNode is the Schema for the chainnodes API
+// ChainNode is the Schema for the chainnodes API.
 type ChainNode struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -56,41 +56,43 @@ type ChainNode struct {
 	Status ChainNodeStatus `json:"status,omitempty"`
 }
 
-// ChainNodeSpec defines the desired state of ChainNode
+// ChainNodeSpec defines the desired state of ChainNode.
 type ChainNodeSpec struct {
-	// Genesis indicates where this node will get the genesis from. Can be omitted when .spec.validator.init is specified.
+	// Indicates where this node will get the genesis from. Can be omitted when .spec.validator.init is specified.
 	// +optional
 	Genesis *GenesisConfig `json:"genesis"`
 
-	// App specifies image and binary name of the chain application to run
+	// Specifies image, version and binary name of the chain application to run. It also allows to schedule upgrades,
+	// or setting/updating the image for an on-chain upgrade.
 	App AppSpec `json:"app"`
 
-	// Config allows setting specific configurations for this node
+	// Allows setting specific configurations for this node.
 	// +optional
 	Config *Config `json:"config,omitempty"`
 
-	// Persistence configures pvc for persisting data on nodes
+	// Configures PVC for persisting data. Automated data snapshots can also be configured in
+	// this section.
 	// +optional
 	Persistence *Persistence `json:"persistence,omitempty"`
 
-	// Validator configures this node as a validator and configures it.
+	// Indicates this node is going to be a validator and allows configuring it.
 	// +optional
 	Validator *ValidatorConfig `json:"validator,omitempty"`
 
-	// AutoDiscoverPeers ensures peers with same chain ID are connected with each other. By default, it is enabled.
+	// Ensures peers with same chain ID are connected with each other. Enabled by default.
 	// +optional
 	AutoDiscoverPeers *bool `json:"autoDiscoverPeers,omitempty"`
 
-	// StateSyncRestore configures this node to find a state-sync snapshot on the network and restore from it.
+	// Configures this node to find a state-sync snapshot on the network and restore from it.
 	// This is disabled by default.
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 
-	// Peers are additional persistent peers that should be added to this node.
+	// Additional persistent peers that should be added to this node.
 	// +optional
 	Peers []Peer `json:"peers,omitempty"`
 
-	// Expose specifies which node endpoints are exposed and how they are exposed
+	// Allows exposing P2P traffic to public.
 	// +optional
 	Expose *ExposeConfig `json:"expose,omitempty"`
 
@@ -98,93 +100,98 @@ type ChainNodeSpec struct {
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// If specified, the pod's scheduling constraints
+	// If specified, the pod's scheduling constraints.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode
 type ChainNodeStatus struct {
-	// Phase indicates the current phase for this ChainNode.
+	// Indicates the current phase for this ChainNode.
 	// +optional
 	Phase ChainNodePhase `json:"phase,omitempty"`
 
-	// NodeID show this node's ID
+	// Indicates this node's ID.
 	// +optional
 	NodeID string `json:"nodeID,omitempty"`
 
-	// IP of this node.
+	// Internal IP address of this node.
 	// +optional
 	IP string `json:"ip,omitempty"`
 
-	// PublicAddress for p2p when enabled.
+	// Public address for P2P when enabled.
 	// +optional
 	PublicAddress string `json:"publicAddress,omitempty"`
 
-	// ChainID shows the chain ID
+	// Indicates the chain ID.
 	// +optional
 	ChainID string `json:"chainID,omitempty"`
 
-	// PvcSize shows the current size of the pvc of this node
+	// Current size of the data PVC for this node.
 	// +optional
 	PvcSize string `json:"pvcSize,omitempty"`
 
-	// DataUsage shows the percentage of data usage.
+	// Usage percentage of data volume.
 	// +optional
 	DataUsage string `json:"dataUsage,omitempty"`
 
-	// Validator indicates if this node is a validator.
+	// Indicates if this node is a validator.
 	Validator bool `json:"validator"`
 
-	// AccountAddress is the account address of this validator. Omitted when not a validator
+	// Account address of this validator. Omitted when not a validator.
 	// +optional
 	AccountAddress string `json:"accountAddress,omitempty"`
 
-	// ValidatorAddress is the valoper address of this validator. Omitted when not a validator
+	// Validator address is the valoper address of this validator. Omitted when not a validator.
 	// +optional
 	ValidatorAddress string `json:"validatorAddress,omitempty"`
 
-	// Jailed indicates if this validator is jailed. Always false if not a validator node.
-	Jailed bool `json:"jailed"`
+	// Indicates if this validator is jailed. Always false if not a validator node.
+	// +optional
+	Jailed bool `json:"jailed,omitempty"`
 
-	// AppVersion is the application version currently deployed
+	// Application version currently deployed.
+	// +optional
 	AppVersion string `json:"appVersion,omitempty"`
 
-	// LatestHeight is the last height read on the node by the operator.
+	// Last height read on the node by the operator.
+	// +optional
 	LatestHeight int64 `json:"latestHeight,omitempty"`
 
-	// SeedMode indicates if this node is running with seed mode enabled.
+	// Indicates if this node is running with seed mode enabled.
+	// +optional
 	SeedMode bool `json:"seedMode,omitempty"`
 
-	// Upgrades contains all scheduled/completed upgrades performed by the operator on this ChainNode.
+	// All scheduled/completed upgrades performed by the operator on this ChainNode.
 	// +optional
 	Upgrades []Upgrade `json:"upgrades,omitempty"`
 
-	// PubKey of the validator.
+	// Public key of the validator.
 	// +optional
 	PubKey string `json:"pubKey,omitempty"`
 
-	// ValidatorStatus indicates the current status of validator if this node is one.
+	// Indicates the current status of validator if this node is one.
+	// +optional
 	ValidatorStatus ValidatorStatus `json:"validatorStatus,omitempty"`
 }
 
-// ValidatorConfig turns this node into a validator and specifies how it will do it.
+// ValidatorConfig contains the configuration for running a node as validator.
 type ValidatorConfig struct {
-	// PrivateKeySecret indicates the secret containing the private key to be use by this validator.
+	// Indicates the secret containing the private key to be used by this validator.
 	// Defaults to `<chainnode>-priv-key`. Will be created if it does not exist.
 	// +optional
 	PrivateKeySecret *string `json:"privateKeySecret,omitempty"`
 
-	// Info contains information details about this validator.
+	// Contains information details about this validator.
 	// +optional
 	Info *ValidatorInfo `json:"info,omitempty"`
 
-	// Init specifies configs and initialization commands for creating a new chain and its genesis.
+	// Specifies configs and initialization commands for creating a new genesis.
 	// +optional
 	Init *GenesisInitConfig `json:"init,omitempty"`
 
@@ -193,7 +200,7 @@ type ValidatorConfig struct {
 	// +optional
 	TmKMS *TmKMS `json:"tmKMS,omitempty"`
 
-	// CreateValidator indicates that operator should run create-validator tx to make this node a validator.
+	// Indicates that operator should run create-validator tx to make this node a validator.
 	// +optional
 	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
 }

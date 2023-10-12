@@ -57,6 +57,8 @@ spec:
     stateSync:
       snapshotInterval: 100
 
+    blockThreshold: 1d
+
     sidecars:
       - name: pricefeeder
         image: ghcr.io/nibiruchain/pricefeeder:0.21.6

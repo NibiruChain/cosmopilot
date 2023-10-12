@@ -51,31 +51,43 @@ const (
 	ReasonCreateValidatorSuccess = "CreateValidatorSuccess"
 )
 
-// SdkVersion specifies the cosmos-sdk version.
+// SdkVersion specifies the cosmos-sdk version used by this application.
 // +kubebuilder:validation:Enum=v0.45;v0.47
 type SdkVersion string
 
 const (
+	// Cosmos-sdk version v0.47.x.
 	V0_47 SdkVersion = "v0.47"
+
+	// Cosmos-sdk version v0.45.x and below.
 	V0_45 SdkVersion = "v0.45"
 )
 
+// ValidatorStatus represents the current status of a validator.
 type ValidatorStatus string
 
 const (
-	ValidatorStatusBonded    = "bonded"
-	ValidatorStatusUnbonded  = "unbonded"
+	// ValidatorStatusBonded indicates that validator is bonded and in the validator set.
+	ValidatorStatusBonded = "bonded"
+
+	// ValidatorStatusUnbonded indicates that validator is unbonded.
+	ValidatorStatusUnbonded = "unbonded"
+
+	// ValidatorStatusUnbonding indicates that validator is unbonding.
 	ValidatorStatusUnbonding = "unbonding"
-	ValidatorStatusUnknown   = "unknown"
+
+	// ValidatorStatusUnknown indicates that validator status is unknown.
+	ValidatorStatusUnknown = "unknown"
 )
 
-// AppSpec specifies the source image and binary name of the app to run
+// AppSpec specifies the source image, version and binary name of the app to run. Also allows
+// specifying upgrades for the app and enabling automatic check of upgrade proposals on chain.
 type AppSpec struct {
-	// Image indicates the docker image to be used
+	// Container image to be used.
 	// +kubebuilder:validation:MinLength=1
 	Image string `json:"image"`
 
-	// Version is the image tag to be used. Once there are completed or skipped upgrades this will be ignored.
+	// Image tag to be used. Once there are completed or skipped upgrades this will be ignored.
 	// For a new node that will be state-synced, this will be the version used during state-sync. Only after
 	// that, the operator will switch to the version of last upgrade.
 	// Defaults to `latest`.
@@ -83,67 +95,74 @@ type AppSpec struct {
 	// +default=latest
 	Version *string `json:"version,omitempty"`
 
-	// ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
+	// Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
 	// is `latest` and `IfNotPresent` otherwise.
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
-	// App is the name of the binary of the application to be run
+	// Binary name of the application to be run.
+	// +kubebuilder:validation:MinLength=1
 	App string `json:"app"`
 
-	// SdkVersion specifies the version of cosmos-sdk used by this app. Defaults to `v0.47`.
+	// SdkVersion specifies the version of cosmos-sdk used by this app.
+	// Valid options are:
+	// - "v0.47" (default)
+	// - "v0.45"
 	// +optional
 	// +default=v0.47
 	SdkVersion *SdkVersion `json:"sdkVersion,omitempty"`
 
-	// CheckGovUpgrades indicates that operator should query gov proposals to find and schedule upgrades.
+	// Whether the operator should query gov proposals to find and schedule upgrades.
 	// Defaults to `true`.
 	// +optional
 	// +default=true
 	CheckGovUpgrades *bool `json:"checkGovUpgrades,omitempty"`
 
-	// Upgrades contains manually scheduled upgrades.
+	// List of upgrades to schedule for this node.
 	// +optional
 	Upgrades []UpgradeSpec `json:"upgrades,omitempty"`
 }
 
-// Config allows setting specific configurations for a chainnode such as overrides to app.toml and config.toml
+// Config allows setting specific configurations for a node, including overriding configs in app.toml and config.toml.
 type Config struct {
-	// Override allows overriding configs on toml configuration files
+	// Allows overriding configs on `.toml` configuration files.
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Override *map[string]runtime.RawExtension `json:"override,omitempty"`
 
-	// Sidecars allow configuring additional containers to run alongside the node
+	// Allows configuring additional containers to run alongside the node.
 	// +optional
 	Sidecars []SidecarSpec `json:"sidecars,omitempty"`
 
-	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node.
+	// Optional list of references to secrets in the same namespace to use for pulling any of the images used by this node.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
-	// BlockThreshold specifies the time to wait for a block before considering node unhealthy.
+	// The time to wait for a block before considering node unhealthy.
 	// Defaults to `15s`.
 	// +optional
 	// +default=15s
+	// +kubebuilder:validation:Format=duration
 	BlockThreshold *string `json:"blockThreshold,omitempty"`
 
-	// ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode.
+	// Period at which a reconcile loop will happen for this ChainNode.
 	// Defaults to `15s`.
 	// +optional
 	// +default=15s
+	// +kubebuilder:validation:Format=duration
 	ReconcilePeriod *string `json:"reconcilePeriod,omitempty"`
 
-	// StateSync configures statesync snapshots for this node.
+	// Allows configuring this node to perform state-sync snapshots.
 	// +optional
 	StateSync *StateSyncConfig `json:"stateSync,omitempty"`
 
-	// SeedMode configures this node to run on seed mode. Defaults to `false`.
+	// Configures this node to run on seed mode. Defaults to `false`.
 	// +optional
+	// +default=false
 	SeedMode *bool `json:"seedMode,omitempty"`
 
-	// Env refers to the list of environment variables to set in the app container.
+	// List of environment variables to set in the app container.
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
@@ -157,31 +176,32 @@ type Config struct {
 	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
 }
 
+// ServiceMonitorSpec allows enabling/disabling deployment of ServiceMonitor for this node.
 type ServiceMonitorSpec struct {
-	// Enable indicates a service monitor should be deployed for this node.
+	// Whether a service monitor should be deployed for this node.
 	Enable bool `json:"enable"`
 
-	// Selector indicates the prometheus installation that will be using this service monitor.
+	// Indicates the prometheus installation that will be using this service monitor.
 	// +optional
 	Selector map[string]string `json:"selector,omitempty"`
 }
 
-// SidecarSpec allow configuring additional containers to run alongside the node
+// SidecarSpec allows configuring additional containers to run alongside the node.
 type SidecarSpec struct {
-	// Name refers to the name to be assigned to the container
+	// Name to be assigned to the container.
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 
-	// Image refers to the docker image to be used by the container
+	// Container image to be used.
 	// +kubebuilder:validation:MinLength=1
 	Image string `json:"image"`
 
-	// ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
+	// Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
 	// is `latest` and `IfNotPresent` otherwise.
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
-	// MountDataVolume indicates where data volume will be mounted on this container. It is not mounted if not specified.
+	// Where data volume will be mounted on this container. It is not mounted if not specified.
 	// +optional
 	MountDataVolume *string `json:"mountDataVolume,omitempty"`
 
@@ -193,17 +213,15 @@ type SidecarSpec struct {
 	// +optional
 	Args []string `json:"args,omitempty"`
 
-	// Env sets environment variables to be passed to this container.
+	// Environment variables to be passed to this container.
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
-	// SecurityContext defines the security options the container should be run with.
-	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext, which defaults to
-	// user ID 1000.
+	// Security options the container should be run with.
 	// +optional
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 
-	// Compute Resources required by the sidecar container.
+	// Compute Resources for the sidecar container.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
@@ -218,7 +236,7 @@ type ValidatorInfo struct {
 	// +optional
 	Details *string `json:"details,omitempty"`
 
-	// Website indicates this validator's website.
+	// Website of the validator.
 	// +optional
 	Website *string `json:"website,omitempty"`
 
@@ -227,79 +245,91 @@ type ValidatorInfo struct {
 	Identity *string `json:"identity,omitempty"`
 }
 
-// GenesisInitConfig specifies configs and initialization commands for creating a new chain and its genesis
+// GenesisInitConfig specifies configs and initialization commands for creating a new genesis.
 type GenesisInitConfig struct {
 	// ChainID of the chain to initialize.
+	// +kubebuilder:validation:MinLength=1
 	ChainID string `json:"chainID"`
 
-	// AccountMnemonicSecret is the name of the secret containing the mnemonic of the account to be used by
-	// this validator. Defaults to `<chainnode>-account`. Will be created if does not exist.
+	// Name of the secret containing the mnemonic of the account to be used by
+	// this validator. Defaults to `<chainnode>-account`. Will be created if it does not exist.
+	// +optional
 	AccountMnemonicSecret *string `json:"accountMnemonicSecret,omitempty"`
 
-	// AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`.
+	// HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
 	// +optional
+	// +default=`m/44'/118'/0'/0/0`
 	AccountHDPath *string `json:"accountHDPath,omitempty"`
 
-	// AccountPrefix is the prefix for accounts. Defaults to `nibi`.
+	// Prefix for accounts. Defaults to `nibi`.
 	// +optional
+	// +default=nibi
 	AccountPrefix *string `json:"accountPrefix,omitempty"`
 
-	// ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`.
+	// Prefix for validator operator accounts. Defaults to `nibivaloper`.
 	// +optional
+	// +default=nibivaloper
 	ValPrefix *string `json:"valPrefix,omitempty"`
 
-	// CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`.
+	// Maximum commission change rate percentage (per day). Defaults to `0.1`.
 	// +optional
 	// +default="0.1"
 	CommissionMaxChangeRate *string `json:"commissionMaxChangeRate,omitempty"`
 
-	// CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`.
+	// Maximum commission rate percentage. Defaults to `0.1`.
 	// +optional
 	// +default="0.1"
 	CommissionMaxRate *string `json:"commissionMaxRate,omitempty"`
 
-	// CommissionRate is the initial commission rate percentage. Defaults to `0.1`.
+	// Initial commission rate percentage. Defaults to `0.1`.
 	// +optional
 	// +default="0.1"
 	CommissionRate *string `json:"commissionRate,omitempty"`
 
-	// MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`.
+	// Minimum self delegation required on the validator. Defaults to `1`.
 	// +optional
-	// +default="0.1"
+	// +default="1"
 	MinSelfDelegation *string `json:"minSelfDelegation,omitempty"`
 
 	// Assets is the list of tokens and their amounts to be assigned to this validators account.
 	Assets []string `json:"assets"`
 
-	// StakeAmount represents the amount to be staked by this validator.
+	// Amount to be staked by this validator.
 	StakeAmount string `json:"stakeAmount"`
 
 	// Accounts specify additional accounts and respective assets to be added to this chain.
 	// +optional
 	Accounts []AccountAssets `json:"accounts,omitempty"`
 
-	// UnbondingTime is the time that takes to unbond delegations. Defaults to `1814400s`.
+	// Time required to totally unbond delegations. Defaults to `1814400s` (21 days).
 	// +optional
+	// +default=1814400s
+	// +kubebuilder:validation:Format=duration
 	UnbondingTime *string `json:"unbondingTime,omitempty"`
 
-	// VotingPeriod indicates the voting period for this chain. Defaults to `120h`.
+	// Voting period for this chain. Defaults to `120h`.
 	// +optional
+	// +default=120h
+	// +kubebuilder:validation:Format=duration
 	VotingPeriod *string `json:"votingPeriod,omitempty"`
 
-	// AdditionalInitCommands are additional commands to run on genesis initialization.
-	// App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers.
+	// Additional commands to run on genesis initialization.
+	// Note: App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers.
 	// +optional
 	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
 }
 
+// AccountAssets represents the assets associated with an account.
 type AccountAssets struct {
 	// Address of the account.
 	Address string `json:"address"`
 
-	// Assets to be assigned to this account.
+	// Assets assigned to this account.
 	Assets []string `json:"assets"`
 }
 
+// InitCommand represents an initialization command. It may be used for running addtional operators
+// on genesis or volume initialization.
 type InitCommand struct {
 	// Image to be used to run this command. Defaults to app image.
 	// +optional
@@ -313,22 +343,21 @@ type InitCommand struct {
 	Args []string `json:"args"`
 }
 
-// GenesisConfig specifies how genesis will be retrieved
+// GenesisConfig specifies how genesis will be retrieved.
 type GenesisConfig struct {
 	// URL to download the genesis from.
 	// +optional
-	// +kubebuilder:validation:MinLength=1
 	Url *string `json:"url,omitempty"`
 
-	// Get the genesis from the existing node RPC endpoint.
+	// Get the genesis from an existing node using its RPC endpoint.
 	// +optional
 	FromNodeRPC *FromNodeRPCConfig `json:"fromNodeRPC,omitempty"`
 
-	// GenesisSHA is the 256 SHA to validate the genesis.
+	// SHA256 to validate the genesis.
 	// +optional
 	GenesisSHA *string `json:"genesisSHA,omitempty"`
 
-	// ConfigMap specifies a configmap to load the genesis from
+	// ConfigMap specifies a configmap to load the genesis from.
 	// +optional
 	ConfigMap *string `json:"configMap,omitempty"`
 
@@ -338,68 +367,88 @@ type GenesisConfig struct {
 	UseDataVolume *bool `json:"useDataVolume,omitempty"`
 }
 
+// Peer represents a persistent peer.
 type Peer struct {
-	// ID refers to tendermint node ID for this node
+	// Tendermint node ID for this node.
 	ID string `json:"id"`
 
-	// Address is the hostname or IP address of this peer
+	// Hostname or IP address of this peer.
 	Address string `json:"address"`
 
-	// Port is the P2P port to be used. Defaults to `26656`.
+	// P2P port to be used. Defaults to `26656`.
 	// +optional
+	// +default=26656
 	Port *int `json:"port,omitempty"`
 
-	// Unconditional marks this peer as unconditional.
+	// Indicates this peer is unconditional.
 	// +optional
 	Unconditional *bool `json:"unconditional,omitempty"`
 
-	// Private marks this peer as private.
+	// Indicates this peer is private.
 	// +optional
 	Private *bool `json:"private,omitempty"`
 }
 
+// ExposeConfig allows configuring how P2P endpoint is exposed to public.
 type ExposeConfig struct {
-	// P2P indicates whether to expose p2p endpoint for this node. Defaults to `false`.
+	// Whether to expose p2p endpoint for this node. Defaults to `false`.
 	// +optional
 	// +default=false
 	P2P *bool `json:"p2p,omitempty"`
 
-	// P2pServiceType indicates how p2p port will be exposed. Either `LoadBalancer` or `NodePort`.
-	// Defaults to `NodePort`.
+	// P2pServiceType indicates how P2P port will be exposed.
+	// Valid values are:
+	// - `LoadBalancer`
+	// - `NodePort` (default)
 	// +optional
 	// +default="NodePort"
 	P2pServiceType *corev1.ServiceType `json:"p2pServiceType,omitempty"`
 }
 
+// TmKMS allows configuring tmkms for signing for this validator node instead of
+// using plaintext private key file.
 type TmKMS struct {
-	// Provider specifies the signing provider to be used by tmkms
+	// Signing provider to be used by tmkms. Currently only `vault` is supported.
 	Provider TmKmsProvider `json:"provider"`
 
-	// KeyFormat specifies the format and type of key for chain.
+	// Format and type of key for chain.
 	// Defaults to `{"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix": "nibivalconspub"}`.
 	// +optional
+	// +default={type: bech32, account_key_prefix: nibipub, consensus_key_prefix: nibivalconspub}
 	KeyFormat *TmKmsKeyFormat `json:"keyFormat,omitempty"`
 
-	// ValidatorProtocol specifies the tendermint protocol version to be used.
-	// One of `legacy`, `v0.33` or `v0.34`. Defaults to `v0.34`.
+	// Tendermint's protocol version to be used.
+	// Valid options are:
+	// - `v0.34` (default)
+	// - `v0.33`
+	// - `legacy`
 	// +optional
+	// +default="v0.34"
 	ValidatorProtocol *tmkms.ProtocolVersion `json:"validatorProtocol,omitempty"`
 }
 
+// TmKmsKeyFormat represents key format for tmKMS.
 type TmKmsKeyFormat struct {
-	Type               string `json:"type"`
-	AccountKeyPrefix   string `json:"account_key_prefix"`
+	// Key type
+	Type string `json:"type"`
+
+	// Account keys prefixes
+	AccountKeyPrefix string `json:"account_key_prefix"`
+
+	// Consensus keys prefix
 	ConsensusKeyPrefix string `json:"consensus_key_prefix"`
 }
 
+// TmKmsProvider allows configuring providers for tmKMS. Note that only one should be configured.
 type TmKmsProvider struct {
-	// Vault provider
+	// Vault provider.
 	// +optional
 	Vault *TmKmsVaultProvider `json:"vault,omitempty"`
 }
 
+// TmKmsVaultProvider holds `vault` provider specific configurations.
 type TmKmsVaultProvider struct {
-	// Address of the Vault cluster
+	// Full address of the Vault cluster.
 	Address string `json:"address"`
 
 	// Key to be used by this validator.
@@ -419,19 +468,22 @@ type TmKmsVaultProvider struct {
 	UploadGenerated bool `json:"uploadGenerated,omitempty"`
 }
 
+// StateSyncConfig holds configurations for enabling state-sync snapshots on a node.
 type StateSyncConfig struct {
-	// SnapshotInterval specifies the block interval at which local state sync snapshots are
-	// taken (0 to disable).
+	// Block interval at which local state sync snapshots are taken (0 to disable).
 	SnapshotInterval int `json:"snapshotInterval"`
 
-	// SnapshotKeepRecent specifies the number of recent snapshots to keep and serve (0 to keep all). Defaults to 2.
+	// Number of recent snapshots to keep and serve (0 to keep all). Defaults to 2.
 	// +optional
 	SnapshotKeepRecent *int `json:"snapshotKeepRecent,omitempty"`
 }
 
+// FromNodeRPCConfig holds configuration to retrieve genesis from an existing node
+// using RPC endpoint.
 type FromNodeRPCConfig struct {
-	// Defines protocol to use. Defaults to false.
+	// Defines protocol to use. Defaults to `false`.
 	// +optional
+	// +default=false
 	Secure bool `json:"secure,omitempty"`
 
 	// Hostname or IP address of the RPC server
@@ -440,202 +492,234 @@ type FromNodeRPCConfig struct {
 
 	// TCP port used for RPC queries on the RPC server. Defaults to `26657`.
 	// +optional
+	// +default=26657
 	Port *int `json:"port,omitempty"`
 }
 
-// Persistence configuration for this node
+// Persistence configuration for a node.
 type Persistence struct {
 	// Size of the persistent volume for storing data. Can't be updated when autoResize is enabled.
 	// Defaults to `50Gi`.
 	// +optional
 	// +default="50Gi"
-	// +kubebuilder:validation:MinLength=1
 	Size *string `json:"size,omitempty"`
 
-	// StorageClassName specifies the name of the storage class to use
+	// Name of the storage class to use for the PVC. Uses the default class if not specified.
 	// to create persistent volumes.
 	// +optional
 	StorageClassName *string `json:"storageClass,omitempty"`
 
-	// AutoResize specifies configurations to automatically resize PVC.
+	// Automatically resize PVC.
 	// Defaults to `true`.
 	// +optional
 	// +default=true
 	AutoResize *bool `json:"autoResize,omitempty"`
 
-	// AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur.
+	// Percentage of data usage at which an auto-resize event should occur.
 	// Defaults to `80`.
 	// +optional
 	// +default=80
 	AutoResizeThreshold *int `json:"autoResizeThreshold,omitempty"`
 
-	// AutoResizeIncrement specifies the size increment on each auto-resize event.
+	// Increment size on each auto-resize event.
 	// Defaults to `50Gi`.
 	// +optional
 	// +default=50Gi
 	AutoResizeIncrement *string `json:"autoResizeIncrement,omitempty"`
 
-	// AutoResizeMaxSize specifies the maximum size the PVC can have.
+	// Size at which auto-resize will stop incrementing PVC size.
 	// Defaults to `2Ti`.
 	// +optional
 	// +default=2Ti
 	AutoResizeMaxSize *string `json:"autoResizeMaxSize,omitempty"`
 
-	// AdditionalInitCommands are additional commands to run on data initialization. Useful for downloading and
+	// Additional commands to run on data initialization. Useful for downloading and
 	// extracting snapshots.
 	// App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume
 	// shared by all init containers.
 	// +optional
 	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
 
-	// Snapshots indicates that the operator should create volume snapshots according to this config.
+	// Whether the operator should create volume snapshots according to this config.
 	// +optional
 	Snapshots *VolumeSnapshotsConfig `json:"snapshots,omitempty"`
 
-	// RestoreFromSnapshot indicates that the operator should restore from the specified snapshot when creating
-	// the PVC for this node.
+	// Restore from the specified snapshot when creating the PVC for this node.
 	// +optional
 	RestoreFromSnapshot *PvcSnapshot `json:"restoreFromSnapshot,omitempty"`
 }
 
+// VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 type VolumeSnapshotsConfig struct {
-	// Frequency indicates how often a snapshot should be created. Specified as a duration with suffix `s`, `m` or `h`.
+	// How often a snapshot should be created.
+	// +kubebuilder:validation:Format=duration
 	Frequency string `json:"frequency"`
 
-	// Retention indicates for how long a snapshot should be retained. Default is indefinite retention.
-	// Specified as a duration with suffix `s`, `m` or `h`.
+	// How long a snapshot should be retained. Default is indefinite retention.
 	// +optional
+	// +kubebuilder:validation:Format=duration
 	Retention *string `json:"retention,omitempty"`
 
-	// SnapshotClassName is the name of the volume snapshot class to be used.
+	// Name of the volume snapshot class to be used. Uses the default class if not specified.
 	// +optional
 	SnapshotClassName *string `json:"snapshotClass,omitempty"`
 
-	// StopNode indicates that the node should be stopped while the snapshot is taken. Defaults to `false`.
+	// Whether the node should be stopped while the snapshot is taken. Defaults to `false`.
 	// +optional
+	// +default=false
 	StopNode *bool `json:"stopNode,omitempty"`
 
-	// ExportTarball creates a tarball of data directory in each snapshot and uploads it to external storage.
+	// Whether to create a tarball of data directory in each snapshot and upload it to external storage.
 	// +optional
 	ExportTarball *ExportTarballConfig `json:"exportTarball,omitempty"`
 }
 
+// PvcSnapshot represents a snapshot to be used to restore a PVC.
 type PvcSnapshot struct {
-	// Name is the name of resource being referenced
+	// Name of resource being referenced.
 	Name string `json:"name"`
 
-	// Kind is the type of resource being referenced. Defaults to `VolumeSnapshot`.
+	// Type of resource being referenced. Defaults to `VolumeSnapshot`.
 	// +optional
+	// +default=VolumeSnapshot
 	Kind *string `json:"kind,omitempty"`
 
-	// APIGroup is the group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`.
+	// Group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`.
+	// +optional
+	// +default=snapshot.storage.k8s.io
 	APIGroup *string `json:"apiGroup,omitempty"`
 }
 
+// ExportTarballConfig holds config options for tarball upload.
 type ExportTarballConfig struct {
-	// Suffix to add to archive name. The name of the tarball is `<chain-id>-<timestamp>-<suffix>`.
+	// Suffix to add to archive name. The name of the tarball will be `<chain-id>-<timestamp>-<suffix>`.
 	// +optional
 	Suffix *string `json:"suffix,omitempty"`
 
-	// DeleteOnExpire makes sure the tarball is deleted when the snapshot expires. Default is `false`.
+	// Whether to delete the tarball when the snapshot expires. Default is `false`.
 	// +optional
+	// +default=false
 	DeleteOnExpire *bool `json:"deleteOnExpire,omitempty"`
 
-	// GCS allows configuring to upload tarballs to a GCS bucket
+	// Configuration to upload tarballs to a GCS bucket.
 	// +optional
 	GCS *GcsExportConfig `json:"gcs,omitempty"`
 }
 
+// GcsExportConfig holds required settings to upload to GCS.
 type GcsExportConfig struct {
 	// Name of the bucket to upload tarballs to.
 	Bucket string `json:"bucket"`
 
-	// CredentialsSecret is the secret that contains the credentials to upload to bucket.
+	// Secret with the JSON credentials to upload to bucket.
 	CredentialsSecret *corev1.SecretKeySelector `json:"credentialsSecret"`
 }
 
-// Upgrades
-
+// UpgradePhase indicates the current phase of an upgrade.
 type UpgradePhase string
 
 const (
+	// UpgradeImageMissing indicates that a scheduled upgrade is missing the image.
 	UpgradeImageMissing UpgradePhase = "image-missing"
-	UpgradeScheduled    UpgradePhase = "scheduled"
-	UpgradeOnGoing      UpgradePhase = "ongoing"
-	UpgradeCompleted    UpgradePhase = "completed"
-	UpgradeSkipped      UpgradePhase = "skipped"
+
+	// UpgradeScheduled indicates that the upgrade is scheduled and will be
+	// performed by the operator.
+	UpgradeScheduled UpgradePhase = "scheduled"
+
+	// UpgradeOnGoing indicates that the upgrade is on going.
+	UpgradeOnGoing UpgradePhase = "ongoing"
+
+	// UpgradeCompleted indicates that the upgrade was successfully finished.
+	// Note: successfully finished means the container was restarted with the
+	// new image. Application issues after the upgrade won't be detected.
+	UpgradeCompleted UpgradePhase = "completed"
+
+	// UpgradeSkipped indicates that the operator will not perform the upgrade
+	// because it is in the past.
+	UpgradeSkipped UpgradePhase = "skipped"
 )
 
+// UpgradeSource indicates the source of a scheduled upgrade.
 type UpgradeSource string
 
 const (
+	// OnChainUpgrade represents an upgrade that was retrieved from governance
+	// on chain.
 	OnChainUpgrade UpgradeSource = "on-chain"
-	ManualUpgrade  UpgradeSource = "manual"
+
+	// ManualUpgrade represents an upgrade that was manually specified by the user.
+	ManualUpgrade UpgradeSource = "manual"
 )
 
+// UpgradeSpec represents a manual upgrade.
 type UpgradeSpec struct {
 	// Height at which the upgrade should occur.
 	Height int64 `json:"height"`
 
-	// Image replacement to be used in the upgrade.
+	// Container image replacement to be used in the upgrade.
 	Image string `json:"image"`
 }
 
+// Upgrade represents an upgrade processed by the operator and added to status.
 type Upgrade struct {
 	// Height at which the upgrade should occur.
 	Height int64 `json:"height"`
 
-	// Image replacement to be used in the upgrade.
+	// Container image replacement to be used in the upgrade.
 	Image string `json:"image"`
 
-	// Status indicates the upgrade status.
+	// Upgrade status.
 	Status UpgradePhase `json:"status"`
 
-	// Source indicates where the operator got this upgrade from.
+	// Where the operator got this upgrade from.
 	Source UpgradeSource `json:"source"`
 }
 
+// CreateValidatorConfig holds configuration for the operator to submit a create-validator transaction.
 type CreateValidatorConfig struct {
-	// AccountMnemonicSecret is the name of the secret containing the mnemonic of the account to be used by
-	// this validator. Defaults to `<chainnode>-account`. Will be created if does not exist.
+	// Name of the secret containing the mnemonic of the account to be used by
+	// this validator. Defaults to `<chainnode>-account`. Will be created if it does not exist.
 	// +optional
 	AccountMnemonicSecret *string `json:"accountMnemonicSecret,omitempty"`
 
-	// AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`.
+	// HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
 	// +optional
+	// +default=`m/44'/118'/0'/0/0`
 	AccountHDPath *string `json:"accountHDPath,omitempty"`
 
-	// AccountPrefix is the prefix for accounts. Defaults to `nibi`.
+	// Prefix for accounts. Defaults to `nibi`.
 	// +optional
+	// +default=nibi
 	AccountPrefix *string `json:"accountPrefix,omitempty"`
 
-	// ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`.
+	// Prefix for validator operator accounts. Defaults to `nibivaloper`.
 	// +optional
+	// +default=nibivaloper
 	ValPrefix *string `json:"valPrefix,omitempty"`
 
-	// StakeAmount represents the amount to be staked by this validator.
-	StakeAmount string `json:"stakeAmount"`
-
-	// GasPrices in decimal format to determine the transaction fee.
-	GasPrices string `json:"gasPrices"`
-
-	// CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`.
+	// Maximum commission change rate percentage (per day). Defaults to `0.1`.
 	// +optional
 	// +default="0.1"
 	CommissionMaxChangeRate *string `json:"commissionMaxChangeRate,omitempty"`
 
-	// CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`.
+	// Maximum commission rate percentage. Defaults to `0.1`.
 	// +optional
 	// +default="0.1"
 	CommissionMaxRate *string `json:"commissionMaxRate,omitempty"`
 
-	// CommissionRate is the initial commission rate percentage. Defaults to `0.1`.
+	// Initial commission rate percentage. Defaults to `0.1`.
 	// +optional
 	// +default="0.1"
 	CommissionRate *string `json:"commissionRate,omitempty"`
 
-	// MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`.
+	// Minimum self delegation required on the validator. Defaults to `1`.
 	// +optional
-	// +default="0.1"
+	// +default="1"
 	MinSelfDelegation *string `json:"minSelfDelegation,omitempty"`
+
+	// Amount to be staked by this validator.
+	StakeAmount string `json:"stakeAmount"`
+
+	// Gas prices in decimal format to determine the transaction fee.
+	GasPrices string `json:"gasPrices"`
 }

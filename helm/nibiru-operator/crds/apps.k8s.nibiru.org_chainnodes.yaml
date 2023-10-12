@@ -49,7 +49,7 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: ChainNode is the Schema for the chainnodes API
+        description: ChainNode is the Schema for the chainnodes API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -64,10 +64,10 @@ spec:
           metadata:
             type: object
           spec:
-            description: ChainNodeSpec defines the desired state of ChainNode
+            description: ChainNodeSpec defines the desired state of ChainNode.
             properties:
               affinity:
-                description: If specified, the pod's scheduling constraints
+                description: If specified, the pod's scheduling constraints.
                 properties:
                   nodeAffinity:
                     description: Describes node affinity scheduling rules for the
@@ -895,43 +895,46 @@ spec:
                     type: object
                 type: object
               app:
-                description: App specifies image and binary name of the chain application
-                  to run
+                description: Specifies image, version and binary name of the chain
+                  application to run. It also allows to schedule upgrades, or setting/updating
+                  the image for an on-chain upgrade.
                 properties:
                   app:
-                    description: App is the name of the binary of the application
-                      to be run
+                    description: Binary name of the application to be run.
+                    minLength: 1
                     type: string
                   checkGovUpgrades:
-                    description: CheckGovUpgrades indicates that operator should query
-                      gov proposals to find and schedule upgrades. Defaults to `true`.
+                    description: Whether the operator should query gov proposals to
+                      find and schedule upgrades. Defaults to `true`.
                     type: boolean
                   image:
-                    description: Image indicates the docker image to be used
+                    description: Container image to be used.
                     minLength: 1
                     type: string
                   imagePullPolicy:
-                    description: ImagePullPolicy indicates the desired pull policy
-                      when creating nodes. Defaults to `Always` if `version` is `latest`
-                      and `IfNotPresent` otherwise.
+                    description: Indicates the desired pull policy when creating nodes.
+                      Defaults to `Always` if `version` is `latest` and `IfNotPresent`
+                      otherwise.
                     type: string
                   sdkVersion:
-                    description: SdkVersion specifies the version of cosmos-sdk used
-                      by this app. Defaults to `v0.47`.
+                    description: 'SdkVersion specifies the version of cosmos-sdk used
+                      by this app. Valid options are: - "v0.47" (default) - "v0.45"'
                     enum:
                     - v0.45
                     - v0.47
                     type: string
                   upgrades:
-                    description: Upgrades contains manually scheduled upgrades.
+                    description: List of upgrades to schedule for this node.
                     items:
+                      description: UpgradeSpec represents a manual upgrade.
                       properties:
                         height:
                           description: Height at which the upgrade should occur.
                           format: int64
                           type: integer
                         image:
-                          description: Image replacement to be used in the upgrade.
+                          description: Container image replacement to be used in the
+                            upgrade.
                           type: string
                       required:
                       - height
@@ -939,31 +942,30 @@ spec:
                       type: object
                     type: array
                   version:
-                    description: Version is the image tag to be used. Once there are
-                      completed or skipped upgrades this will be ignored. For a new
-                      node that will be state-synced, this will be the version used
-                      during state-sync. Only after that, the operator will switch
-                      to the version of last upgrade. Defaults to `latest`.
+                    description: Image tag to be used. Once there are completed or
+                      skipped upgrades this will be ignored. For a new node that will
+                      be state-synced, this will be the version used during state-sync.
+                      Only after that, the operator will switch to the version of
+                      last upgrade. Defaults to `latest`.
                     type: string
                 required:
                 - app
                 - image
                 type: object
               autoDiscoverPeers:
-                description: AutoDiscoverPeers ensures peers with same chain ID are
-                  connected with each other. By default, it is enabled.
+                description: Ensures peers with same chain ID are connected with each
+                  other. Enabled by default.
                 type: boolean
               config:
-                description: Config allows setting specific configurations for this
-                  node
+                description: Allows setting specific configurations for this node.
                 properties:
                   blockThreshold:
-                    description: BlockThreshold specifies the time to wait for a block
-                      before considering node unhealthy. Defaults to `15s`.
+                    description: The time to wait for a block before considering node
+                      unhealthy. Defaults to `15s`.
+                    format: duration
                     type: string
                   env:
-                    description: Env refers to the list of environment variables to
-                      set in the app container.
+                    description: List of environment variables to set in the app container.
                     items:
                       description: EnvVar represents an environment variable present
                         in a Container.
@@ -1077,9 +1079,9 @@ spec:
                       type: object
                     type: array
                   imagePullSecrets:
-                    description: ImagePullSecrets is an optional list of references
-                      to secrets in the same namespace to use for pulling any of the
-                      images used by this node.
+                    description: Optional list of references to secrets in the same
+                      namespace to use for pulling any of the images used by this
+                      node.
                     items:
                       description: LocalObjectReference contains enough information
                         to let you locate the referenced object inside the same namespace.
@@ -1092,12 +1094,13 @@ spec:
                       x-kubernetes-map-type: atomic
                     type: array
                   override:
-                    description: Override allows overriding configs on toml configuration
-                      files
+                    description: Allows overriding configs on `.toml` configuration
+                      files.
                     x-kubernetes-preserve-unknown-fields: true
                   reconcilePeriod:
-                    description: ReconcilePeriod is the period at which a reconcile
-                      loop will happen for this ChainNode. Defaults to `15s`.
+                    description: Period at which a reconcile loop will happen for
+                      this ChainNode. Defaults to `15s`.
+                    format: duration
                     type: string
                   safeToEvict:
                     description: SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict
@@ -1105,32 +1108,32 @@ spec:
                       to evict this node's pod.
                     type: boolean
                   seedMode:
-                    description: SeedMode configures this node to run on seed mode.
-                      Defaults to `false`.
+                    description: Configures this node to run on seed mode. Defaults
+                      to `false`.
                     type: boolean
                   serviceMonitor:
                     description: ServiceMonitor allows deploying prometheus service
                       monitor for this node.
                     properties:
                       enable:
-                        description: Enable indicates a service monitor should be
-                          deployed for this node.
+                        description: Whether a service monitor should be deployed
+                          for this node.
                         type: boolean
                       selector:
                         additionalProperties:
                           type: string
-                        description: Selector indicates the prometheus installation
-                          that will be using this service monitor.
+                        description: Indicates the prometheus installation that will
+                          be using this service monitor.
                         type: object
                     required:
                     - enable
                     type: object
                   sidecars:
-                    description: Sidecars allow configuring additional containers
-                      to run alongside the node
+                    description: Allows configuring additional containers to run alongside
+                      the node.
                     items:
-                      description: SidecarSpec allow configuring additional containers
-                        to run alongside the node
+                      description: SidecarSpec allows configuring additional containers
+                        to run alongside the node.
                       properties:
                         args:
                           description: Args to be passed to this container. Defaults
@@ -1145,8 +1148,8 @@ spec:
                             type: string
                           type: array
                         env:
-                          description: Env sets environment variables to be passed
-                            to this container.
+                          description: Environment variables to be passed to this
+                            container.
                           items:
                             description: EnvVar represents an environment variable
                               present in a Container.
@@ -1265,27 +1268,24 @@ spec:
                             type: object
                           type: array
                         image:
-                          description: Image refers to the docker image to be used
-                            by the container
+                          description: Container image to be used.
                           minLength: 1
                           type: string
                         imagePullPolicy:
-                          description: ImagePullPolicy indicates the desired pull
-                            policy when creating nodes. Defaults to `Always` if `version`
-                            is `latest` and `IfNotPresent` otherwise.
+                          description: Indicates the desired pull policy when creating
+                            nodes. Defaults to `Always` if `version` is `latest` and
+                            `IfNotPresent` otherwise.
                           type: string
                         mountDataVolume:
-                          description: MountDataVolume indicates where data volume
-                            will be mounted on this container. It is not mounted if
-                            not specified.
+                          description: Where data volume will be mounted on this container.
+                            It is not mounted if not specified.
                           type: string
                         name:
-                          description: Name refers to the name to be assigned to the
-                            container
+                          description: Name to be assigned to the container.
                           minLength: 1
                           type: string
                         resources:
-                          description: Compute Resources required by the sidecar container.
+                          description: Compute Resources for the sidecar container.
                           properties:
                             claims:
                               description: "Claims lists the names of resources, defined
@@ -1335,10 +1335,8 @@ spec:
                               type: object
                           type: object
                         securityContext:
-                          description: SecurityContext defines the security options
-                            the container should be run with. If set, the fields of
-                            SecurityContext override the equivalent fields of PodSecurityContext,
-                            which defaults to user ID 1000.
+                          description: Security options the container should be run
+                            with.
                           properties:
                             allowPrivilegeEscalation:
                               description: 'AllowPrivilegeEscalation controls whether
@@ -1518,45 +1516,44 @@ spec:
                       type: object
                     type: array
                   stateSync:
-                    description: StateSync configures statesync snapshots for this
-                      node.
+                    description: Allows configuring this node to perform state-sync
+                      snapshots.
                     properties:
                       snapshotInterval:
-                        description: SnapshotInterval specifies the block interval
-                          at which local state sync snapshots are taken (0 to disable).
+                        description: Block interval at which local state sync snapshots
+                          are taken (0 to disable).
                         type: integer
                       snapshotKeepRecent:
-                        description: SnapshotKeepRecent specifies the number of recent
-                          snapshots to keep and serve (0 to keep all). Defaults to
-                          2.
+                        description: Number of recent snapshots to keep and serve
+                          (0 to keep all). Defaults to 2.
                         type: integer
                     required:
                     - snapshotInterval
                     type: object
                 type: object
               expose:
-                description: Expose specifies which node endpoints are exposed and
-                  how they are exposed
+                description: Allows exposing P2P traffic to public.
                 properties:
                   p2p:
-                    description: P2P indicates whether to expose p2p endpoint for
-                      this node. Defaults to `false`.
+                    description: Whether to expose p2p endpoint for this node. Defaults
+                      to `false`.
                     type: boolean
                   p2pServiceType:
-                    description: P2pServiceType indicates how p2p port will be exposed.
-                      Either `LoadBalancer` or `NodePort`. Defaults to `NodePort`.
+                    description: 'P2pServiceType indicates how P2P port will be exposed.
+                      Valid values are: - `LoadBalancer` - `NodePort` (default)'
                     type: string
                 type: object
               genesis:
-                description: Genesis indicates where this node will get the genesis
-                  from. Can be omitted when .spec.validator.init is specified.
+                description: Indicates where this node will get the genesis from.
+                  Can be omitted when .spec.validator.init is specified.
                 properties:
                   configMap:
                     description: ConfigMap specifies a configmap to load the genesis
-                      from
+                      from.
                     type: string
                   fromNodeRPC:
-                    description: Get the genesis from the existing node RPC endpoint.
+                    description: Get the genesis from an existing node using its RPC
+                      endpoint.
                     properties:
                       hostname:
                         description: Hostname or IP address of the RPC server
@@ -1567,17 +1564,16 @@ spec:
                           Defaults to `26657`.
                         type: integer
                       secure:
-                        description: Defines protocol to use. Defaults to false.
+                        description: Defines protocol to use. Defaults to `false`.
                         type: boolean
                     required:
                     - hostname
                     type: object
                   genesisSHA:
-                    description: GenesisSHA is the 256 SHA to validate the genesis.
+                    description: SHA256 to validate the genesis.
                     type: string
                   url:
                     description: URL to download the genesis from.
-                    minLength: 1
                     type: string
                   useDataVolume:
                     description: UseDataVolume indicates that the operator should
@@ -1589,29 +1585,30 @@ spec:
               nodeSelector:
                 additionalProperties:
                   type: string
-                description: NodeSelector is a selector which must be true for the
-                  pod to fit on a node. Selector which must match a node's labels
-                  for the pod to be scheduled on that node.
+                description: Selector which must be true for the pod to fit on a node.
+                  Selector which must match a node's labels for the pod to be scheduled
+                  on that node.
                 type: object
               peers:
-                description: Peers are additional persistent peers that should be
-                  added to this node.
+                description: Additional persistent peers that should be added to this
+                  node.
                 items:
+                  description: Peer represents a persistent peer.
                   properties:
                     address:
-                      description: Address is the hostname or IP address of this peer
+                      description: Hostname or IP address of this peer.
                       type: string
                     id:
-                      description: ID refers to tendermint node ID for this node
+                      description: Tendermint node ID for this node.
                       type: string
                     port:
-                      description: Port is the P2P port to be used. Defaults to `26656`.
+                      description: P2P port to be used. Defaults to `26656`.
                       type: integer
                     private:
-                      description: Private marks this peer as private.
+                      description: Indicates this peer is private.
                       type: boolean
                     unconditional:
-                      description: Unconditional marks this peer as unconditional.
+                      description: Indicates this peer is unconditional.
                       type: boolean
                   required:
                   - address
@@ -1619,15 +1616,18 @@ spec:
                   type: object
                 type: array
               persistence:
-                description: Persistence configures pvc for persisting data on nodes
+                description: Configures PVC for persisting data. Automated data snapshots
+                  can also be configured in this section.
                 properties:
                   additionalInitCommands:
-                    description: AdditionalInitCommands are additional commands to
-                      run on data initialization. Useful for downloading and extracting
-                      snapshots. App home is at `/home/app` and data dir is at `/home/app/data`.
-                      There is also `/temp`, a temporary volume shared by all init
-                      containers.
+                    description: Additional commands to run on data initialization.
+                      Useful for downloading and extracting snapshots. App home is
+                      at `/home/app` and data dir is at `/home/app/data`. There is
+                      also `/temp`, a temporary volume shared by all init containers.
                     items:
+                      description: InitCommand represents an initialization command.
+                        It may be used for running addtional operators on genesis
+                        or volume initialization.
                       properties:
                         args:
                           description: Args to be passed to this command.
@@ -1648,36 +1648,34 @@ spec:
                       type: object
                     type: array
                   autoResize:
-                    description: AutoResize specifies configurations to automatically
-                      resize PVC. Defaults to `true`.
+                    description: Automatically resize PVC. Defaults to `true`.
                     type: boolean
                   autoResizeIncrement:
-                    description: AutoResizeIncrement specifies the size increment
-                      on each auto-resize event. Defaults to `50Gi`.
+                    description: Increment size on each auto-resize event. Defaults
+                      to `50Gi`.
                     type: string
                   autoResizeMaxSize:
-                    description: AutoResizeMaxSize specifies the maximum size the
-                      PVC can have. Defaults to `2Ti`.
+                    description: Size at which auto-resize will stop incrementing
+                      PVC size. Defaults to `2Ti`.
                     type: string
                   autoResizeThreshold:
-                    description: AutoResizeThreshold is the percentage of data usage
-                      at which an auto-resize event should occur. Defaults to `80`.
+                    description: Percentage of data usage at which an auto-resize
+                      event should occur. Defaults to `80`.
                     type: integer
                   restoreFromSnapshot:
-                    description: RestoreFromSnapshot indicates that the operator should
-                      restore from the specified snapshot when creating the PVC for
-                      this node.
+                    description: Restore from the specified snapshot when creating
+                      the PVC for this node.
                     properties:
                       apiGroup:
-                        description: APIGroup is the group for the resource being
-                          referenced. Defaults to `snapshot.storage.k8s.io`.
+                        description: Group for the resource being referenced. Defaults
+                          to `snapshot.storage.k8s.io`.
                         type: string
                       kind:
-                        description: Kind is the type of resource being referenced.
-                          Defaults to `VolumeSnapshot`.
+                        description: Type of resource being referenced. Defaults to
+                          `VolumeSnapshot`.
                         type: string
                       name:
-                        description: Name is the name of resource being referenced
+                        description: Name of resource being referenced.
                         type: string
                     required:
                     - name
@@ -1685,31 +1683,30 @@ spec:
                   size:
                     description: Size of the persistent volume for storing data. Can't
                       be updated when autoResize is enabled. Defaults to `50Gi`.
-                    minLength: 1
                     type: string
                   snapshots:
-                    description: Snapshots indicates that the operator should create
-                      volume snapshots according to this config.
+                    description: Whether the operator should create volume snapshots
+                      according to this config.
                     properties:
                       exportTarball:
-                        description: ExportTarball creates a tarball of data directory
-                          in each snapshot and uploads it to external storage.
+                        description: Whether to create a tarball of data directory
+                          in each snapshot and upload it to external storage.
                         properties:
                           deleteOnExpire:
-                            description: DeleteOnExpire makes sure the tarball is
-                              deleted when the snapshot expires. Default is `false`.
+                            description: Whether to delete the tarball when the snapshot
+                              expires. Default is `false`.
                             type: boolean
                           gcs:
-                            description: GCS allows configuring to upload tarballs
-                              to a GCS bucket
+                            description: Configuration to upload tarballs to a GCS
+                              bucket.
                             properties:
                               bucket:
                                 description: Name of the bucket to upload tarballs
                                   to.
                                 type: string
                               credentialsSecret:
-                                description: CredentialsSecret is the secret that
-                                  contains the credentials to upload to bucket.
+                                description: Secret with the JSON credentials to upload
+                                  to bucket.
                                 properties:
                                   key:
                                     description: The key of the secret to select from.  Must
@@ -1735,33 +1732,32 @@ spec:
                             type: object
                           suffix:
                             description: Suffix to add to archive name. The name of
-                              the tarball is `<chain-id>-<timestamp>-<suffix>`.
+                              the tarball will be `<chain-id>-<timestamp>-<suffix>`.
                             type: string
                         type: object
                       frequency:
-                        description: Frequency indicates how often a snapshot should
-                          be created. Specified as a duration with suffix `s`, `m`
-                          or `h`.
+                        description: How often a snapshot should be created.
+                        format: duration
                         type: string
                       retention:
-                        description: Retention indicates for how long a snapshot should
-                          be retained. Default is indefinite retention. Specified
-                          as a duration with suffix `s`, `m` or `h`.
+                        description: How long a snapshot should be retained. Default
+                          is indefinite retention.
+                        format: duration
                         type: string
                       snapshotClass:
-                        description: SnapshotClassName is the name of the volume snapshot
-                          class to be used.
+                        description: Name of the volume snapshot class to be used.
+                          Uses the default class if not specified.
                         type: string
                       stopNode:
-                        description: StopNode indicates that the node should be stopped
-                          while the snapshot is taken. Defaults to `false`.
+                        description: Whether the node should be stopped while the
+                          snapshot is taken. Defaults to `false`.
                         type: boolean
                     required:
                     - frequency
                     type: object
                   storageClass:
-                    description: StorageClassName specifies the name of the storage
-                      class to use to create persistent volumes.
+                    description: Name of the storage class to use for the PVC. Uses
+                      the default class if not specified. to create persistent volumes.
                     type: string
                 type: object
               resources:
@@ -1813,66 +1809,61 @@ spec:
                     type: object
                 type: object
               stateSyncRestore:
-                description: StateSyncRestore configures this node to find a state-sync
-                  snapshot on the network and restore from it. This is disabled by
-                  default.
+                description: Configures this node to find a state-sync snapshot on
+                  the network and restore from it. This is disabled by default.
                 type: boolean
               validator:
-                description: Validator configures this node as a validator and configures
-                  it.
+                description: Indicates this node is going to be a validator and allows
+                  configuring it.
                 properties:
                   createValidator:
-                    description: CreateValidator indicates that operator should run
-                      create-validator tx to make this node a validator.
+                    description: Indicates that operator should run create-validator
+                      tx to make this node a validator.
                     properties:
                       accountHDPath:
-                        description: AccountHDPath is the HD path for the validator
-                          account. Defaults to `m/44'/118'/0'/0/0`.
+                        description: HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
                         type: string
                       accountMnemonicSecret:
-                        description: AccountMnemonicSecret is the name of the secret
-                          containing the mnemonic of the account to be used by this
-                          validator. Defaults to `<chainnode>-account`. Will be created
-                          if does not exist.
+                        description: Name of the secret containing the mnemonic of
+                          the account to be used by this validator. Defaults to `<chainnode>-account`.
+                          Will be created if it does not exist.
                         type: string
                       accountPrefix:
-                        description: AccountPrefix is the prefix for accounts. Defaults
-                          to `nibi`.
+                        description: Prefix for accounts. Defaults to `nibi`.
                         type: string
                       commissionMaxChangeRate:
-                        description: CommissionMaxChangeRate is the maximum commission
-                          change rate percentage (per day). Defaults to `0.1`.
+                        description: Maximum commission change rate percentage (per
+                          day). Defaults to `0.1`.
                         type: string
                       commissionMaxRate:
-                        description: CommissionMaxRate is the maximum commission rate
-                          percentage. Defaults to `0.1`.
+                        description: Maximum commission rate percentage. Defaults
+                          to `0.1`.
                         type: string
                       commissionRate:
-                        description: CommissionRate is the initial commission rate
-                          percentage. Defaults to `0.1`.
+                        description: Initial commission rate percentage. Defaults
+                          to `0.1`.
                         type: string
                       gasPrices:
-                        description: GasPrices in decimal format to determine the
+                        description: Gas prices in decimal format to determine the
                           transaction fee.
                         type: string
                       minSelfDelegation:
-                        description: MinSelfDelegation is the minimum self delegation
-                          required on the validator. Defaults to `1`.
+                        description: Minimum self delegation required on the validator.
+                          Defaults to `1`.
                         type: string
                       stakeAmount:
-                        description: StakeAmount represents the amount to be staked
-                          by this validator.
+                        description: Amount to be staked by this validator.
                         type: string
                       valPrefix:
-                        description: ValPrefix is the prefix for validator accounts.
-                          Defaults to `nibivaloper`.
+                        description: Prefix for validator operator accounts. Defaults
+                          to `nibivaloper`.
                         type: string
                     required:
                     - gasPrices
                     - stakeAmount
                     type: object
                   info:
-                    description: Info contains information details about this validator.
+                    description: Contains information details about this validator.
                     properties:
                       details:
                         description: Details of this validator.
@@ -1885,37 +1876,36 @@ spec:
                           to the ChainNode name.
                         type: string
                       website:
-                        description: Website indicates this validator's website.
+                        description: Website of the validator.
                         type: string
                     type: object
                   init:
-                    description: Init specifies configs and initialization commands
-                      for creating a new chain and its genesis.
+                    description: Specifies configs and initialization commands for
+                      creating a new genesis.
                     properties:
                       accountHDPath:
-                        description: AccountHDPath is the HD path for the validator
-                          account. Defaults to `m/44'/118'/0'/0/0`.
+                        description: HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
                         type: string
                       accountMnemonicSecret:
-                        description: AccountMnemonicSecret is the name of the secret
-                          containing the mnemonic of the account to be used by this
-                          validator. Defaults to `<chainnode>-account`. Will be created
-                          if does not exist.
+                        description: Name of the secret containing the mnemonic of
+                          the account to be used by this validator. Defaults to `<chainnode>-account`.
+                          Will be created if it does not exist.
                         type: string
                       accountPrefix:
-                        description: AccountPrefix is the prefix for accounts. Defaults
-                          to `nibi`.
+                        description: Prefix for accounts. Defaults to `nibi`.
                         type: string
                       accounts:
                         description: Accounts specify additional accounts and respective
                           assets to be added to this chain.
                         items:
+                          description: AccountAssets represents the assets associated
+                            with an account.
                           properties:
                             address:
                               description: Address of the account.
                               type: string
                             assets:
-                              description: Assets to be assigned to this account.
+                              description: Assets assigned to this account.
                               items:
                                 type: string
                               type: array
@@ -1925,10 +1915,13 @@ spec:
                           type: object
                         type: array
                       additionalInitCommands:
-                        description: AdditionalInitCommands are additional commands
-                          to run on genesis initialization. App home is at `/home/app`
-                          and `/temp` is a temporary volume shared by all init containers.
+                        description: 'Additional commands to run on genesis initialization.
+                          Note: App home is at `/home/app` and `/temp` is a temporary
+                          volume shared by all init containers.'
                         items:
+                          description: InitCommand represents an initialization command.
+                            It may be used for running addtional operators on genesis
+                            or volume initialization.
                           properties:
                             args:
                               description: Args to be passed to this command.
@@ -1956,38 +1949,39 @@ spec:
                         type: array
                       chainID:
                         description: ChainID of the chain to initialize.
+                        minLength: 1
                         type: string
                       commissionMaxChangeRate:
-                        description: CommissionMaxChangeRate is the maximum commission
-                          change rate percentage (per day). Defaults to `0.1`.
+                        description: Maximum commission change rate percentage (per
+                          day). Defaults to `0.1`.
                         type: string
                       commissionMaxRate:
-                        description: CommissionMaxRate is the maximum commission rate
-                          percentage. Defaults to `0.1`.
+                        description: Maximum commission rate percentage. Defaults
+                          to `0.1`.
                         type: string
                       commissionRate:
-                        description: CommissionRate is the initial commission rate
-                          percentage. Defaults to `0.1`.
+                        description: Initial commission rate percentage. Defaults
+                          to `0.1`.
                         type: string
                       minSelfDelegation:
-                        description: MinSelfDelegation is the minimum self delegation
-                          required on the validator. Defaults to `1`.
+                        description: Minimum self delegation required on the validator.
+                          Defaults to `1`.
                         type: string
                       stakeAmount:
-                        description: StakeAmount represents the amount to be staked
-                          by this validator.
+                        description: Amount to be staked by this validator.
                         type: string
                       unbondingTime:
-                        description: UnbondingTime is the time that takes to unbond
-                          delegations. Defaults to `1814400s`.
+                        description: Time required to totally unbond delegations.
+                          Defaults to `1814400s` (21 days).
+                        format: duration
                         type: string
                       valPrefix:
-                        description: ValPrefix is the prefix for validator accounts.
-                          Defaults to `nibivaloper`.
+                        description: Prefix for validator operator accounts. Defaults
+                          to `nibivaloper`.
                         type: string
                       votingPeriod:
-                        description: VotingPeriod indicates the voting period for
-                          this chain. Defaults to `120h`.
+                        description: Voting period for this chain. Defaults to `120h`.
+                        format: duration
                         type: string
                     required:
                     - assets
@@ -1995,8 +1989,8 @@ spec:
                     - stakeAmount
                     type: object
                   privateKeySecret:
-                    description: PrivateKeySecret indicates the secret containing
-                      the private key to be use by this validator. Defaults to `<chainnode>-priv-key`.
+                    description: Indicates the secret containing the private key to
+                      be used by this validator. Defaults to `<chainnode>-priv-key`.
                       Will be created if it does not exist.
                     type: string
                   tmKMS:
@@ -2005,15 +1999,18 @@ spec:
                       will not be mounted on the validator node.
                     properties:
                       keyFormat:
-                        description: 'KeyFormat specifies the format and type of key
-                          for chain. Defaults to `{"type": "bech32", "account_key_prefix":
-                          "nibipub", "consensus_key_prefix": "nibivalconspub"}`.'
+                        description: 'Format and type of key for chain. Defaults to
+                          `{"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix":
+                          "nibivalconspub"}`.'
                         properties:
                           account_key_prefix:
+                            description: Account keys prefixes
                             type: string
                           consensus_key_prefix:
+                            description: Consensus keys prefix
                             type: string
                           type:
+                            description: Key type
                             type: string
                         required:
                         - account_key_prefix
@@ -2021,14 +2018,14 @@ spec:
                         - type
                         type: object
                       provider:
-                        description: Provider specifies the signing provider to be
-                          used by tmkms
+                        description: Signing provider to be used by tmkms. Currently
+                          only `vault` is supported.
                         properties:
                           vault:
-                            description: Vault provider
+                            description: Vault provider.
                             properties:
                               address:
-                                description: Address of the Vault cluster
+                                description: Full address of the Vault cluster.
                                 type: string
                               certificateSecret:
                                 description: Secret containing the CA certificate
@@ -2090,9 +2087,8 @@ spec:
                             type: object
                         type: object
                       validatorProtocol:
-                        description: ValidatorProtocol specifies the tendermint protocol
-                          version to be used. One of `legacy`, `v0.33` or `v0.34`.
-                          Defaults to `v0.34`.
+                        description: 'Tendermint''s protocol version to be used. Valid
+                          options are: - `v0.34` (default) - `v0.33` - `legacy`'
                         type: string
                     required:
                     - provider
@@ -2105,67 +2101,66 @@ spec:
             description: ChainNodeStatus defines the observed state of ChainNode
             properties:
               accountAddress:
-                description: AccountAddress is the account address of this validator.
-                  Omitted when not a validator
+                description: Account address of this validator. Omitted when not a
+                  validator.
                 type: string
               appVersion:
-                description: AppVersion is the application version currently deployed
+                description: Application version currently deployed.
                 type: string
               chainID:
-                description: ChainID shows the chain ID
+                description: Indicates the chain ID.
                 type: string
               dataUsage:
-                description: DataUsage shows the percentage of data usage.
+                description: Usage percentage of data volume.
                 type: string
               ip:
-                description: IP of this node.
+                description: Internal IP address of this node.
                 type: string
               jailed:
-                description: Jailed indicates if this validator is jailed. Always
-                  false if not a validator node.
+                description: Indicates if this validator is jailed. Always false if
+                  not a validator node.
                 type: boolean
               latestHeight:
-                description: LatestHeight is the last height read on the node by the
-                  operator.
+                description: Last height read on the node by the operator.
                 format: int64
                 type: integer
               nodeID:
-                description: NodeID show this node's ID
+                description: Indicates this node's ID.
                 type: string
               phase:
-                description: Phase indicates the current phase for this ChainNode.
+                description: Indicates the current phase for this ChainNode.
                 type: string
               pubKey:
-                description: PubKey of the validator.
+                description: Public key of the validator.
                 type: string
               publicAddress:
-                description: PublicAddress for p2p when enabled.
+                description: Public address for P2P when enabled.
                 type: string
               pvcSize:
-                description: PvcSize shows the current size of the pvc of this node
+                description: Current size of the data PVC for this node.
                 type: string
               seedMode:
-                description: SeedMode indicates if this node is running with seed
-                  mode enabled.
+                description: Indicates if this node is running with seed mode enabled.
                 type: boolean
               upgrades:
-                description: Upgrades contains all scheduled/completed upgrades performed
-                  by the operator on this ChainNode.
+                description: All scheduled/completed upgrades performed by the operator
+                  on this ChainNode.
                 items:
+                  description: Upgrade represents an upgrade processed by the operator
+                    and added to status.
                   properties:
                     height:
                       description: Height at which the upgrade should occur.
                       format: int64
                       type: integer
                     image:
-                      description: Image replacement to be used in the upgrade.
+                      description: Container image replacement to be used in the upgrade.
                       type: string
                     source:
-                      description: Source indicates where the operator got this upgrade
-                        from.
+                      description: Where the operator got this upgrade from.
                       type: string
                     status:
-                      description: Status indicates the upgrade status.
+                      description: Upgrade status.
                       type: string
                   required:
                   - height
@@ -2175,18 +2170,17 @@ spec:
                   type: object
                 type: array
               validator:
-                description: Validator indicates if this node is a validator.
+                description: Indicates if this node is a validator.
                 type: boolean
               validatorAddress:
-                description: ValidatorAddress is the valoper address of this validator.
-                  Omitted when not a validator
+                description: Validator address is the valoper address of this validator.
+                  Omitted when not a validator.
                 type: string
               validatorStatus:
-                description: ValidatorStatus indicates the current status of validator
-                  if this node is one.
+                description: Indicates the current status of validator if this node
+                  is one.
                 type: string
             required:
-            - jailed
             - validator
             type: object
         type: object

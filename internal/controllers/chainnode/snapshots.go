@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kube-openapi/pkg/validation/strfmt"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -193,7 +194,7 @@ func (r *Reconciler) createSnapshot(ctx context.Context, chainNode *appsv1.Chain
 }
 
 func shouldSnapshot(chainNode *appsv1.ChainNode) bool {
-	period, err := time.ParseDuration(chainNode.Spec.Persistence.Snapshots.Frequency)
+	period, err := strfmt.ParseDuration(chainNode.Spec.Persistence.Snapshots.Frequency)
 	if err != nil {
 		return false
 	}
@@ -214,7 +215,7 @@ func isSnapshotExpired(snapshot *snapshotv1.VolumeSnapshot) (bool, error) {
 		return false, nil
 	}
 
-	expiration, err := time.ParseDuration(retention)
+	expiration, err := strfmt.ParseDuration(retention)
 	if err != nil {
 		return false, err
 	}

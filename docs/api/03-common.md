@@ -32,45 +32,45 @@
 
 #### AccountAssets
 
-
+AccountAssets represents the assets associated with an account.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | address | Address of the account. | string | true |
-| assets | Assets to be assigned to this account. | []string | true |
+| assets | Assets assigned to this account. | []string | true |
 
 [Back to Custom Resources](#custom-resources)
 
 #### AppSpec
 
-AppSpec specifies the source image and binary name of the app to run
+AppSpec specifies the source image, version and binary name of the app to run. Also allows specifying upgrades for the app and enabling automatic check of upgrade proposals on chain.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| image | Image indicates the docker image to be used | string | true |
-| version | Version is the image tag to be used. Once there are completed or skipped upgrades this will be ignored. For a new node that will be state-synced, this will be the version used during state-sync. Only after that, the operator will switch to the version of last upgrade. Defaults to `latest`. | *string | false |
-| imagePullPolicy | ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
-| app | App is the name of the binary of the application to be run | string | true |
-| sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Defaults to `v0.47`. | *SdkVersion | false |
-| checkGovUpgrades | CheckGovUpgrades indicates that operator should query gov proposals to find and schedule upgrades. Defaults to `true`. | *bool | false |
-| upgrades | Upgrades contains manually scheduled upgrades. | [][UpgradeSpec](#upgradespec) | false |
+| image | Container image to be used. | string | true |
+| version | Image tag to be used. Once there are completed or skipped upgrades this will be ignored. For a new node that will be state-synced, this will be the version used during state-sync. Only after that, the operator will switch to the version of last upgrade. Defaults to `latest`. | *string | false |
+| imagePullPolicy | Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
+| app | Binary name of the application to be run. | string | true |
+| sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Valid options are: - \"v0.47\" (default) - \"v0.45\" | *SdkVersion | false |
+| checkGovUpgrades | Whether the operator should query gov proposals to find and schedule upgrades. Defaults to `true`. | *bool | false |
+| upgrades | List of upgrades to schedule for this node. | [][UpgradeSpec](#upgradespec) | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### Config
 
-Config allows setting specific configurations for a chainnode such as overrides to app.toml and config.toml
+Config allows setting specific configurations for a node, including overriding configs in app.toml and config.toml.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| override | Override allows overriding configs on toml configuration files | *map[string]runtime.RawExtension | false |
-| sidecars | Sidecars allow configuring additional containers to run alongside the node | [][SidecarSpec](#sidecarspec) | false |
-| imagePullSecrets | ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
-| blockThreshold | BlockThreshold specifies the time to wait for a block before considering node unhealthy. Defaults to `15s`. | *string | false |
-| reconcilePeriod | ReconcilePeriod is the period at which a reconcile loop will happen for this ChainNode. Defaults to `15s`. | *string | false |
-| stateSync | StateSync configures statesync snapshots for this node. | *[StateSyncConfig](#statesyncconfig) | false |
-| seedMode | SeedMode configures this node to run on seed mode. Defaults to `false`. | *bool | false |
-| env | Env refers to the list of environment variables to set in the app container. | []corev1.EnvVar | false |
+| override | Allows overriding configs on `.toml` configuration files. | *map[string]runtime.RawExtension | false |
+| sidecars | Allows configuring additional containers to run alongside the node. | [][SidecarSpec](#sidecarspec) | false |
+| imagePullSecrets | Optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
+| blockThreshold | The time to wait for a block before considering node unhealthy. Defaults to `15s`. | *string | false |
+| reconcilePeriod | Period at which a reconcile loop will happen for this ChainNode. Defaults to `15s`. | *string | false |
+| stateSync | Allows configuring this node to perform state-sync snapshots. | *[StateSyncConfig](#statesyncconfig) | false |
+| seedMode | Configures this node to run on seed mode. Defaults to `false`. | *bool | false |
+| env | List of environment variables to set in the app container. | []corev1.EnvVar | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 | serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
 
@@ -78,53 +78,53 @@ Config allows setting specific configurations for a chainnode such as overrides 
 
 #### CreateValidatorConfig
 
-
+CreateValidatorConfig holds configuration for the operator to submit a create-validator transaction.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| accountMnemonicSecret | AccountMnemonicSecret is the name of the secret containing the mnemonic of the account to be used by this validator. Defaults to `<chainnode>-account`. Will be created if does not exist. | *string | false |
-| accountHDPath | AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
-| accountPrefix | AccountPrefix is the prefix for accounts. Defaults to `nibi`. | *string | false |
-| valPrefix | ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`. | *string | false |
-| stakeAmount | StakeAmount represents the amount to be staked by this validator. | string | true |
-| gasPrices | GasPrices in decimal format to determine the transaction fee. | string | true |
-| commissionMaxChangeRate | CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
-| commissionMaxRate | CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`. | *string | false |
-| commissionRate | CommissionRate is the initial commission rate percentage. Defaults to `0.1`. | *string | false |
-| minSelfDelegation | MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`. | *string | false |
+| accountMnemonicSecret | Name of the secret containing the mnemonic of the account to be used by this validator. Defaults to `<chainnode>-account`. Will be created if it does not exist. | *string | false |
+| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
+| accountPrefix | Prefix for accounts. Defaults to `nibi`. | *string | false |
+| valPrefix | Prefix for validator operator accounts. Defaults to `nibivaloper`. | *string | false |
+| commissionMaxChangeRate | Maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
+| commissionMaxRate | Maximum commission rate percentage. Defaults to `0.1`. | *string | false |
+| commissionRate | Initial commission rate percentage. Defaults to `0.1`. | *string | false |
+| minSelfDelegation | Minimum self delegation required on the validator. Defaults to `1`. | *string | false |
+| stakeAmount | Amount to be staked by this validator. | string | true |
+| gasPrices | Gas prices in decimal format to determine the transaction fee. | string | true |
 
 [Back to Custom Resources](#custom-resources)
 
 #### ExportTarballConfig
 
-
+ExportTarballConfig holds config options for tarball upload.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| suffix | Suffix to add to archive name. The name of the tarball is `<chain-id>-<timestamp>-<suffix>`. | *string | false |
-| deleteOnExpire | DeleteOnExpire makes sure the tarball is deleted when the snapshot expires. Default is `false`. | *bool | false |
-| gcs | GCS allows configuring to upload tarballs to a GCS bucket | *[GcsExportConfig](#gcsexportconfig) | false |
+| suffix | Suffix to add to archive name. The name of the tarball will be `<chain-id>-<timestamp>-<suffix>`. | *string | false |
+| deleteOnExpire | Whether to delete the tarball when the snapshot expires. Default is `false`. | *bool | false |
+| gcs | Configuration to upload tarballs to a GCS bucket. | *[GcsExportConfig](#gcsexportconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### ExposeConfig
 
-
+ExposeConfig allows configuring how P2P endpoint is exposed to public.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| p2p | P2P indicates whether to expose p2p endpoint for this node. Defaults to `false`. | *bool | false |
-| p2pServiceType | P2pServiceType indicates how p2p port will be exposed. Either `LoadBalancer` or `NodePort`. Defaults to `NodePort`. | *corev1.ServiceType | false |
+| p2p | Whether to expose p2p endpoint for this node. Defaults to `false`. | *bool | false |
+| p2pServiceType | P2pServiceType indicates how P2P port will be exposed. Valid values are: - `LoadBalancer` - `NodePort` (default) | *corev1.ServiceType | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### FromNodeRPCConfig
 
-
+FromNodeRPCConfig holds configuration to retrieve genesis from an existing node using RPC endpoint.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| secure | Defines protocol to use. Defaults to false. | bool | false |
+| secure | Defines protocol to use. Defaults to `false`. | bool | false |
 | hostname | Hostname or IP address of the RPC server | string | true |
 | port | TCP port used for RPC queries on the RPC server. Defaults to `26657`. | *int | false |
 
@@ -132,56 +132,56 @@ Config allows setting specific configurations for a chainnode such as overrides 
 
 #### GcsExportConfig
 
-
+GcsExportConfig holds required settings to upload to GCS.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | bucket | Name of the bucket to upload tarballs to. | string | true |
-| credentialsSecret | CredentialsSecret is the secret that contains the credentials to upload to bucket. | *corev1.SecretKeySelector | true |
+| credentialsSecret | Secret with the JSON credentials to upload to bucket. | *corev1.SecretKeySelector | true |
 
 [Back to Custom Resources](#custom-resources)
 
 #### GenesisConfig
 
-GenesisConfig specifies how genesis will be retrieved
+GenesisConfig specifies how genesis will be retrieved.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | url | URL to download the genesis from. | *string | false |
-| fromNodeRPC | Get the genesis from the existing node RPC endpoint. | *[FromNodeRPCConfig](#fromnoderpcconfig) | false |
-| genesisSHA | GenesisSHA is the 256 SHA to validate the genesis. | *string | false |
-| configMap | ConfigMap specifies a configmap to load the genesis from | *string | false |
+| fromNodeRPC | Get the genesis from an existing node using its RPC endpoint. | *[FromNodeRPCConfig](#fromnoderpcconfig) | false |
+| genesisSHA | SHA256 to validate the genesis. | *string | false |
+| configMap | ConfigMap specifies a configmap to load the genesis from. | *string | false |
 | useDataVolume | UseDataVolume indicates that the operator should save the genesis in the same volume as node data instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### GenesisInitConfig
 
-GenesisInitConfig specifies configs and initialization commands for creating a new chain and its genesis
+GenesisInitConfig specifies configs and initialization commands for creating a new genesis.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | chainID | ChainID of the chain to initialize. | string | true |
-| accountMnemonicSecret | AccountMnemonicSecret is the name of the secret containing the mnemonic of the account to be used by this validator. Defaults to `<chainnode>-account`. Will be created if does not exist. | *string | false |
-| accountHDPath | AccountHDPath is the HD path for the validator account. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
-| accountPrefix | AccountPrefix is the prefix for accounts. Defaults to `nibi`. | *string | false |
-| valPrefix | ValPrefix is the prefix for validator accounts. Defaults to `nibivaloper`. | *string | false |
-| commissionMaxChangeRate | CommissionMaxChangeRate is the maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
-| commissionMaxRate | CommissionMaxRate is the maximum commission rate percentage. Defaults to `0.1`. | *string | false |
-| commissionRate | CommissionRate is the initial commission rate percentage. Defaults to `0.1`. | *string | false |
-| minSelfDelegation | MinSelfDelegation is the minimum self delegation required on the validator. Defaults to `1`. | *string | false |
+| accountMnemonicSecret | Name of the secret containing the mnemonic of the account to be used by this validator. Defaults to `<chainnode>-account`. Will be created if it does not exist. | *string | false |
+| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
+| accountPrefix | Prefix for accounts. Defaults to `nibi`. | *string | false |
+| valPrefix | Prefix for validator operator accounts. Defaults to `nibivaloper`. | *string | false |
+| commissionMaxChangeRate | Maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
+| commissionMaxRate | Maximum commission rate percentage. Defaults to `0.1`. | *string | false |
+| commissionRate | Initial commission rate percentage. Defaults to `0.1`. | *string | false |
+| minSelfDelegation | Minimum self delegation required on the validator. Defaults to `1`. | *string | false |
 | assets | Assets is the list of tokens and their amounts to be assigned to this validators account. | []string | true |
-| stakeAmount | StakeAmount represents the amount to be staked by this validator. | string | true |
+| stakeAmount | Amount to be staked by this validator. | string | true |
 | accounts | Accounts specify additional accounts and respective assets to be added to this chain. | [][AccountAssets](#accountassets) | false |
-| unbondingTime | UnbondingTime is the time that takes to unbond delegations. Defaults to `1814400s`. | *string | false |
-| votingPeriod | VotingPeriod indicates the voting period for this chain. Defaults to `120h`. | *string | false |
-| additionalInitCommands | AdditionalInitCommands are additional commands to run on genesis initialization. App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
+| unbondingTime | Time required to totally unbond delegations. Defaults to `1814400s` (21 days). | *string | false |
+| votingPeriod | Voting period for this chain. Defaults to `120h`. | *string | false |
+| additionalInitCommands | Additional commands to run on genesis initialization. Note: App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### InitCommand
 
-
+InitCommand represents an initialization command. It may be used for running addtional operators on genesis or volume initialization.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -193,129 +193,129 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 
 #### Peer
 
-
+Peer represents a persistent peer.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| id | ID refers to tendermint node ID for this node | string | true |
-| address | Address is the hostname or IP address of this peer | string | true |
-| port | Port is the P2P port to be used. Defaults to `26656`. | *int | false |
-| unconditional | Unconditional marks this peer as unconditional. | *bool | false |
-| private | Private marks this peer as private. | *bool | false |
+| id | Tendermint node ID for this node. | string | true |
+| address | Hostname or IP address of this peer. | string | true |
+| port | P2P port to be used. Defaults to `26656`. | *int | false |
+| unconditional | Indicates this peer is unconditional. | *bool | false |
+| private | Indicates this peer is private. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### Persistence
 
-Persistence configuration for this node
+Persistence configuration for a node.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | size | Size of the persistent volume for storing data. Can't be updated when autoResize is enabled. Defaults to `50Gi`. | *string | false |
-| storageClass | StorageClassName specifies the name of the storage class to use to create persistent volumes. | *string | false |
-| autoResize | AutoResize specifies configurations to automatically resize PVC. Defaults to `true`. | *bool | false |
-| autoResizeThreshold | AutoResizeThreshold is the percentage of data usage at which an auto-resize event should occur. Defaults to `80`. | *int | false |
-| autoResizeIncrement | AutoResizeIncrement specifies the size increment on each auto-resize event. Defaults to `50Gi`. | *string | false |
-| autoResizeMaxSize | AutoResizeMaxSize specifies the maximum size the PVC can have. Defaults to `2Ti`. | *string | false |
-| additionalInitCommands | AdditionalInitCommands are additional commands to run on data initialization. Useful for downloading and extracting snapshots. App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
-| snapshots | Snapshots indicates that the operator should create volume snapshots according to this config. | *[VolumeSnapshotsConfig](#volumesnapshotsconfig) | false |
-| restoreFromSnapshot | RestoreFromSnapshot indicates that the operator should restore from the specified snapshot when creating the PVC for this node. | *[PvcSnapshot](#pvcsnapshot) | false |
+| storageClass | Name of the storage class to use for the PVC. Uses the default class if not specified. to create persistent volumes. | *string | false |
+| autoResize | Automatically resize PVC. Defaults to `true`. | *bool | false |
+| autoResizeThreshold | Percentage of data usage at which an auto-resize event should occur. Defaults to `80`. | *int | false |
+| autoResizeIncrement | Increment size on each auto-resize event. Defaults to `50Gi`. | *string | false |
+| autoResizeMaxSize | Size at which auto-resize will stop incrementing PVC size. Defaults to `2Ti`. | *string | false |
+| additionalInitCommands | Additional commands to run on data initialization. Useful for downloading and extracting snapshots. App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
+| snapshots | Whether the operator should create volume snapshots according to this config. | *[VolumeSnapshotsConfig](#volumesnapshotsconfig) | false |
+| restoreFromSnapshot | Restore from the specified snapshot when creating the PVC for this node. | *[PvcSnapshot](#pvcsnapshot) | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### PvcSnapshot
 
-
+PvcSnapshot represents a snapshot to be used to restore a PVC.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| name | Name is the name of resource being referenced | string | true |
-| kind | Kind is the type of resource being referenced. Defaults to `VolumeSnapshot`. | *string | false |
-| apiGroup | APIGroup is the group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`. | *string | false |
+| name | Name of resource being referenced. | string | true |
+| kind | Type of resource being referenced. Defaults to `VolumeSnapshot`. | *string | false |
+| apiGroup | Group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### ServiceMonitorSpec
 
-
+ServiceMonitorSpec allows enabling/disabling deployment of ServiceMonitor for this node.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| enable | Enable indicates a service monitor should be deployed for this node. | bool | true |
-| selector | Selector indicates the prometheus installation that will be using this service monitor. | map[string]string | false |
+| enable | Whether a service monitor should be deployed for this node. | bool | true |
+| selector | Indicates the prometheus installation that will be using this service monitor. | map[string]string | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### SidecarSpec
 
-SidecarSpec allow configuring additional containers to run alongside the node
+SidecarSpec allows configuring additional containers to run alongside the node.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| name | Name refers to the name to be assigned to the container | string | true |
-| image | Image refers to the docker image to be used by the container | string | true |
-| imagePullPolicy | ImagePullPolicy indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
-| mountDataVolume | MountDataVolume indicates where data volume will be mounted on this container. It is not mounted if not specified. | *string | false |
+| name | Name to be assigned to the container. | string | true |
+| image | Container image to be used. | string | true |
+| imagePullPolicy | Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
+| mountDataVolume | Where data volume will be mounted on this container. It is not mounted if not specified. | *string | false |
 | command | Command to be run by this container. Defaults to entrypoint defined in image. | []string | false |
 | args | Args to be passed to this container. Defaults to cmd defined in image. | []string | false |
-| env | Env sets environment variables to be passed to this container. | []corev1.EnvVar | false |
-| securityContext | SecurityContext defines the security options the container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext, which defaults to user ID 1000. | *corev1.SecurityContext | false |
-| resources | Compute Resources required by the sidecar container. | corev1.ResourceRequirements | false |
+| env | Environment variables to be passed to this container. | []corev1.EnvVar | false |
+| securityContext | Security options the container should be run with. | *corev1.SecurityContext | false |
+| resources | Compute Resources for the sidecar container. | corev1.ResourceRequirements | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### StateSyncConfig
 
-
+StateSyncConfig holds configurations for enabling state-sync snapshots on a node.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| snapshotInterval | SnapshotInterval specifies the block interval at which local state sync snapshots are taken (0 to disable). | int | true |
-| snapshotKeepRecent | SnapshotKeepRecent specifies the number of recent snapshots to keep and serve (0 to keep all). Defaults to 2. | *int | false |
+| snapshotInterval | Block interval at which local state sync snapshots are taken (0 to disable). | int | true |
+| snapshotKeepRecent | Number of recent snapshots to keep and serve (0 to keep all). Defaults to 2. | *int | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### TmKMS
 
-
+TmKMS allows configuring tmkms for signing for this validator node instead of using plaintext private key file.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| provider | Provider specifies the signing provider to be used by tmkms | [TmKmsProvider](#tmkmsprovider) | true |
-| keyFormat | KeyFormat specifies the format and type of key for chain. Defaults to `{\"type\": \"bech32\", \"account_key_prefix\": \"nibipub\", \"consensus_key_prefix\": \"nibivalconspub\"}`. | *[TmKmsKeyFormat](#tmkmskeyformat) | false |
-| validatorProtocol | ValidatorProtocol specifies the tendermint protocol version to be used. One of `legacy`, `v0.33` or `v0.34`. Defaults to `v0.34`. | *tmkms.ProtocolVersion | false |
+| provider | Signing provider to be used by tmkms. Currently only `vault` is supported. | [TmKmsProvider](#tmkmsprovider) | true |
+| keyFormat | Format and type of key for chain. Defaults to `{\"type\": \"bech32\", \"account_key_prefix\": \"nibipub\", \"consensus_key_prefix\": \"nibivalconspub\"}`. | *[TmKmsKeyFormat](#tmkmskeyformat) | false |
+| validatorProtocol | Tendermint's protocol version to be used. Valid options are: - `v0.34` (default) - `v0.33` - `legacy` | *tmkms.ProtocolVersion | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### TmKmsKeyFormat
 
-
+TmKmsKeyFormat represents key format for tmKMS.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| type |  | string | true |
-| account_key_prefix |  | string | true |
-| consensus_key_prefix |  | string | true |
+| type | Key type | string | true |
+| account_key_prefix | Account keys prefixes | string | true |
+| consensus_key_prefix | Consensus keys prefix | string | true |
 
 [Back to Custom Resources](#custom-resources)
 
 #### TmKmsProvider
 
-
+TmKmsProvider allows configuring providers for tmKMS. Note that only one should be configured.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| vault | Vault provider | *[TmKmsVaultProvider](#tmkmsvaultprovider) | false |
+| vault | Vault provider. | *[TmKmsVaultProvider](#tmkmsvaultprovider) | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### TmKmsVaultProvider
 
-
+TmKmsVaultProvider holds `vault` provider specific configurations.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| address | Address of the Vault cluster | string | true |
+| address | Full address of the Vault cluster. | string | true |
 | key | Key to be used by this validator. | string | true |
 | certificateSecret | Secret containing the CA certificate of the Vault cluster. | *corev1.SecretKeySelector | false |
 | tokenSecret | Secret containing the token to be used. | *corev1.SecretKeySelector | true |
@@ -325,25 +325,25 @@ SidecarSpec allow configuring additional containers to run alongside the node
 
 #### Upgrade
 
-
+Upgrade represents an upgrade processed by the operator and added to status.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | height | Height at which the upgrade should occur. | int64 | true |
-| image | Image replacement to be used in the upgrade. | string | true |
-| status | Status indicates the upgrade status. | UpgradePhase | true |
-| source | Source indicates where the operator got this upgrade from. | UpgradeSource | true |
+| image | Container image replacement to be used in the upgrade. | string | true |
+| status | Upgrade status. | UpgradePhase | true |
+| source | Where the operator got this upgrade from. | UpgradeSource | true |
 
 [Back to Custom Resources](#custom-resources)
 
 #### UpgradeSpec
 
-
+UpgradeSpec represents a manual upgrade.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | height | Height at which the upgrade should occur. | int64 | true |
-| image | Image replacement to be used in the upgrade. | string | true |
+| image | Container image replacement to be used in the upgrade. | string | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -355,21 +355,21 @@ ValidatorInfo contains information about this validator.
 | ----- | ----------- | ------ | -------- |
 | moniker | Moniker to be used by this validator. Defaults to the ChainNode name. | *string | false |
 | details | Details of this validator. | *string | false |
-| website | Website indicates this validator's website. | *string | false |
+| website | Website of the validator. | *string | false |
 | identity | Identity signature of this validator. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### VolumeSnapshotsConfig
 
-
+VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| frequency | Frequency indicates how often a snapshot should be created. Specified as a duration with suffix `s`, `m` or `h`. | string | true |
-| retention | Retention indicates for how long a snapshot should be retained. Default is indefinite retention. Specified as a duration with suffix `s`, `m` or `h`. | *string | false |
-| snapshotClass | SnapshotClassName is the name of the volume snapshot class to be used. | *string | false |
-| stopNode | StopNode indicates that the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
-| exportTarball | ExportTarball creates a tarball of data directory in each snapshot and uploads it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
+| frequency | How often a snapshot should be created. | string | true |
+| retention | How long a snapshot should be retained. Default is indefinite retention. | *string | false |
+| snapshotClass | Name of the volume snapshot class to be used. Uses the default class if not specified. | *string | false |
+| stopNode | Whether the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
+| exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
 
 [Back to Custom Resources](#custom-resources)

@@ -12,7 +12,7 @@ func init() {
 // ChainNodeSetPhase is a label for the condition of a nodeset at the current time.
 type ChainNodeSetPhase string
 
-// These are the valid phases for nodesets.
+// These are the valid phases for ChainNodeSets.
 const (
 	PhaseChainNodeSetRunning    ChainNodeSetPhase = "Running"
 	PhaseChainNodeSetInitialing ChainNodeSetPhase = "Initializing"
@@ -20,7 +20,7 @@ const (
 
 //+kubebuilder:object:root=true
 
-// ChainNodeSetList contains a list of ChainNodeSet
+// ChainNodeSetList contains a list of ChainNodeSet.
 type ChainNodeSetList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -35,7 +35,7 @@ type ChainNodeSetList struct {
 //+kubebuilder:printcolumn:name="LatestHeight",type=integer,JSONPath=`.status.latestHeight`
 //+kubebuilder:printcolumn:name="Instances",type=integer,JSONPath=`.status.instances`
 
-// ChainNodeSet is the Schema for the chainnodesets API
+// ChainNodeSet is the Schema for the chainnodesets API.
 type ChainNodeSet struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -44,112 +44,119 @@ type ChainNodeSet struct {
 	Status ChainNodeSetStatus `json:"status,omitempty"`
 }
 
-// ChainNodeSetSpec defines the desired state of ChainNode
+// ChainNodeSetSpec defines the desired state of ChainNode.
 type ChainNodeSetSpec struct {
-	// App specifies image and binary name of the chain application to run
+	// Specifies image, version and binary name of the chain application to run. It also allows to schedule upgrades,
+	// or setting/updating the image for an on-chain upgrade.
 	App AppSpec `json:"app"`
 
-	// Genesis indicates where nodes from this set will get the genesis from. Can be omitted when .spec.validator.init is specified.
+	// Indicates where this node will get the genesis from. Can be omitted when .spec.validator.init is specified.
 	// +optional
 	Genesis *GenesisConfig `json:"genesis"`
 
-	// Validator configures a validator node and configures it.
+	// Indicates this node set will run a validator and allows configuring it.
 	// +optional
 	Validator *NodeSetValidatorConfig `json:"validator,omitempty"`
 
-	// Nodes indicates the list of groups of chainnodes to be run
+	// List of groups of ChainNodes to be run.
 	Nodes []NodeGroupSpec `json:"nodes"`
 
-	// ServiceMonitor allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet.
+	// Allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet.
 	// ServiceMonitor config on ChainNode overrides this one.
 	// +optional
 	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
 }
 
-// ChainNodeSetStatus defines the observed state of ChainNodeSet
+// ChainNodeSetStatus defines the observed state of ChainNodeSet.
 type ChainNodeSetStatus struct {
-	// Phase indicates the current phase for this ChainNodeSet.
+	// Indicates the current phase for this ChainNodeSet.
 	// +optional
 	Phase ChainNodeSetPhase `json:"phase,omitempty"`
 
-	// ChainID shows the chain ID
+	// Indicates the chain ID.
 	// +optional
 	ChainID string `json:"chainID,omitempty"`
 
-	// Instances indicates the total number of chainnode instances on this set
+	// Indicates the total number of ChainNode instances on this ChainNodeSet.
 	// +optional
 	Instances int `json:"instances,omitempty"`
 
-	// AppVersion is the application version currently deployed
+	// The application version currently deployed.
+	// +optional
 	AppVersion string `json:"appVersion,omitempty"`
 
-	// Nodes indicates which nodes are available on this nodeset. Excludes validator node.
+	// Nodes available on this nodeset. Excludes validator node.
+	// +optional
 	Nodes []ChainNodeSetNodeStatus `json:"nodes,omitempty"`
 
-	// ValidatorAddress is the valoper address of the validator in this ChainNodeSet if one is available.
+	// Validator address of the validator in this ChainNodeSet if one is available.
 	// Omitted when no validator is present in the ChainNodeSet.
 	// +optional
 	ValidatorAddress string `json:"validatorAddress,omitempty"`
 
-	// ValidatorStatus indicates the current status of validator if this node is one.
+	// Current status of validator if this ChainNodeSet has one.
+	// +optional
 	ValidatorStatus ValidatorStatus `json:"validatorStatus,omitempty"`
 
-	// PubKey of the validator.
+	// Public key of the validator if this ChainNodeSet has one.
 	// +optional
 	PubKey string `json:"pubKey,omitempty"`
 
-	// Upgrades contains all scheduled/completed upgrades performed by the operator on ChainNodes.
+	// All scheduled/completed upgrades performed by the operator on ChainNodes of this CHainNodeSet.
 	// +optional
 	Upgrades []Upgrade `json:"upgrades,omitempty"`
 
-	// LatestHeight is the last height read on the node by the operator.
+	// Last height read on the nodes by the operator.
+	// +optional
 	LatestHeight int64 `json:"latestHeight,omitempty"`
 }
 
+// ChainNodeSetNodeStatus contains information about a node running on this ChainNodeSet.
 type ChainNodeSetNodeStatus struct {
-	// Name is the name of the node.
+	// Name of the node.
 	Name string `json:"name"`
 
-	// Public indicates whether this node can be accessed publicly.
+	// Whether this node can be accessed publicly.
 	Public bool `json:"public"`
 
-	// Seed indicates if this node is running in seed mode.
+	// Indicates if this node is running in seed mode.
 	Seed bool `json:"seed"`
 
-	// ID is the node ID of this node.
+	// ID of this node.
 	ID string `json:"id"`
 
-	// Address is the hostname or IP address to reach this node internally.
+	// Hostname or IP address to reach this node internally.
 	Address string `json:"address"`
 
-	// PublicAddress is the hostname or IP address to reach this node publicly.
+	// Hostname or IP address to reach this node publicly.
 	// +optional
 	PublicAddress string `json:"publicAddress,omitempty"`
 
-	// Port is the P2P port for connecting to this node.
+	// P2P port for connecting to this node.
 	Port int `json:"port"`
 }
 
-// NodeSetValidatorConfig turns this node into a validator and specifies how it will do it.
+// NodeSetValidatorConfig contains validator configurations.
 type NodeSetValidatorConfig struct {
-	// PrivateKeySecret indicates the secret containing the private key to be use by this validator.
+	// Secret containing the private key to be used by this validator.
 	// Defaults to `<chainnode>-priv-key`. Will be created if it does not exist.
 	// +optional
 	PrivateKeySecret *string `json:"privateKeySecret,omitempty"`
 
-	// Info contains information details about this validator.
+	// Contains information details about the validator.
 	// +optional
 	Info *ValidatorInfo `json:"info,omitempty"`
 
-	// Init specifies configs and initialization commands for creating a new chain and its genesis.
+	// Specifies configs and initialization commands for creating a new genesis.
 	// +optional
 	Init *GenesisInitConfig `json:"init,omitempty"`
 
-	// Config allows setting specific configurations for this node.
+	// Allows setting specific configurations for the validator.
 	// +optional
 	Config *Config `json:"config,omitempty"`
 
-	// Persistence configures pvc for persisting data for this node.
+	// Configures PVC for persisting data. Automated data snapshots can also be configured in
+	// this section.
 	// +optional
 	Persistence *Persistence `json:"persistence,omitempty"`
 
@@ -157,12 +164,12 @@ type NodeSetValidatorConfig struct {
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// If specified, the pod's scheduling constraints
+	// If specified, the pod's scheduling constraints.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
@@ -171,43 +178,44 @@ type NodeSetValidatorConfig struct {
 	// +optional
 	TmKMS *TmKMS `json:"tmKMS,omitempty"`
 
-	// StateSyncRestore configures this node to find a state-sync snapshot on the network and restore from it.
+	// Configures this node to find a state-sync snapshot on the network and restore from it.
 	// This is disabled by default.
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 
-	// CreateValidator indicates that operator should run create-validator tx to make this node a validator.
+	// Indicates that operator should run create-validator tx to make this node a validator.
 	// +optional
 	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
 }
 
-// NodeGroupSpec sets chainnode configurations for a group
+// NodeGroupSpec sets chainnode configurations for a group.
 type NodeGroupSpec struct {
-	// Name refers the name of this group
+	// Name of this group.
 	Name string `json:"name"`
 
-	// Instances indicates the number of chainnode instances to run on this group
+	// Number of ChainNode instances to run on this group.
 	// +optional
 	// +default=1
 	Instances *int `json:"instances,omitempty"`
 
-	// Config allows setting specific configurations for this node
+	// Specific configurations for these nodes.
 	// +optional
 	Config *Config `json:"config,omitempty"`
 
-	// Persistence configures pvc for persisting data on nodes
+	// Configures PVC for persisting data. Automated data snapshots can also be configured in
+	// this section.
 	// +optional
 	Persistence *Persistence `json:"persistence,omitempty"`
 
-	// Peers are additional persistent peers that should be added to this node.
+	// Additional persistent peers that should be added to these nodes.
 	// +optional
 	Peers []Peer `json:"peers,omitempty"`
 
-	// Expose specifies which node endpoints are exposed and how they are exposed
+	// Allows exposing P2P traffic to public.
 	// +optional
 	Expose *ExposeConfig `json:"expose,omitempty"`
 
-	// Ingress indicates if an ingress should be created to access API endpoints of these nodes and configures it.
+	// Indicates if an ingress should be created to access API endpoints of these nodes and configures it.
 	// +optional
 	Ingress *IngressConfig `json:"ingress,omitempty"`
 
@@ -215,36 +223,36 @@ type NodeGroupSpec struct {
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// If specified, the pod's scheduling constraints
+	// If specified, the pod's scheduling constraints.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
-	// StateSyncRestore configures this node to find a state-sync snapshot on the network and restore from it.
+	// Configures these nodes to find state-sync snapshots on the network and restore from it.
 	// This is disabled by default.
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 }
 
-// IngressConfig specifies configurations for ingress to expose API endpoints
+// IngressConfig specifies configurations for ingress to expose API endpoints.
 type IngressConfig struct {
-	// EnableRPC enable RPC endpoint.
+	// Enable RPC endpoint.
 	// +optional
 	EnableRPC bool `json:"enableRPC,omitempty"`
 
-	// EnableGRPC enable gRPC endpoint.
+	// Enable gRPC endpoint.
 	// +optional
 	EnableGRPC bool `json:"enableGRPC,omitempty"`
 
-	// EnableLCD enable LCD endpoint.
+	// Enable LCD endpoint.
 	// +optional
 	EnableLCD bool `json:"enableLCD,omitempty"`
 
-	// Host specifies the host in which endpoints will be exposed. Endpoints are exposed on corresponding
+	// Host in which endpoints will be exposed. Endpoints are exposed on corresponding
 	// subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
 	// `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
 	Host string `json:"host"`
