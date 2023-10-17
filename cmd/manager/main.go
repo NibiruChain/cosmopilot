@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnode"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnodeset"
@@ -26,14 +27,15 @@ var (
 	enableLeaderElection bool
 	probeAddr            string
 	runOpts              controllers.ControllerRunOptions
+	debugMode            bool
+	zapOpts              zap.Options
 )
 
 func main() {
-	opts := zap.Options{}
-	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	zapOpts.Development = debugMode
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zapOpts)))
 
 	if err := monitoring.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "unable to add prometheus crds to scheme")
@@ -58,19 +60,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
+	clientSet, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		log.Fatalf("unable to create clientset: %v", err)
 	}
 
-	if _, err = chainnode.New(mgr, clientset, &runOpts); err != nil {
+	if _, err = chainnode.New(mgr, clientSet, &runOpts); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ChainNode")
 		os.Exit(1)
 	}
 
-	if _, err = chainnodeset.New(mgr, clientset, &runOpts); err != nil {
+	if _, err = chainnodeset.New(mgr, clientSet, &runOpts); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ChainNodeSet")
 		os.Exit(1)
+	}
+
+	if !runOpts.DisableWebhooks {
+		if err := appsv1.SetupChainNodeValidationWebhook(mgr); err != nil {
+			setupLog.Error(err, "unable to setup validation webhook", "resource", "ChainNode")
+			os.Exit(1)
+		}
+
+		if err := appsv1.SetupChainNodeSetValidationWebhook(mgr); err != nil {
+			setupLog.Error(err, "unable to setup validation webhook", "resource", "ChainNodeSet")
+			os.Exit(1)
+		}
 	}
 
 	if err = mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

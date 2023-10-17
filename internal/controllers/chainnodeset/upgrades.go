@@ -46,7 +46,7 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, nodeSet *appsv1.ChainNo
 		return nodeSet.Status.Upgrades[i].Height < nodeSet.Status.Upgrades[j].Height
 	})
 
-	if !reflect.DeepEqual(nodeSet.Status.Upgrades, statusCopy.Upgrades) {
+	if statusCopy.LatestHeight != nodeSet.Status.LatestHeight || !reflect.DeepEqual(nodeSet.Status.Upgrades, statusCopy.Upgrades) {
 		logger.Info("updating .status.upgrades")
 		return r.Status().Update(ctx, nodeSet)
 	}

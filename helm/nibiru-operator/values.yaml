@@ -5,3 +5,6 @@ serviceMonitorEnabled: true
 imagePullSecrets: []
 workerCount: 1
 workerName: ""
+webHooksEnabled: true
+nodeSelector: {}
+debugMode: false

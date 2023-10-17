@@ -3,6 +3,7 @@ package chainnodeset
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -20,23 +21,25 @@ import (
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet   *kubernetes.Clientset
-	RestConfig  *rest.Config
-	Scheme      *runtime.Scheme
-	recorder    record.EventRecorder
-	workerCount int
-	workerName  string
+	ClientSet        *kubernetes.Clientset
+	RestConfig       *rest.Config
+	Scheme           *runtime.Scheme
+	recorder         record.EventRecorder
+	workerCount      int
+	workerName       string
+	webhooksDisabled bool
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
 	r := &Reconciler{
-		Client:      mgr.GetClient(),
-		ClientSet:   clientSet,
-		RestConfig:  mgr.GetConfig(),
-		Scheme:      mgr.GetScheme(),
-		recorder:    mgr.GetEventRecorderFor("chainnodeset-controller"),
-		workerCount: opts.WorkerCount,
-		workerName:  opts.WorkerName,
+		Client:           mgr.GetClient(),
+		ClientSet:        clientSet,
+		RestConfig:       mgr.GetConfig(),
+		Scheme:           mgr.GetScheme(),
+		recorder:         mgr.GetEventRecorderFor("chainnodeset-controller"),
+		workerCount:      opts.WorkerCount,
+		workerName:       opts.WorkerName,
+		webhooksDisabled: opts.DisableWebhooks,
 	}
 	if err := r.setupWithManager(mgr); err != nil {
 		return nil, err
@@ -69,6 +72,23 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if nodeSet.Labels[controllers.LabelWorkerName] != r.workerName {
 		logger.V(1).Info("skipping chainnodeset due to worker-name mismatch.")
 		return ctrl.Result{}, nil
+	}
+
+	if r.webhooksDisabled {
+		warnings, err := nodeSet.Validate(nil)
+		if err != nil {
+			logger.Error(err, "spec is invalid")
+			r.recorder.Eventf(nodeSet,
+				corev1.EventTypeWarning,
+				appsv1.ReasonInvalid,
+				"spec is invalid: %v",
+				err,
+			)
+			return ctrl.Result{}, err
+		}
+		if len(warnings) > 0 {
+			logger.Error(nil, "validation warnings", "warnings", warnings)
+		}
 	}
 
 	// Clearly log beginning and end of reconcile cycle

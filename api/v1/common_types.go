@@ -49,6 +49,7 @@ const (
 	ReasonUpgradeMissingData     = "UpgradeMissingData"
 	ReasonCreateValidatorFailure = "FailedCreateValidator"
 	ReasonCreateValidatorSuccess = "CreateValidatorSuccess"
+	ReasonInvalid                = "Invalid"
 )
 
 // SdkVersion specifies the cosmos-sdk version used by this application.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/NibiruChain/nibiru-operator/internal/utils"
@@ -12,6 +13,10 @@ import (
 const (
 	DefaultGroupInstances = 1
 )
+
+func (nodeSet *ChainNodeSet) GetNamespacedName() string {
+	return types.NamespacedName{Namespace: nodeSet.GetNamespace(), Name: nodeSet.GetName()}.String()
+}
 
 func (nodeSet *ChainNodeSet) HasValidator() bool {
 	return nodeSet.Spec.Validator != nil

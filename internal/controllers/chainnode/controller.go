@@ -26,15 +26,16 @@ import (
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet      *kubernetes.Clientset
-	RestConfig     *rest.Config
-	Scheme         *runtime.Scheme
-	configCache    *ttlcache.Cache[string, map[string]interface{}]
-	queryClients   map[string]*chainutils.QueryClient
-	recorder       record.EventRecorder
-	nodeUtilsImage string
-	workerCount    int
-	workerName     string
+	ClientSet        *kubernetes.Clientset
+	RestConfig       *rest.Config
+	Scheme           *runtime.Scheme
+	configCache      *ttlcache.Cache[string, map[string]interface{}]
+	queryClients     map[string]*chainutils.QueryClient
+	recorder         record.EventRecorder
+	nodeUtilsImage   string
+	workerCount      int
+	workerName       string
+	webhooksDisabled bool
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
@@ -43,16 +44,17 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 	)
 
 	r := &Reconciler{
-		Client:         mgr.GetClient(),
-		ClientSet:      clientSet,
-		RestConfig:     mgr.GetConfig(),
-		Scheme:         mgr.GetScheme(),
-		configCache:    cfgCache,
-		queryClients:   make(map[string]*chainutils.QueryClient),
-		recorder:       mgr.GetEventRecorderFor("chainnode-controller"),
-		nodeUtilsImage: opts.NodeUtilsImage,
-		workerCount:    opts.WorkerCount,
-		workerName:     opts.WorkerName,
+		Client:           mgr.GetClient(),
+		ClientSet:        clientSet,
+		RestConfig:       mgr.GetConfig(),
+		Scheme:           mgr.GetScheme(),
+		configCache:      cfgCache,
+		queryClients:     make(map[string]*chainutils.QueryClient),
+		recorder:         mgr.GetEventRecorderFor("chainnode-controller"),
+		nodeUtilsImage:   opts.NodeUtilsImage,
+		workerCount:      opts.WorkerCount,
+		workerName:       opts.WorkerName,
+		webhooksDisabled: opts.DisableWebhooks,
 	}
 	if err := r.setupWithManager(mgr); err != nil {
 		return nil, err
@@ -91,6 +93,23 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if chainNode.Labels[controllers.LabelWorkerName] != r.workerName {
 		logger.V(1).Info("skipping chainnode due to worker-name mismatch.")
 		return ctrl.Result{}, nil
+	}
+
+	if r.webhooksDisabled {
+		warnings, err := chainNode.Validate(nil)
+		if err != nil {
+			logger.Error(err, "spec is invalid")
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeWarning,
+				appsv1.ReasonInvalid,
+				"spec is invalid: %v",
+				err,
+			)
+			return ctrl.Result{}, err
+		}
+		if len(warnings) > 0 {
+			logger.Error(nil, "validation warnings", "warnings", warnings)
+		}
 	}
 
 	// Clearly log beginning and end of reconcile cycle

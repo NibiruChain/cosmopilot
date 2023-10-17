@@ -28,13 +28,34 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      volumes:
+      {{- if .Values.webHooksEnabled }}
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: {{ .Release.Name }}-cert
+      {{- end }}
+      nodeSelector:
+      {{ toYaml .Values.nodeSelector | indent 8 }}
       containers:
-        - command:
+        - name: manager
+          image: {{ .Values.image }}:{{- if .Values.imageTag }}{{ .Values.imageTag }}{{- else }}{{ .Chart.AppVersion }}{{ end }}
+          command:
             - /manager
           args:
             - --leader-elect
-          image: {{ .Values.image }}:{{- if .Values.imageTag }}{{ .Values.imageTag }}{{- else }}{{ .Chart.AppVersion }}{{ end }}
-          name: manager
+          {{- if .Values.webHooksEnabled }}
+          ports:
+            - name: webhook-server
+              containerPort: 9443
+              protocol: TCP
+          {{- end }}
+          volumeMounts:
+          {{- if .Values.webHooksEnabled }}
+            - name: cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+          {{- end }}
           env:
             - name: NODE_UTILS_IMAGE
               value: {{ .Values.nodeUtilsImage }}
@@ -42,6 +63,10 @@ spec:
               value: {{ .Values.workerName }}
             - name: WORKER_COUNT
               value: "{{ .Values.workerCount }}"
+            - name: DISABLE_WEBHOOKS
+              value: "{{ .Values.webHooksEnabled | ternary "false" "true" }}"
+            - name: DEBUG_MODE
+              value: "{{ .Values.debugMode }}"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

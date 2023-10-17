@@ -83,7 +83,7 @@ build: manifests generate fmt vet ## Build manager binary.
 run: WORKER_NAME?=
 run: WORKER_COUNT?=1
 run: manifests generate ## Run a controller from your host.
-	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)" -worker-count=$(WORKER_COUNT) -zap-devel
+	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)" -worker-count=$(WORKER_COUNT) -debug-mode -disable-webhooks
 
 .PHONY: mirrord
 mirrord: RELEASE_NAME?=nibiru-operator
@@ -99,7 +99,7 @@ mirrord: manifests generate
 			-nodeutils-image="$(NODE_UTILS_IMG)" \
 			-worker-count=$(WORKER_COUNT) \
 			-worker-name="$(WORKER_NAME)" \
-			-zap-devel
+			-debug-mode
 
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
@@ -138,6 +138,7 @@ deploy: SERVICE_MONITOR_ENABLED?=false
 deploy: IMAGE_PULL_SECRETS?=
 deploy: WORKER_NAME?=
 deploy: WORKER_COUNT?=1
+deploy: DEBUG_MODE?=false
 deploy: manifests helm ## Deploy controller to the K8s cluster
 	@$(HELM) upgrade $(RELEASE_NAME) \
 		--install \
@@ -150,6 +151,7 @@ deploy: manifests helm ## Deploy controller to the K8s cluster
 		--set workerCount=$(WORKER_COUNT) \
 		--set imagePullSecrets=$(IMAGE_PULL_SECRETS) \
 		--set serviceMonitorEnabled=$(SERVICE_MONITOR_ENABLED) \
+		--set debugMode=$(DEBUG_MODE) \
 		helm/nibiru-operator
 
 .PHONY: undeploy

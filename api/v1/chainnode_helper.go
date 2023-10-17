@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,6 +29,10 @@ func (chainNode *ChainNode) Equal(n *ChainNode) bool {
 	}
 
 	return true
+}
+
+func (chainNode *ChainNode) GetNamespacedName() string {
+	return types.NamespacedName{Namespace: chainNode.GetNamespace(), Name: chainNode.GetName()}.String()
 }
 
 func (chainNode *ChainNode) GetReconcilePeriod() time.Duration {

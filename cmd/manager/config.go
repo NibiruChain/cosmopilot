@@ -43,4 +43,14 @@ func init() {
 		environ.GetInt("WORKER_COUNT", 1),
 		"number of maximum concurrent reconciles that can be run.",
 	)
+
+	flag.BoolVar(&runOpts.DisableWebhooks, "disable-webhooks",
+		environ.GetBool("DISABLE_WEBHOOKS", false),
+		"whether to disable admission webhooks.",
+	)
+
+	flag.BoolVar(&debugMode, "debug-mode",
+		environ.GetBool("DEBUG_MODE", false),
+		"whether to enable debug mode",
+	)
 }
