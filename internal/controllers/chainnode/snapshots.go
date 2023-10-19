@@ -19,6 +19,7 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnodeset"
 	"github.com/NibiruChain/nibiru-operator/internal/datasnapshot"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
+	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
 const (
@@ -39,7 +40,11 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		return err
 	}
 
+	// Grab list of possible tarball names to make sure we delete any possible dangling jobs
+	tarballNames := make([]string, 0)
+
 	for _, snapshot := range list.Items {
+		tarballNames = append(tarballNames, getTarballName(chainNode, &snapshot))
 		switch {
 
 		// If the snapshot does not have the ready annotation, we haven't processed it yet. So we check if it's ready
@@ -137,6 +142,26 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 						appsv1.ReasonTarballDeleted,
 						"Deleted expired tarball %s", getTarballName(chainNode, &snapshot),
 					)
+				}
+			}
+		}
+	}
+
+	// Remove any dangling jobs whose volumesnapshot does not exist anymore
+	if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
+		exporter, err := r.getTarballExportProvider(chainNode)
+		if err != nil {
+			return err
+		}
+		tarballSnapshots, err := exporter.ListSnapshots(ctx)
+		if err != nil {
+			return err
+		}
+		for _, snapshot := range tarballSnapshots {
+			if !utils.SliceContains[string](tarballNames, snapshot) {
+				logger.Info("deleting orphaned tarball upload job as volumesnapshot does not exist anymore")
+				if err := exporter.DeleteSnapshot(ctx, snapshot); err != nil {
+					return err
 				}
 			}
 		}

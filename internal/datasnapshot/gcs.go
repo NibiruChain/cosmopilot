@@ -16,6 +16,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+const (
+	gcsExporter = "gcs-exporter"
+)
+
 type GCS struct {
 	Client      *kubernetes.Clientset
 	Scheme      *runtime.Scheme
@@ -49,6 +53,11 @@ func (gcs *GCS) CreateSnapshot(ctx context.Context, name string, vs *snapshotv1.
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-upload", name),
 			Namespace: gcs.Owner.GetNamespace(),
+			Labels: map[string]string{
+				labelExporter: gcsExporter,
+				labelOwner:    gcs.Owner.GetName(),
+				labelType:     typeUpload,
+			},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: pointer.Int32(0),
@@ -208,6 +217,11 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-delete", name),
 			Namespace: gcs.Owner.GetNamespace(),
+			Labels: map[string]string{
+				labelExporter: gcsExporter,
+				labelOwner:    gcs.Owner.GetName(),
+				labelType:     typeDelete,
+			},
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: pointer.Int32(60),
@@ -280,4 +294,24 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 
 	_, err = gcs.Client.BatchV1().Jobs(gcs.Owner.GetNamespace()).Create(ctx, job, metav1.CreateOptions{})
 	return err
+}
+
+func (gcs *GCS) ListSnapshots(ctx context.Context) ([]string, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+			labelExporter: gcsExporter,
+			labelOwner:    gcs.Owner.GetName(),
+			labelType:     typeUpload, // We only list uploading jobs since the deleting jobs are auto deleted
+		}).String(),
+	}
+	list, err := gcs.Client.BatchV1().Jobs(gcs.Owner.GetNamespace()).List(ctx, listOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshotNames := make([]string, len(list.Items))
+	for i, job := range list.Items {
+		snapshotNames[i] = job.GetName()
+	}
+	return snapshotNames, nil
 }
