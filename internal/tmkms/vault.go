@@ -24,20 +24,22 @@ type VaultProvider struct {
 	TokenSecret       *corev1.SecretKeySelector `toml:"-"`
 	Token             string                    `toml:"access_token"`
 	CaCert            string                    `toml:"ca_cert"`
+	AutoRenewToken    bool                      `toml:"-"`
 }
 
-func WithVaultProvider(chainID, address, key string, token, ca *corev1.SecretKeySelector) Option {
+func WithVaultProvider(chainID, address, key string, token, ca *corev1.SecretKeySelector, autoRenewToken bool) Option {
 	vault := &VaultProvider{
 		ChainID:           chainID,
 		Address:           address,
 		Key:               key,
 		CertificateSecret: ca,
 		TokenSecret:       token,
+		AutoRenewToken:    autoRenewToken,
 	}
 	if ca == nil {
 		vault.CaCert = ""
 	} else {
-		vault.CaCert = "/secret/" + ca.Key
+		vault.CaCert = "/vault/" + ca.Key
 	}
 
 	return func(cfg *Config) {
@@ -64,19 +66,31 @@ func (v *VaultProvider) process(kms *KMS, ctx context.Context) error {
 }
 
 func (v *VaultProvider) getVolumes() []corev1.Volume {
+	var volumes []corev1.Volume
+
 	if v.CertificateSecret != nil {
-		return []corev1.Volume{
-			{
-				Name: "vault-ca-cert",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: v.CertificateSecret.Name,
-					},
+		volumes = append(volumes, corev1.Volume{
+			Name: "vault-ca-cert",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: v.CertificateSecret.Name,
 				},
 			},
-		}
+		})
 	}
-	return []corev1.Volume{}
+
+	if v.AutoRenewToken {
+		volumes = append(volumes, corev1.Volume{
+			Name: "vault-token",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: v.TokenSecret.Name,
+				},
+			},
+		})
+	}
+
+	return volumes
 }
 
 func (v *VaultProvider) getVolumeMounts() []corev1.VolumeMount {
@@ -85,12 +99,56 @@ func (v *VaultProvider) getVolumeMounts() []corev1.VolumeMount {
 			{
 				Name:      "vault-ca-cert",
 				ReadOnly:  true,
-				MountPath: "/secret/" + v.CertificateSecret.Key,
+				MountPath: "/vault/" + v.CertificateSecret.Key,
 				SubPath:   v.CertificateSecret.Key,
 			},
 		}
 	}
 	return []corev1.VolumeMount{}
+}
+
+func (v *VaultProvider) getContainers() []corev1.Container {
+	var containers []corev1.Container
+	if v.AutoRenewToken {
+		spec := corev1.Container{
+			Name:  "vault-token-renewer",
+			Image: "ghcr.io/nibiruchain/vault-token-renewer",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "VAULT_ADDR",
+					Value: v.Address,
+				},
+				{
+					Name:  "VAULT_TOKEN_PATH",
+					Value: "/vault/" + v.TokenSecret.Key,
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "vault-token",
+					ReadOnly:  true,
+					MountPath: "/vault/" + v.TokenSecret.Key,
+					SubPath:   v.TokenSecret.Key,
+				},
+			},
+		}
+
+		if v.CertificateSecret != nil {
+			spec.Env = append(spec.Env, corev1.EnvVar{
+				Name:  "VAULT_CACERT",
+				Value: "/vault/" + v.CertificateSecret.Key,
+			})
+			spec.VolumeMounts = append(spec.VolumeMounts, corev1.VolumeMount{
+				Name:      "vault-ca-cert",
+				ReadOnly:  true,
+				MountPath: "/vault/" + v.CertificateSecret.Key,
+				SubPath:   v.CertificateSecret.Key,
+			})
+		}
+		containers = append(containers, spec)
+	}
+
+	return containers
 }
 
 func (kms *KMS) UploadKeyToVault(ctx context.Context, name, key string, token *corev1.SecretKeySelector) error {

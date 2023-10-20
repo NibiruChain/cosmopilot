@@ -35,6 +35,7 @@ type Provider interface {
 	process(kms *KMS, ctx context.Context) error
 	getVolumes() []corev1.Volume
 	getVolumeMounts() []corev1.VolumeMount
+	getContainers() []corev1.Container
 }
 
 func WithImage(s string) Option {

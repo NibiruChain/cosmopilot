@@ -516,7 +516,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				return nil, err
 			}
 			pod.Spec.Volumes = append(pod.Spec.Volumes, kms.GetVolumes()...)
-			pod.Spec.Containers = append(pod.Spec.Containers, kms.GetContainerSpec())
+			pod.Spec.Containers = append(pod.Spec.Containers, kms.GetContainersSpec()...)
 
 		} else {
 			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{

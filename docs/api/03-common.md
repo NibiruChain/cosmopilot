@@ -320,6 +320,7 @@ TmKmsVaultProvider holds `vault` provider specific configurations.
 | certificateSecret | Secret containing the CA certificate of the Vault cluster. | *corev1.SecretKeySelector | false |
 | tokenSecret | Secret containing the token to be used. | *corev1.SecretKeySelector | true |
 | uploadGenerated | UploadGenerated indicates if the controller should upload the generated private key to vault. Defaults to `false`. Will be set to `true` if this validator is initializing a new genesis. This should not be used in production. | bool | false |
+| autoRenewToken | Whether to automatically renew vault token. Defaults to `false`. | bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

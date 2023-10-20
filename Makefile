@@ -95,6 +95,7 @@ mirrord: manifests generate
 		-n $(NAMESPACE) \
 		-a $(NAMESPACE) \
 		-p --steal \
+		--no-telemetry \
 		go -- run ./cmd/manager \
 			-nodeutils-image="$(NODE_UTILS_IMG)" \
 			-worker-count=$(WORKER_COUNT) \

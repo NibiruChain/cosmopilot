@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
@@ -298,7 +299,7 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 
 func (gcs *GCS) ListSnapshots(ctx context.Context) ([]string, error) {
 	listOptions := metav1.ListOptions{
-		LabelSelector: metav1.SetAsLabelSelector(map[string]string{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
 			labelExporter: gcsExporter,
 			labelOwner:    gcs.Owner.GetName(),
 			labelType:     typeUpload, // We only list uploading jobs since the deleting jobs are auto deleted

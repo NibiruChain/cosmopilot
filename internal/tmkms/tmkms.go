@@ -254,7 +254,7 @@ func (kms *KMS) GetVolumes() []corev1.Volume {
 	return volumes
 }
 
-func (kms *KMS) GetContainerSpec() corev1.Container {
+func (kms *KMS) GetContainersSpec() []corev1.Container {
 	// Build volume mounts list with provider volume mounts
 	volumeMounts := []corev1.VolumeMount{
 		{
@@ -278,17 +278,27 @@ func (kms *KMS) GetContainerSpec() corev1.Container {
 		}
 	}
 
-	return corev1.Container{
-		Name:            tmkmsAppName,
-		Image:           kms.Config.Image,
-		ImagePullPolicy: corev1.PullAlways,
-		Args:            []string{"start", "-c", "/data/" + configFileName},
-		VolumeMounts:    volumeMounts,
-		Env: []corev1.EnvVar{
-			{
-				Name:  "ROLLME",
-				Value: kms.getConfigHash(),
+	containers := []corev1.Container{
+		{
+			Name:            tmkmsAppName,
+			Image:           kms.Config.Image,
+			ImagePullPolicy: corev1.PullAlways,
+			Args:            []string{"start", "-c", "/data/" + configFileName},
+			VolumeMounts:    volumeMounts,
+			Env: []corev1.EnvVar{
+				{
+					Name:  "ROLLME",
+					Value: kms.getConfigHash(),
+				},
 			},
 		},
 	}
+
+	for provider := range kms.Config.Providers {
+		for _, p := range kms.Config.Providers[provider] {
+			containers = append(containers, p.getContainers()...)
+		}
+	}
+
+	return containers
 }

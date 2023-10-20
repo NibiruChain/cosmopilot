@@ -24,8 +24,8 @@ func init() {
 		"The address the probe endpoint binds to.",
 	)
 
-	flag.BoolVar(&enableLeaderElection, "leader-elect",
-		environ.GetBool("LEADER_ELECT", false),
+	flag.BoolVar(&enableLeaderElection, "enable-leader-election",
+		environ.GetBool("ENABLE_LEADER_ELECTION", false),
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.",
 	)
 

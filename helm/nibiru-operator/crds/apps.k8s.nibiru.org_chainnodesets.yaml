@@ -3831,6 +3831,10 @@ spec:
                               address:
                                 description: Full address of the Vault cluster.
                                 type: string
+                              autoRenewToken:
+                                description: Whether to automatically renew vault
+                                  token. Defaults to `false`.
+                                type: boolean
                               certificateSecret:
                                 description: Secret containing the CA certificate
                                   of the Vault cluster.

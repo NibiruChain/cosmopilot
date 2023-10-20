@@ -43,6 +43,7 @@ func (r *Reconciler) getTmkms(ctx context.Context, chainNode *appsv1.ChainNode) 
 			provider.Vault.Key,
 			provider.Vault.TokenSecret,
 			provider.Vault.CertificateSecret,
+			provider.Vault.AutoRenewToken,
 		)
 		if chainNode.ShouldUploadVaultKey() {
 			if err := r.ensureTmkmsVaultUploadKey(ctx, chainNode); err != nil {
@@ -107,6 +108,7 @@ func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *a
 			chainNode.Spec.Validator.TmKMS.Provider.Vault.Key,
 			chainNode.Spec.Validator.TmKMS.Provider.Vault.TokenSecret,
 			chainNode.Spec.Validator.TmKMS.Provider.Vault.CertificateSecret,
+			chainNode.Spec.Validator.TmKMS.Provider.Vault.AutoRenewToken,
 		)).UploadKeyToVault(ctx,
 		chainNode.Spec.Validator.TmKMS.Provider.Vault.Key,
 		privKey.PrivKey.Value,

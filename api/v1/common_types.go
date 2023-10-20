@@ -467,6 +467,10 @@ type TmKmsVaultProvider struct {
 	// This should not be used in production.
 	// +optional
 	UploadGenerated bool `json:"uploadGenerated,omitempty"`
+
+	// Whether to automatically renew vault token. Defaults to `false`.
+	// +optional
+	AutoRenewToken bool `json:"autoRenewToken,omitempty"`
 }
 
 // StateSyncConfig holds configurations for enabling state-sync snapshots on a node.
