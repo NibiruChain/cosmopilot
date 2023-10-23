@@ -74,6 +74,7 @@ ChainNodeSetNodeStatus contains information about a node running on this ChainNo
 | address | Hostname or IP address to reach this node internally. | string | true |
 | publicAddress | Hostname or IP address to reach this node publicly. | string | false |
 | port | P2P port for connecting to this node. | int | true |
+| group | Group to which this ChainNode belongs. | string | false |
 
 [Back to Custom Resources](#custom-resources)
 

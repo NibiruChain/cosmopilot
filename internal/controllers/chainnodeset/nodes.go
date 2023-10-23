@@ -94,6 +94,7 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 			Address: node.Status.IP,
 			Port:    chainutils.P2pPort,
 			Seed:    node.Status.SeedMode,
+			Group:   group.Name,
 		}
 		if node.Status.PublicAddress != "" {
 			if parts := strings.Split(node.Status.PublicAddress, ":"); len(parts) == 2 {

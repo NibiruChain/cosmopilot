@@ -3932,6 +3932,9 @@ spec:
                     address:
                       description: Hostname or IP address to reach this node internally.
                       type: string
+                    group:
+                      description: Group to which this ChainNode belongs.
+                      type: string
                     id:
                       description: ID of this node.
                       type: string

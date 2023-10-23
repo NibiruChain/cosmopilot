@@ -134,6 +134,10 @@ type ChainNodeSetNodeStatus struct {
 
 	// P2P port for connecting to this node.
 	Port int `json:"port"`
+
+	// Group to which this ChainNode belongs.
+	// +optional
+	Group string `json:"group,omitempty"`
 }
 
 // NodeSetValidatorConfig contains validator configurations.
