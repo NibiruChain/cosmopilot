@@ -17,6 +17,11 @@ import (
 func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
 	logger := log.FromContext(ctx)
 
+	if !nodeSet.HasValidator() {
+		// If there was a validator before lets delete it
+		return r.maybeDeleteNode(ctx, nodeSet, fmt.Sprintf("%s-validator", nodeSet.GetName()))
+	}
+
 	validator, err := r.getValidatorSpec(nodeSet)
 	if err != nil {
 		return err

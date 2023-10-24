@@ -26,6 +26,8 @@ import (
 )
 
 func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
+	logger := log.FromContext(ctx)
+
 	if nodeSet.Status.ChainID == "" {
 		// let's wait for chainID to be available so we have a genesis to proceed
 		return nil
@@ -38,11 +40,37 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 		totalInstances += 1
 	}
 
+	// Grab existing list of groups
+	chainNodes, err := r.listNodeSetNodes(ctx, nodeSet)
+	if err != nil {
+		return err
+	}
+
+	groupList := map[string]int{}
+	for _, node := range chainNodes.Items {
+		if group, ok := node.Annotations[LabelChainNodeSetGroup]; ok {
+			groupList[group]++
+		}
+	}
+
 	for _, group := range nodeSet.Spec.Nodes {
 		if err := r.ensureNodeGroup(ctx, nodeSet, group); err != nil {
 			return err
 		}
 		totalInstances += group.GetInstances()
+		delete(groupList, group.Name)
+	}
+
+	// Remove nodes from deleted groups
+	for group, count := range groupList {
+		for i := 0; i < count; i++ {
+			nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group, i)
+			logger.Info("removing chainnode", "group", group, "chainnode", nodeName)
+			if err := r.removeNode(ctx, nodeSet, group, i); err != nil {
+				return err
+			}
+		}
+
 	}
 
 	if !reflect.DeepEqual(nodeSet.Status, nodeSetCopy.Status) {
@@ -53,17 +81,27 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 	return nil
 }
 
+func (r *Reconciler) listNodeSetNodes(ctx context.Context, nodeSet *appsv1.ChainNodeSet, l ...string) (*appsv1.ChainNodeList, error) {
+	if len(l)%2 != 0 {
+		return nil, fmt.Errorf("list of labels must contain pairs of key-value")
+	}
+
+	selectorMap := map[string]string{LabelChainNodeSet: nodeSet.GetName()}
+	for i := 0; i < len(l); i += 2 {
+		selectorMap[l[i]] = l[i+1]
+	}
+
+	chainNodeList := &appsv1.ChainNodeList{}
+	return chainNodeList, r.List(ctx, chainNodeList, &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(selectorMap),
+	})
+}
+
 func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec) error {
 	logger := log.FromContext(ctx)
 
-	selector := labels.SelectorFromSet(map[string]string{
-		LabelChainNodeSet:      nodeSet.GetName(),
-		LabelChainNodeSetGroup: group.Name,
-	})
-	chainNodeList := &appsv1.ChainNodeList{}
-	if err := r.List(ctx, chainNodeList, &client.ListOptions{
-		LabelSelector: selector,
-	}); err != nil {
+	chainNodeList, err := r.listNodeSetNodes(ctx, nodeSet, LabelChainNodeSetGroup, group.Name)
+	if err != nil {
 		return err
 	}
 
@@ -74,7 +112,7 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 	for i := currentSize - 1; i >= desiredSize; i-- {
 		nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, i)
 		logger.Info("removing chainnode", "group", group.Name, "chainnode", nodeName)
-		if err := r.removeNode(ctx, nodeSet, group, i); err != nil {
+		if err := r.removeNode(ctx, nodeSet, group.Name, i); err != nil {
 			return err
 		}
 	}
@@ -158,8 +196,8 @@ func (r *Reconciler) ensureNode(ctx context.Context, nodeSet *appsv1.ChainNodeSe
 	return nil
 }
 
-func (r *Reconciler) removeNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec, index int) error {
-	nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, index)
+func (r *Reconciler) removeNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group string, index int) error {
+	nodeName := fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group, index)
 	if err := r.Delete(ctx, &appsv1.ChainNode{ObjectMeta: metav1.ObjectMeta{Name: nodeName, Namespace: nodeSet.GetNamespace()}}); err != nil {
 		return err
 	}
@@ -277,4 +315,19 @@ func (r *Reconciler) waitChainNodeRunningOrSyncing(node *appsv1.ChainNode) error
 	}
 	nodesInformer.Informer().Run(stopCh)
 	return exitErr
+}
+
+func (r *Reconciler) maybeDeleteNode(ctx context.Context, nodeSet *appsv1.ChainNodeSet, name string) error {
+	node := &appsv1.ChainNode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: nodeSet.GetNamespace(),
+		},
+	}
+	if err := r.Delete(ctx, node); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
 }

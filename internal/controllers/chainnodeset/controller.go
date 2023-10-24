@@ -101,10 +101,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	if nodeSet.HasValidator() {
-		if err := r.ensureValidator(ctx, nodeSet); err != nil {
-			return ctrl.Result{}, err
-		}
+	// Make sure validator is set up first if it is configured
+	if err := r.ensureValidator(ctx, nodeSet); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if err := r.ensureNodes(ctx, nodeSet); err != nil {
