@@ -112,7 +112,9 @@ func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *a
 		)).UploadKeyToVault(ctx,
 		chainNode.Spec.Validator.TmKMS.Provider.Vault.Key,
 		privKey.PrivKey.Value,
+		chainNode.Spec.Validator.TmKMS.Provider.Vault.Address,
 		chainNode.Spec.Validator.TmKMS.Provider.Vault.TokenSecret,
+		chainNode.Spec.Validator.TmKMS.Provider.Vault.CertificateSecret,
 	)
 	if err != nil {
 		r.recorder.Eventf(chainNode,

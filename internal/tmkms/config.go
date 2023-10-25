@@ -1,13 +1,11 @@
 package tmkms
 
 import (
-	"context"
-
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
-	DefaultTmKmsImage = "ghcr.io/nibiruchain/tmkms:hashicorp"
+	DefaultTmKmsImage = "ghcr.io/nibiruchain/tmkms:vault"
 	configFileName    = "config.toml"
 	tmkmsAppName      = "tmkms"
 	identityKeyName   = "kms-identity.key"
@@ -32,7 +30,6 @@ type Config struct {
 type Option func(*Config)
 
 type Provider interface {
-	process(kms *KMS, ctx context.Context) error
 	getVolumes() []corev1.Volume
 	getVolumeMounts() []corev1.VolumeMount
 	getContainers() []corev1.Container

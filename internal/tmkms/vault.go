@@ -14,6 +14,7 @@ import (
 
 const (
 	vaultProviderName = "hashicorp"
+	vaultMountDir     = "/vault/"
 )
 
 type VaultProvider struct {
@@ -22,7 +23,7 @@ type VaultProvider struct {
 	Key               string                    `toml:"pk_name"`
 	CertificateSecret *corev1.SecretKeySelector `toml:"-"`
 	TokenSecret       *corev1.SecretKeySelector `toml:"-"`
-	Token             string                    `toml:"access_token"`
+	TokenFile         string                    `toml:"token_file"`
 	CaCert            string                    `toml:"ca_cert"`
 	AutoRenewToken    bool                      `toml:"-"`
 }
@@ -34,12 +35,13 @@ func WithVaultProvider(chainID, address, key string, token, ca *corev1.SecretKey
 		Key:               key,
 		CertificateSecret: ca,
 		TokenSecret:       token,
+		TokenFile:         vaultMountDir + token.Key,
 		AutoRenewToken:    autoRenewToken,
 	}
 	if ca == nil {
 		vault.CaCert = ""
 	} else {
-		vault.CaCert = "/vault/" + ca.Key
+		vault.CaCert = vaultMountDir + ca.Key
 	}
 
 	return func(cfg *Config) {
@@ -50,23 +52,17 @@ func WithVaultProvider(chainID, address, key string, token, ca *corev1.SecretKey
 	}
 }
 
-func (v *VaultProvider) process(kms *KMS, ctx context.Context) error {
-	secret, err := kms.Client.CoreV1().Secrets(kms.Owner.GetNamespace()).Get(ctx, v.TokenSecret.Name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	token, ok := secret.Data[v.TokenSecret.Key]
-	if !ok {
-		return fmt.Errorf("key %q is not present in secret %q", v.TokenSecret.Key, v.TokenSecret.Name)
-	}
-
-	v.Token = string(token)
-	return nil
-}
-
 func (v *VaultProvider) getVolumes() []corev1.Volume {
-	var volumes []corev1.Volume
+	volumes := []corev1.Volume{
+		{
+			Name: "vault-token",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: v.TokenSecret.Name,
+				},
+			},
+		},
+	}
 
 	if v.CertificateSecret != nil {
 		volumes = append(volumes, corev1.Volume{
@@ -79,32 +75,28 @@ func (v *VaultProvider) getVolumes() []corev1.Volume {
 		})
 	}
 
-	if v.AutoRenewToken {
-		volumes = append(volumes, corev1.Volume{
-			Name: "vault-token",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: v.TokenSecret.Name,
-				},
-			},
-		})
-	}
-
 	return volumes
 }
 
 func (v *VaultProvider) getVolumeMounts() []corev1.VolumeMount {
-	if v.CertificateSecret != nil {
-		return []corev1.VolumeMount{
-			{
-				Name:      "vault-ca-cert",
-				ReadOnly:  true,
-				MountPath: "/vault/" + v.CertificateSecret.Key,
-				SubPath:   v.CertificateSecret.Key,
-			},
-		}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "vault-token",
+			ReadOnly:  true,
+			MountPath: vaultMountDir + v.TokenSecret.Key,
+			SubPath:   v.TokenSecret.Key,
+		},
 	}
-	return []corev1.VolumeMount{}
+
+	if v.CertificateSecret != nil {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "vault-ca-cert",
+			ReadOnly:  true,
+			MountPath: vaultMountDir + v.CertificateSecret.Key,
+			SubPath:   v.CertificateSecret.Key,
+		})
+	}
+	return volumeMounts
 }
 
 func (v *VaultProvider) getContainers() []corev1.Container {
@@ -120,14 +112,14 @@ func (v *VaultProvider) getContainers() []corev1.Container {
 				},
 				{
 					Name:  "VAULT_TOKEN_PATH",
-					Value: "/vault/" + v.TokenSecret.Key,
+					Value: vaultMountDir + v.TokenSecret.Key,
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "vault-token",
 					ReadOnly:  true,
-					MountPath: "/vault/" + v.TokenSecret.Key,
+					MountPath: vaultMountDir + v.TokenSecret.Key,
 					SubPath:   v.TokenSecret.Key,
 				},
 			},
@@ -136,12 +128,12 @@ func (v *VaultProvider) getContainers() []corev1.Container {
 		if v.CertificateSecret != nil {
 			spec.Env = append(spec.Env, corev1.EnvVar{
 				Name:  "VAULT_CACERT",
-				Value: "/vault/" + v.CertificateSecret.Key,
+				Value: vaultMountDir + v.CertificateSecret.Key,
 			})
 			spec.VolumeMounts = append(spec.VolumeMounts, corev1.VolumeMount{
 				Name:      "vault-ca-cert",
 				ReadOnly:  true,
-				MountPath: "/vault/" + v.CertificateSecret.Key,
+				MountPath: vaultMountDir + v.CertificateSecret.Key,
 				SubPath:   v.CertificateSecret.Key,
 			})
 		}
@@ -151,48 +143,7 @@ func (v *VaultProvider) getContainers() []corev1.Container {
 	return containers
 }
 
-func (kms *KMS) UploadKeyToVault(ctx context.Context, name, key string, token *corev1.SecretKeySelector) error {
-	if err := kms.processAllProviders(ctx); err != nil {
-		return err
-	}
-
-	if err := kms.ensureConfigMap(ctx); err != nil {
-		return err
-	}
-
-	volumes := []corev1.Volume{
-		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: kms.Name,
-					},
-				},
-			},
-		},
-	}
-
-	for provider := range kms.Config.Providers {
-		for _, p := range kms.Config.Providers[provider] {
-			volumes = append(volumes, p.getVolumes()...)
-		}
-	}
-
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config",
-			MountPath: "/data/" + configFileName,
-			SubPath:   configFileName,
-		},
-	}
-
-	for provider := range kms.Config.Providers {
-		for _, p := range kms.Config.Providers[provider] {
-			volumeMounts = append(volumeMounts, p.getVolumeMounts()...)
-		}
-	}
-
+func (kms *KMS) UploadKeyToVault(ctx context.Context, name, key, address string, token, ca *corev1.SecretKeySelector) error {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-vault-upload", kms.Name),
@@ -200,14 +151,27 @@ func (kms *KMS) UploadKeyToVault(ctx context.Context, name, key string, token *c
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			Volumes:       volumes,
+			Volumes: []corev1.Volume{
+				{
+					Name: "vault-token",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: token.Name,
+						},
+					},
+				},
+			},
 			Containers: []corev1.Container{
 				{
 					Name:            tmkmsAppName,
 					Image:           kms.Config.Image,
 					ImagePullPolicy: corev1.PullAlways,
-					Args:            []string{"hashicorp", "upload", name, "--payload", key, "-c", "/data/" + configFileName},
+					Args:            []string{"hashicorp", "upload", name, "--payload", key},
 					Env: []corev1.EnvVar{
+						{
+							Name:  "VAULT_ADDR",
+							Value: address,
+						},
 						{
 							Name: "VAULT_TOKEN",
 							ValueFrom: &corev1.EnvVarSource{
@@ -215,11 +179,40 @@ func (kms *KMS) UploadKeyToVault(ctx context.Context, name, key string, token *c
 							},
 						},
 					},
-					VolumeMounts: volumeMounts,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "vault-token",
+							ReadOnly:  true,
+							MountPath: vaultMountDir + token.Key,
+							SubPath:   token.Key,
+						},
+					},
 				},
 			},
 		},
 	}
+
+	if ca != nil {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: "vault-ca-cert",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ca.Name,
+				},
+			},
+		})
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "VAULT_CACERT",
+			Value: vaultMountDir + ca.Key,
+		})
+		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "vault-ca-cert",
+			ReadOnly:  true,
+			MountPath: vaultMountDir + ca.Key,
+			SubPath:   ca.Key,
+		})
+	}
+
 	if err := controllerutil.SetControllerReference(kms.Owner, pod, kms.Scheme); err != nil {
 		return err
 	}

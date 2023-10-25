@@ -41,10 +41,6 @@ func New(client *kubernetes.Clientset, scheme *runtime.Scheme, name string, owne
 }
 
 func (kms *KMS) DeployConfig(ctx context.Context) error {
-	if err := kms.processAllProviders(ctx); err != nil {
-		return err
-	}
-
 	if err := kms.ensureIdentityKey(ctx); err != nil {
 		return err
 	}
@@ -67,17 +63,6 @@ func (kms *KMS) UndeployConfig(ctx context.Context) error {
 		return err
 	}
 
-	return nil
-}
-
-func (kms *KMS) processAllProviders(ctx context.Context) error {
-	for provider := range kms.Config.Providers {
-		for _, p := range kms.Config.Providers[provider] {
-			if err := p.process(kms, ctx); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
