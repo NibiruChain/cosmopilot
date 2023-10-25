@@ -5,7 +5,7 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
-func (r *Reconciler) AddOrUpdateNodeStatus(nodeSet *appsv1.ChainNodeSet, status appsv1.ChainNodeSetNodeStatus) {
+func AddOrUpdateNodeStatus(nodeSet *appsv1.ChainNodeSet, status appsv1.ChainNodeSetNodeStatus) {
 	if nodeSet.Status.Nodes == nil {
 		nodeSet.Status.Nodes = []appsv1.ChainNodeSetNodeStatus{status}
 		return
@@ -21,6 +21,19 @@ func (r *Reconciler) AddOrUpdateNodeStatus(nodeSet *appsv1.ChainNodeSet, status 
 
 	if !found {
 		nodeSet.Status.Nodes = append(nodeSet.Status.Nodes, status)
+	}
+}
+
+func DeleteNodeStatus(nodeSet *appsv1.ChainNodeSet, name string) {
+	if nodeSet.Status.Nodes == nil {
+		return
+	}
+
+	for i, s := range nodeSet.Status.Nodes {
+		if s.Name == name {
+			nodeSet.Status.Nodes = append(nodeSet.Status.Nodes[:i], nodeSet.Status.Nodes[i+1:]...)
+			return
+		}
 	}
 }
 

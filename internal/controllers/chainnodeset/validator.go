@@ -32,7 +32,7 @@ func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainN
 	}
 
 	nodeSetCopy := nodeSet.DeepCopy()
-	r.AddOrUpdateNodeStatus(nodeSet, appsv1.ChainNodeSetNodeStatus{
+	AddOrUpdateNodeStatus(nodeSet, appsv1.ChainNodeSetNodeStatus{
 		Name:    validator.Name,
 		ID:      validator.Status.NodeID,
 		Address: validator.Status.IP,

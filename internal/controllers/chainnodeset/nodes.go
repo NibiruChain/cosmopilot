@@ -72,8 +72,8 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 			if err := r.removeNode(ctx, nodeSet, group, i); err != nil {
 				return err
 			}
+			DeleteNodeStatus(nodeSet, nodeName)
 		}
-
 	}
 
 	if !reflect.DeepEqual(nodeSet.Status, nodeSetCopy.Status) {
@@ -145,7 +145,7 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 				}
 			}
 		}
-		r.AddOrUpdateNodeStatus(nodeSet, nodeStatus)
+		AddOrUpdateNodeStatus(nodeSet, nodeStatus)
 	}
 	return nil
 }
