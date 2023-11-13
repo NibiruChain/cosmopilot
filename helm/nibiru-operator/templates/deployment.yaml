@@ -40,10 +40,6 @@ spec:
       containers:
         - name: manager
           image: {{ .Values.image }}:{{- if .Values.imageTag }}{{ .Values.imageTag }}{{- else }}{{ .Chart.AppVersion }}{{ end }}
-          command:
-            - /manager
-          args:
-            - --enable-leader-election
           {{- if .Values.webHooksEnabled }}
           ports:
             - name: webhook-server
@@ -67,11 +63,14 @@ spec:
               value: "{{ .Values.webHooksEnabled | ternary "false" "true" }}"
             - name: DEBUG_MODE
               value: "{{ .Values.debugMode }}"
+            - name: ENABLE_LEADER_ELECTION
+              value: "true"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - "ALL"
+          {{- if .Values.probesEnabled }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -84,6 +83,7 @@ spec:
               port: 8081
             initialDelaySeconds: 5
             periodSeconds: 10
+          {{- end }}
           resources:
             limits:
               cpu: 250m

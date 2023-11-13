@@ -8,3 +8,4 @@ workerName: ""
 webHooksEnabled: true
 nodeSelector: {}
 debugMode: false
+probesEnabled: true
