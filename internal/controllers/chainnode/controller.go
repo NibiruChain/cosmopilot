@@ -29,7 +29,7 @@ type Reconciler struct {
 	RestConfig       *rest.Config
 	Scheme           *runtime.Scheme
 	configCache      *ttlcache.Cache[string, map[string]interface{}]
-	nodeClients      map[string]*chainutils.Client
+	nodeClients      *ttlcache.Cache[string, *chainutils.Client]
 	recorder         record.EventRecorder
 	nodeUtilsImage   string
 	workerCount      int
@@ -38,9 +38,8 @@ type Reconciler struct {
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
-	cfgCache := ttlcache.New(
-		ttlcache.WithTTL[string, map[string]interface{}](24 * time.Hour),
-	)
+	cfgCache := ttlcache.New(ttlcache.WithTTL[string, map[string]interface{}](2 * time.Hour))
+	clientsCache := ttlcache.New(ttlcache.WithTTL[string, *chainutils.Client](2 * time.Hour))
 
 	r := &Reconciler{
 		Client:           mgr.GetClient(),
@@ -48,7 +47,7 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 		RestConfig:       mgr.GetConfig(),
 		Scheme:           mgr.GetScheme(),
 		configCache:      cfgCache,
-		nodeClients:      make(map[string]*chainutils.Client),
+		nodeClients:      clientsCache,
 		recorder:         mgr.GetEventRecorderFor("chainnode-controller"),
 		nodeUtilsImage:   opts.NodeUtilsImage,
 		workerCount:      opts.WorkerCount,
@@ -59,6 +58,7 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 		return nil, err
 	}
 	go cfgCache.Start()
+	go clientsCache.Start()
 	return r, nil
 }
 
@@ -240,14 +240,15 @@ func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) getClient(chainNode *appsv1.ChainNode) (*chainutils.Client, error) {
-	if c, ok := r.nodeClients[chainNode.GetNodeFQDN()]; ok {
-		return c, nil
+	data := r.nodeClients.Get(chainNode.GetNodeFQDN())
+	if data != nil {
+		return data.Value(), nil
 	}
 	c, err := chainutils.NewClient(chainNode.GetNodeFQDN())
 	if err != nil {
 		return nil, err
 	}
-	r.nodeClients[chainNode.GetNodeFQDN()] = c
+	r.nodeClients.Set(chainNode.GetNodeFQDN(), c, ttlcache.DefaultTTL)
 	return c, nil
 }
 

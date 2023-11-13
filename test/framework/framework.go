@@ -14,7 +14,7 @@ import (
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 )
 
-var crdsPath = filepath.Join("..", "..", "helm", "nibiru-operator", "crds")
+var crdsPath = filepath.Join("..", "helm", "nibiru-operator", "crds")
 
 type TestFramework struct {
 	RestCfg    *rest.Config
