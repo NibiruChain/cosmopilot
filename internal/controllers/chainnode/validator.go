@@ -38,7 +38,7 @@ func (r *Reconciler) createValidator(ctx context.Context, app *chainutils.App, c
 	}
 
 	account, err := chainutils.AccountFromMnemonic(
-		string(accountSecret.Data[mnemonicKey]),
+		string(accountSecret.Data[MnemonicKey]),
 		chainNode.Spec.Validator.GetAccountPrefix(),
 		chainNode.Spec.Validator.GetValPrefix(),
 		chainNode.Spec.Validator.GetAccountHDPath(),

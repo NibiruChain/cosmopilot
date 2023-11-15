@@ -49,7 +49,7 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 	// Ensure private key
 	var validatorAddress, accountAddress string
 	mustUpdate := false
-	if _, ok := secret.Data[mnemonicKey]; !ok {
+	if _, ok := secret.Data[MnemonicKey]; !ok {
 		if !mustCreate {
 			mustUpdate = true
 		}
@@ -61,12 +61,12 @@ func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainN
 		if err != nil {
 			return err
 		}
-		secret.Data[mnemonicKey] = []byte(account.Mnemonic)
+		secret.Data[MnemonicKey] = []byte(account.Mnemonic)
 		validatorAddress = account.ValidatorAddress
 		accountAddress = account.Address
 	} else {
 		account, err := chainutils.AccountFromMnemonic(
-			string(secret.Data[mnemonicKey]),
+			string(secret.Data[MnemonicKey]),
 			chainNode.Spec.Validator.GetAccountPrefix(),
 			chainNode.Spec.Validator.GetValPrefix(),
 			chainNode.Spec.Validator.GetAccountHDPath(),

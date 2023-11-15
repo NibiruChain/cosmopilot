@@ -31,7 +31,7 @@ func (tf *TestFramework) RunManager() error {
 
 	runOpts := controllers.ControllerRunOptions{
 		WorkerCount:     tf.Cfg.WorkerCount,
-		NodeUtilsImage:  "",
+		NodeUtilsImage:  tf.Cfg.NodeUtilsImg,
 		DisableWebhooks: false,
 	}
 

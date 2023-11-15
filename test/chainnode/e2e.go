@@ -31,5 +31,42 @@ var _ = Describe("ChainNode", func() {
 		It("cannot be created without .spec.genesis when .spec.validator.init is not specified", func() {
 			testCreateWithoutGenesisOrValidatorInit(tf, ns)
 		})
+
+		It("cannot be created with both .spec.genesis and .spec.validator.init specified", func() {
+			testCreateWithBothGenesisAndInit(tf, ns)
+		})
+	})
+
+	Context("on nibiru v1.0.0", func() {
+		BeforeEach(func() {
+			ns, err = tf.CreateRandomNamespace()
+			Expect(err).NotTo(HaveOccurred())
+		})
+		AfterEach(func() {
+			err = tf.DeleteNamespace(ns)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		appConfig := Nibiru_v1_0_0
+
+		It("creates private key", func() {
+			testCreatePrivateKey(tf, ns, appConfig)
+		})
+
+		It("imports private key", func() {
+			testImportPrivateKey(tf, ns, appConfig)
+		})
+
+		It("creates account", func() {
+			testCreateAccount(tf, ns, appConfig)
+		})
+
+		It("imports account", func() {
+			testImportAccount(tf, ns, appConfig)
+		})
+
+		It("creates a working genesis", func() {
+			testCreateGenesis(tf, ns, appConfig)
+		})
 	})
 })

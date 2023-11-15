@@ -1,4 +1,4 @@
-package chainnode
+package chainnodeset
 
 import (
 	. "github.com/onsi/gomega"
@@ -10,21 +10,23 @@ import (
 )
 
 func testCreateWithoutGenesisOrValidatorInit(tf *framework.TestFramework, ns *corev1.Namespace) {
-	chainNode := NewChainNodeBasic(ns, Nibiru_v1_0_0)
-	err := tf.Client.Create(tf.Context(), chainNode)
+	chainNodeSet := NewChainNodeSetBasic(ns, Nibiru_v1_0_0)
+	chainNodeSet.Spec.Nodes = []appsv1.NodeGroupSpec{{Name: "fullnodes"}}
+	err := tf.Client.Create(tf.Context(), chainNodeSet)
 	Expect(err).To(HaveOccurred())
 	Expect(err.Error()).To(ContainSubstring(".spec.genesis is required except when initializing new genesis with .spec.validator.init"))
 }
 
 func testCreateWithBothGenesisAndInit(tf *framework.TestFramework, ns *corev1.Namespace) {
-	chainNode := NewChainNodeBasic(ns, Nibiru_v1_0_0)
-	chainNode.Spec.Genesis = &appsv1.GenesisConfig{Url: pointer.String("https://example.com/genesis")}
-	chainNode.Spec.Validator = &appsv1.ValidatorConfig{Init: &appsv1.GenesisInitConfig{
+	chainNodeSet := NewChainNodeSetBasic(ns, Nibiru_v1_0_0)
+	chainNodeSet.Spec.Nodes = []appsv1.NodeGroupSpec{{Name: "fullnodes"}}
+	chainNodeSet.Spec.Genesis = &appsv1.GenesisConfig{Url: pointer.String("https://example.com/genesis")}
+	chainNodeSet.Spec.Validator = &appsv1.NodeSetValidatorConfig{Init: &appsv1.GenesisInitConfig{
 		ChainID:     "nibiru-localnet",
 		Assets:      []string{"10000000unibi"},
 		StakeAmount: "10000000unibi",
 	}}
-	err := tf.Client.Create(tf.Context(), chainNode)
+	err := tf.Client.Create(tf.Context(), chainNodeSet)
 	Expect(err).To(HaveOccurred())
 	Expect(err.Error()).To(ContainSubstring(".spec.genesis and .spec.validator.init are mutually exclusive"))
 }

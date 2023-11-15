@@ -87,9 +87,9 @@ func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *a
 		return err
 	}
 
-	data, ok := secret.Data[privKeyFilename]
+	data, ok := secret.Data[PrivKeyFilename]
 	if !ok {
-		return fmt.Errorf("%s is not present in the secret", privKeyFilename)
+		return fmt.Errorf("%s is not present in the secret", PrivKeyFilename)
 	}
 
 	privKey, err := cometbft.LoadPrivKey(data)

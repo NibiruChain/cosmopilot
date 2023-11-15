@@ -54,9 +54,9 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 			return err
 		}
 
-		genesis, ok := cm.Data[genesisFilename]
+		genesis, ok := cm.Data[GenesisFilename]
 		if !ok {
-			return fmt.Errorf("%q not found in specified configmap", genesisFilename)
+			return fmt.Errorf("%q not found in specified configmap", GenesisFilename)
 		}
 
 		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
@@ -151,7 +151,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 			return err
 		}
 		logger.Info("writing genesis to data volume", "pvc", pvc.GetName())
-		if err := k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).WriteToFile(ctx, genesis, genesisFilename); err != nil {
+		if err := k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).WriteToFile(ctx, genesis, GenesisFilename); err != nil {
 			return err
 		}
 
@@ -163,7 +163,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 				Namespace: chainNode.Namespace,
 				Labels:    WithChainNodeLabels(chainNode),
 			},
-			Data: map[string]string{genesisFilename: genesis},
+			Data: map[string]string{GenesisFilename: genesis},
 		}
 		if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 			return err
@@ -220,7 +220,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		return err
 	}
 	account, err := chainutils.AccountFromMnemonic(
-		string(accountSecret.Data[mnemonicKey]),
+		string(accountSecret.Data[MnemonicKey]),
 		chainNode.Spec.Validator.GetAccountPrefix(),
 		chainNode.Spec.Validator.GetValPrefix(),
 		chainNode.Spec.Validator.GetAccountHDPath(),
@@ -260,7 +260,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 			Name:      fmt.Sprintf("%s-genesis", chainNode.Spec.Validator.Init.ChainID),
 			Namespace: chainNode.Namespace,
 		},
-		Data: map[string]string{genesisFilename: genesis},
+		Data: map[string]string{GenesisFilename: genesis},
 	}
 	if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 		return err

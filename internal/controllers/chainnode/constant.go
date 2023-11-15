@@ -8,12 +8,12 @@ import (
 
 const (
 	nodeKeyFilename    = "node_key.json"
-	privKeyFilename    = "priv_validator_key.json"
+	PrivKeyFilename    = "priv_validator_key.json"
 	appTomlFilename    = "app.toml"
 	configTomlFilename = "config.toml"
-	genesisFilename    = "genesis.json"
+	GenesisFilename    = "genesis.json"
 	genesisLocation    = "data/genesis.json"
-	mnemonicKey        = "mnemonic"
+	MnemonicKey        = "mnemonic"
 	tarballFinished    = "finished"
 	upgradesConfigFile = "upgrades.json"
 

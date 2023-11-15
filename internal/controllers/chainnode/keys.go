@@ -126,7 +126,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 
 	// Ensure private key
 	mustUpdate := false
-	if _, ok := secret.Data[privKeyFilename]; !ok {
+	if _, ok := secret.Data[PrivKeyFilename]; !ok {
 		if !mustCreate {
 			mustUpdate = true
 		}
@@ -134,7 +134,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 		if err != nil {
 			return err
 		}
-		secret.Data[privKeyFilename] = key
+		secret.Data[PrivKeyFilename] = key
 	} else if !chainNode.Status.Validator {
 		logger.Info("private key imported from secret", "secret", secret.GetName())
 		r.recorder.Eventf(chainNode,
@@ -161,7 +161,7 @@ func (r *Reconciler) ensureSigningKey(ctx context.Context, chainNode *appsv1.Cha
 		}
 	}
 
-	pubKey, err := cometbft.GetPubKey(secret.Data[privKeyFilename])
+	pubKey, err := cometbft.GetPubKey(secret.Data[PrivKeyFilename])
 	if err != nil {
 		return err
 	}
