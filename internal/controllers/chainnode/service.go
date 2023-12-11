@@ -213,6 +213,13 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 				chainNode.Labels),
 		},
 	}
+
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
+		svc.Spec.Ports[1].TargetPort = intstr.FromInt(firewallRpcPort)
+		svc.Spec.Ports[2].TargetPort = intstr.FromInt(firewallLcdPort)
+		svc.Spec.Ports[3].TargetPort = intstr.FromInt(firewallGrpcPort)
+	}
+
 	return svc, controllerutil.SetControllerReference(chainNode, svc, r.Scheme)
 }
 

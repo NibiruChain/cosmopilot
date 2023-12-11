@@ -25,16 +25,13 @@ import (
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet        *kubernetes.Clientset
-	RestConfig       *rest.Config
-	Scheme           *runtime.Scheme
-	configCache      *ttlcache.Cache[string, map[string]interface{}]
-	nodeClients      *ttlcache.Cache[string, *chainutils.Client]
-	recorder         record.EventRecorder
-	nodeUtilsImage   string
-	workerCount      int
-	workerName       string
-	webhooksDisabled bool
+	ClientSet   *kubernetes.Clientset
+	RestConfig  *rest.Config
+	Scheme      *runtime.Scheme
+	configCache *ttlcache.Cache[string, map[string]interface{}]
+	nodeClients *ttlcache.Cache[string, *chainutils.Client]
+	recorder    record.EventRecorder
+	opts        *controllers.ControllerRunOptions
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
@@ -42,17 +39,14 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 	clientsCache := ttlcache.New(ttlcache.WithTTL[string, *chainutils.Client](2 * time.Hour))
 
 	r := &Reconciler{
-		Client:           mgr.GetClient(),
-		ClientSet:        clientSet,
-		RestConfig:       mgr.GetConfig(),
-		Scheme:           mgr.GetScheme(),
-		configCache:      cfgCache,
-		nodeClients:      clientsCache,
-		recorder:         mgr.GetEventRecorderFor("chainnode-controller"),
-		nodeUtilsImage:   opts.NodeUtilsImage,
-		workerCount:      opts.WorkerCount,
-		workerName:       opts.WorkerName,
-		webhooksDisabled: opts.DisableWebhooks,
+		Client:      mgr.GetClient(),
+		ClientSet:   clientSet,
+		RestConfig:  mgr.GetConfig(),
+		Scheme:      mgr.GetScheme(),
+		configCache: cfgCache,
+		nodeClients: clientsCache,
+		recorder:    mgr.GetEventRecorderFor("chainnode-controller"),
+		opts:        opts,
 	}
 	if err := r.setupWithManager(mgr); err != nil {
 		return nil, err
@@ -89,12 +83,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if chainNode.Labels[controllers.LabelWorkerName] != r.workerName {
+	if chainNode.Labels[controllers.LabelWorkerName] != r.opts.WorkerName {
 		logger.V(1).Info("skipping chainnode due to worker-name mismatch.")
 		return ctrl.Result{}, nil
 	}
 
-	if r.webhooksDisabled {
+	if r.opts.DisableWebhooks {
 		warnings, err := chainNode.Validate(nil)
 		if err != nil {
 			logger.Error(err, "spec is invalid")
@@ -235,7 +229,7 @@ func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Service{}).
 		WithEventFilter(GenerationChangedPredicate{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: r.workerCount}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: r.opts.WorkerCount}).
 		Complete(r)
 }
 

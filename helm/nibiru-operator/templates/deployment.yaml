@@ -55,6 +55,8 @@ spec:
           env:
             - name: NODE_UTILS_IMAGE
               value: {{ .Values.nodeUtilsImage }}
+            - name: COSMOS_FIREWALL_IMAGE
+              value: {{ .Values.cosmosFirewallImage }}
             - name: WORKER_NAME
               value: {{ .Values.workerName }}
             - name: WORKER_COUNT

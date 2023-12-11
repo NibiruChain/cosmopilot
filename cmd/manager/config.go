@@ -34,6 +34,11 @@ func init() {
 		"nodeutils image to be deployed with nodes.",
 	)
 
+	flag.StringVar(&runOpts.CosmosFirewallImage, "cosmos-firewall-image",
+		environ.GetString("COSMOS_FIREWALL_IMAGE", "ghcr.io/nibiruchain/cosmos-firewall"),
+		"cosmos-firewall image to be deployed with nodes when firewall is enabled.",
+	)
+
 	flag.StringVar(&runOpts.WorkerName, "worker-name",
 		environ.GetString("WORKER_NAME", ""),
 		"name of the worker, passed in label `worker-name`. Used for limiting resources processed by this operator instance.",

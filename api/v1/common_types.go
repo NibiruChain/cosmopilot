@@ -175,6 +175,19 @@ type Config struct {
 	// ServiceMonitor allows deploying prometheus service monitor for this node.
 	// +optional
 	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
+
+	// Deploys cosmos-firewall to protect API endpoints to the node.
+	// +optional
+	Firewall *FirewallConfig `json:"firewall,omitempty"`
+}
+
+// FirewallConfig allows configuring cosmos-firewall rules.
+type FirewallConfig struct {
+	// Whether to enable cosmos-firewall on this node.
+	Enable bool `json:"enable"`
+
+	// ConfigMap which cosmos-firewall configuration for this node.
+	Config *corev1.ConfigMapKeySelector `json:"config"`
 }
 
 // ServiceMonitorSpec allows enabling/disabling deployment of ServiceMonitor for this node.

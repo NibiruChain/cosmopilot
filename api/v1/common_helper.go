@@ -300,3 +300,9 @@ func (u *Upgrade) GetVersion() string {
 	}
 	return DefaultImageVersion
 }
+
+// Firewall Methods
+
+func (f *FirewallConfig) Enabled() bool {
+	return f != nil && f.Enable
+}

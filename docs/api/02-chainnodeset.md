@@ -18,6 +18,7 @@
 * [CreateValidatorConfig](#createvalidatorconfig)
 * [ExportTarballConfig](#exporttarballconfig)
 * [ExposeConfig](#exposeconfig)
+* [FirewallConfig](#firewallconfig)
 * [FromNodeRPCConfig](#fromnoderpcconfig)
 * [GcsExportConfig](#gcsexportconfig)
 * [GenesisConfig](#genesisconfig)
@@ -208,6 +209,7 @@ Config allows setting specific configurations for a node, including overriding c
 | env | List of environment variables to set in the app container. | []corev1.EnvVar | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 | serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
+| firewall | Deploys cosmos-firewall to protect API endpoints to the node. | *[FirewallConfig](#firewallconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -250,6 +252,17 @@ ExposeConfig allows configuring how P2P endpoint is exposed to public.
 | ----- | ----------- | ------ | -------- |
 | p2p | Whether to expose p2p endpoint for this node. Defaults to `false`. | *bool | false |
 | p2pServiceType | P2pServiceType indicates how P2P port will be exposed. Valid values are: - `LoadBalancer` - `NodePort` (default) | *corev1.ServiceType | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### FirewallConfig
+
+FirewallConfig allows configuring cosmos-firewall rules.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| enable | Whether to enable cosmos-firewall on this node. | bool | true |
+| config | ConfigMap which cosmos-firewall configuration for this node. | *corev1.ConfigMapKeySelector | true |
 
 [Back to Custom Resources](#custom-resources)
 

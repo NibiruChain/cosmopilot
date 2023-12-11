@@ -21,25 +21,21 @@ import (
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet        *kubernetes.Clientset
-	RestConfig       *rest.Config
-	Scheme           *runtime.Scheme
-	recorder         record.EventRecorder
-	workerCount      int
-	workerName       string
-	webhooksDisabled bool
+	ClientSet  *kubernetes.Clientset
+	RestConfig *rest.Config
+	Scheme     *runtime.Scheme
+	recorder   record.EventRecorder
+	opts       *controllers.ControllerRunOptions
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
 	r := &Reconciler{
-		Client:           mgr.GetClient(),
-		ClientSet:        clientSet,
-		RestConfig:       mgr.GetConfig(),
-		Scheme:           mgr.GetScheme(),
-		recorder:         mgr.GetEventRecorderFor("chainnodeset-controller"),
-		workerCount:      opts.WorkerCount,
-		workerName:       opts.WorkerName,
-		webhooksDisabled: opts.DisableWebhooks,
+		Client:     mgr.GetClient(),
+		ClientSet:  clientSet,
+		RestConfig: mgr.GetConfig(),
+		Scheme:     mgr.GetScheme(),
+		recorder:   mgr.GetEventRecorderFor("chainnodeset-controller"),
+		opts:       opts,
 	}
 	if err := r.setupWithManager(mgr); err != nil {
 		return nil, err
@@ -69,12 +65,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if nodeSet.Labels[controllers.LabelWorkerName] != r.workerName {
+	if nodeSet.Labels[controllers.LabelWorkerName] != r.opts.WorkerName {
 		logger.V(1).Info("skipping chainnodeset due to worker-name mismatch.")
 		return ctrl.Result{}, nil
 	}
 
-	if r.webhooksDisabled {
+	if r.opts.DisableWebhooks {
 		warnings, err := nodeSet.Validate(nil)
 		if err != nil {
 			logger.Error(err, "spec is invalid")
@@ -142,6 +138,6 @@ func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 		For(&appsv1.ChainNodeSet{}).
 		Owns(&appsv1.ChainNode{}).
 		WithEventFilter(GenerationChangedPredicate{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: r.workerCount}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: r.opts.WorkerCount}).
 		Complete(r)
 }

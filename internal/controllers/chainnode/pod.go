@@ -3,6 +3,7 @@ package chainnode
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -382,7 +383,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				},
 				{
 					Name:            nodeUtilsContainerName,
-					Image:           r.nodeUtilsImage,
+					Image:           r.opts.NodeUtilsImage,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Ports: []corev1.ContainerPort{
 						{
@@ -537,6 +538,71 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.SafeToEvict != nil {
 		pod.Annotations[annotationSafeEvict] = strconv.FormatBool(*chainNode.Spec.Config.SafeToEvict)
+	}
+
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: firewallVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: chainNode.Spec.Config.Firewall.Config.LocalObjectReference,
+				},
+			},
+		})
+		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{
+			Name:            firewallContainerName,
+			Image:           r.opts.CosmosFirewallImage,
+			ImagePullPolicy: corev1.PullAlways,
+			Args:            []string{"-config", filepath.Join("/config/", chainNode.Spec.Config.Firewall.Config.Key)},
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          chainutils.RpcPortName,
+					ContainerPort: firewallRpcPort,
+					Protocol:      corev1.ProtocolTCP,
+				},
+				{
+					Name:          chainutils.LcdPortName,
+					ContainerPort: firewallLcdPort,
+					Protocol:      corev1.ProtocolTCP,
+				},
+				{
+					Name:          chainutils.GrpcPortName,
+					ContainerPort: firewallGrpcPort,
+					Protocol:      corev1.ProtocolTCP,
+				},
+				{
+					Name:          firewallMetricsPortName,
+					ContainerPort: firewallMetricsPort,
+					Protocol:      corev1.ProtocolTCP,
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      firewallVolumeName,
+					MountPath: "/config",
+				},
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    firewallCpuResources,
+					corev1.ResourceMemory: firewallMemoryResources,
+				},
+			},
+			ReadinessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/metrics",
+						Port: intstr.IntOrString{
+							Type:   intstr.Int,
+							IntVal: firewallMetricsPort,
+						},
+						Scheme: "HTTP",
+					},
+				},
+				FailureThreshold: 1,
+				PeriodSeconds:    2,
+			},
+		})
 	}
 
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)

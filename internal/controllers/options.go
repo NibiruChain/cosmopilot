@@ -5,8 +5,9 @@ const (
 )
 
 type ControllerRunOptions struct {
-	WorkerCount     int
-	WorkerName      string
-	NodeUtilsImage  string
-	DisableWebhooks bool
+	WorkerCount         int
+	WorkerName          string
+	NodeUtilsImage      string
+	DisableWebhooks     bool
+	CosmosFirewallImage string
 }

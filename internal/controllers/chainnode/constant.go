@@ -57,9 +57,22 @@ const (
 	defaultLogsLineCount        = 50
 
 	snapshotCheckPeriod = 15 * time.Second
+
+	firewallContainerName   = "firewall"
+	firewallVolumeName      = "firewall-config"
+	firewallRpcPort         = 16657
+	firewallLcdPort         = 11317
+	firewallGrpcPort        = 19090
+	firewallMetricsPortName = "metrics"
+	firewallMetricsPort     = 9001
+	firewallCpu             = "200m"
+	firewallMemory          = "250Mi"
 )
 
 var (
 	nodeUtilsCpuResources    = resource.MustParse(nodeUtilsCPU)
 	nodeUtilsMemoryResources = resource.MustParse(nodeUtilsMemory)
+
+	firewallCpuResources    = resource.MustParse(firewallCpu)
+	firewallMemoryResources = resource.MustParse(firewallMemory)
 )
