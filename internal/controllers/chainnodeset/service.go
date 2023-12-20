@@ -14,6 +14,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 )
 
 func (r *Reconciler) ensureServices(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
@@ -94,5 +95,12 @@ func (r *Reconciler) getServiceSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 			},
 		},
 	}
+
+	if group.Config != nil && group.Config.Firewall.Enabled() {
+		svc.Spec.Ports[0].TargetPort = intstr.FromInt(controllers.FirewallRpcPort)
+		svc.Spec.Ports[1].TargetPort = intstr.FromInt(controllers.FirewallLcdPort)
+		svc.Spec.Ports[2].TargetPort = intstr.FromInt(controllers.FirewallGrpcPort)
+	}
+
 	return svc, controllerutil.SetControllerReference(nodeSet, svc, r.Scheme)
 }

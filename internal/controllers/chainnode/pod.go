@@ -20,6 +20,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
@@ -412,6 +413,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 							Name:  "BLOCK_THRESHOLD",
 							Value: chainNode.Spec.Config.GetBlockThreshold(),
 						},
+						{
+							Name:  "LOG_LEVEL",
+							Value: chainNode.Spec.Config.GetNodeUtilsLogLevel(),
+						},
 					},
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
@@ -557,22 +562,22 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Ports: []corev1.ContainerPort{
 				{
 					Name:          chainutils.RpcPortName,
-					ContainerPort: firewallRpcPort,
+					ContainerPort: controllers.FirewallRpcPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
 					Name:          chainutils.LcdPortName,
-					ContainerPort: firewallLcdPort,
+					ContainerPort: controllers.FirewallLcdPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
 					Name:          chainutils.GrpcPortName,
-					ContainerPort: firewallGrpcPort,
+					ContainerPort: controllers.FirewallGrpcPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
-					Name:          firewallMetricsPortName,
-					ContainerPort: firewallMetricsPort,
+					Name:          controllers.FirewallMetricsPortName,
+					ContainerPort: controllers.FirewallMetricsPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 			},
@@ -594,7 +599,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						Path: "/metrics",
 						Port: intstr.IntOrString{
 							Type:   intstr.Int,
-							IntVal: firewallMetricsPort,
+							IntVal: controllers.FirewallMetricsPort,
 						},
 						Scheme: "HTTP",
 					},

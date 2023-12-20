@@ -1123,6 +1123,9 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     type: array
+                  nodeUtilsLogLevel:
+                    description: Log level for node-utils container. Defaults to `info`.
+                    type: string
                   override:
                     description: Allows overriding configs on `.toml` configuration
                       files.

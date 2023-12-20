@@ -15,6 +15,7 @@ const (
 	DefaultReconcilePeriod         = 15 * time.Second
 	DefaultImageVersion            = "latest"
 	DefaultBlockThreshold          = "15s"
+	DefaultNodeUtilsLogLevel       = "info"
 	DefaultP2pExpose               = false
 	DefaultP2pServiceType          = corev1.ServiceTypeNodePort
 	DefaultUnbondingTime           = "1814400s"
@@ -165,6 +166,13 @@ func (cfg *Config) GetBlockThreshold() string {
 		return *cfg.BlockThreshold
 	}
 	return DefaultBlockThreshold
+}
+
+func (cfg *Config) GetNodeUtilsLogLevel() string {
+	if cfg != nil && cfg.NodeUtilsLogLevel != nil {
+		return *cfg.NodeUtilsLogLevel
+	}
+	return DefaultNodeUtilsLogLevel
 }
 
 func (exp *ExposeConfig) Enabled() bool {

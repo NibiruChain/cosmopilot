@@ -17,6 +17,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
@@ -212,9 +213,9 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 	}
 
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
-		svc.Spec.Ports[1].TargetPort = intstr.FromInt(firewallRpcPort)
-		svc.Spec.Ports[2].TargetPort = intstr.FromInt(firewallLcdPort)
-		svc.Spec.Ports[3].TargetPort = intstr.FromInt(firewallGrpcPort)
+		svc.Spec.Ports[1].TargetPort = intstr.FromInt(controllers.FirewallRpcPort)
+		svc.Spec.Ports[2].TargetPort = intstr.FromInt(controllers.FirewallLcdPort)
+		svc.Spec.Ports[3].TargetPort = intstr.FromInt(controllers.FirewallGrpcPort)
 	}
 
 	return svc, controllerutil.SetControllerReference(chainNode, svc, r.Scheme)

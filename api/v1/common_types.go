@@ -179,6 +179,10 @@ type Config struct {
 	// Deploys cosmos-firewall to protect API endpoints to the node.
 	// +optional
 	Firewall *FirewallConfig `json:"firewall,omitempty"`
+
+	// Log level for node-utils container. Defaults to `info`.
+	// +optional
+	NodeUtilsLogLevel *string `json:"nodeUtilsLogLevel,omitempty"`
 }
 
 // FirewallConfig allows configuring cosmos-firewall rules.

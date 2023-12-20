@@ -164,6 +164,7 @@ Config allows setting specific configurations for a node, including overriding c
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 | serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
 | firewall | Deploys cosmos-firewall to protect API endpoints to the node. | *[FirewallConfig](#firewallconfig) | false |
+| nodeUtilsLogLevel | Log level for node-utils container. Defaults to `info`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
