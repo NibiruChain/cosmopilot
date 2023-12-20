@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -76,6 +77,10 @@ func (s *NodeUtils) Start() error {
 				if s.upgradeChecker.ShouldUpgrade(s.latestBlockHeight.Load()) {
 					log.WithField("height", s.latestBlockHeight.Load()).Warn("stopping tracer to force application stop for upgrade")
 					s.requiresUpgrade = true
+
+					// wait for upgrade-info.json to be written to disk
+					time.Sleep(5 * time.Second)
+
 					err := s.StopNode()
 					if err != nil {
 						log.Errorf("failed to stop tracer: %v", err)
