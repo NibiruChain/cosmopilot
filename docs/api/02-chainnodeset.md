@@ -90,6 +90,7 @@ ChainNodeSetSpec defines the desired state of ChainNode.
 | validator | Indicates this node set will run a validator and allows configuring it. | *[NodeSetValidatorConfig](#nodesetvalidatorconfig) | false |
 | nodes | List of groups of ChainNodes to be run. | [][NodeGroupSpec](#nodegroupspec) | true |
 | serviceMonitor | Allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet. ServiceMonitor config on ChainNode overrides this one. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
+| rollingUpdates | Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. The operator will wait for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 
