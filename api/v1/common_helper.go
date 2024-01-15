@@ -277,6 +277,13 @@ func (s *VolumeSnapshotsConfig) ShouldExportTarballs() bool {
 	return false
 }
 
+func (s *VolumeSnapshotsConfig) ShouldVerify() bool {
+	if s != nil && s.Verify != nil {
+		return *s.Verify
+	}
+	return false
+}
+
 // ExportTarballConfig helper methods
 
 func (e *ExportTarballConfig) GetSuffix() string {

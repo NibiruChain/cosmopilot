@@ -1785,6 +1785,10 @@ spec:
                         description: Whether the node should be stopped while the
                           snapshot is taken. Defaults to `false`.
                         type: boolean
+                      verify:
+                        description: Whether the operator should verify the snapshot
+                          for corruption after it is ready. Defaults to `false`.
+                        type: boolean
                     required:
                     - frequency
                     type: object

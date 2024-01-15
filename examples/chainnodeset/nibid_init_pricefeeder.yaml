@@ -2,10 +2,12 @@ apiVersion: apps.k8s.nibiru.org/v1
 kind: ChainNodeSet
 metadata:
   name: nibiru-testnet
+  labels:
+    worker-name: helder
 spec:
   app:
     image: ghcr.io/nibiruchain/nibiru
-    version: 0.21.9
+    version: 1.1.0
     app: nibid
 
   validator:
@@ -18,7 +20,7 @@ spec:
           minimum-gas-prices: 0.025unibi
       sidecars:
         - name: pricefeeder
-          image: ghcr.io/nibiruchain/pricefeeder:0.21.6
+          image: ghcr.io/nibiruchain/pricefeeder:1.0.0
           env:
             - name: FEEDER_MNEMONIC
               valueFrom:
@@ -36,13 +38,10 @@ spec:
 
     init:
       chainID: nibiru-devnet-0
-      assets: [ "1000000000000000unibi" ]
+      assets: ["100000000000000unibi", "1000000000000000000unusd", "10000000000000000uusdt"]
       stakeAmount: 100000000unibi
-      unbondingTime: 86400s
-      votingPeriod: 30s
-      accounts:
-        - address: nibi1vnnkgcnlwd46t3vdt4cynflsls94pvlaf5gz9z
-          assets: [ "1000000000000000unibi" ]
+      unbondingTime: 120s
+      votingPeriod: 60s
       additionalInitCommands:
         - image: ghcr.io/nibiruchain/node-tools
           command: [ "sh" , "-c" ]
@@ -56,28 +55,37 @@ spec:
         - command: [ "sh" , "-c" ]
           args:
             - >
-              nibid genesis add-genesis-perp-market
-              --pair=ubtc:unusd
-              --sqrt-depth=40000000000000
-              --price-multiplier=$(cat /temp/bitcoin)
-              --max-leverage=10
-              --mmr=0.05
-              --home=/home/app
+              nibid genesis add-genesis-perp-market \
+                --pair=ubtc:unusd \
+                --oracle-pair="ubtc:uusd" \
+                --sqrt-depth=40000000000000 \
+                --price-multiplier=$(cat /temp/bitcoin) \
+                --max-leverage=10 \
+                --mmr=0.05 \
+                --home=/home/app
 
         - command: [ "sh" , "-c" ]
           args:
             - >
-              nibid genesis add-genesis-perp-market
-              --pair=ueth:unusd
-              --sqrt-depth=40000000000000
-              --price-multiplier=$(cat /temp/ethereum)
-              --max-leverage=15
-              --mmr=0.05
-              --home=/home/app
+              nibid genesis add-genesis-perp-market \
+                --pair=ueth:unusd \
+                --oracle-pair="ueth:unusd" \
+                --sqrt-depth=40000000000000 \
+                --price-multiplier=$(cat /temp/ethereum) \
+                --max-leverage=15 \
+                --mmr=0.05 \
+                --home=/home/app
+
+        - command: [ "sh", "-c" ]
+          args:
+            - >
+              nibid genesis add-sudo-root-account \
+                $(nibid keys show account -a --home=/home/app --keyring-backend test) \
+                --home=/home/app
 
   nodes:
     - name: fullnodes
-      instances: 2
+      instances: 1
 
       config:
         override:
@@ -86,3 +94,17 @@ spec:
             pruning: custom
             pruning-keep-recent: "100"
             pruning-interval: "10"
+
+      persistence:
+        snapshots:
+          frequency: 15m
+          retention: 2h
+          exportTarball:
+            suffix: archive
+            deleteOnExpire: true
+            gcs:
+              bucket: ${local.itn_3_chain_id}-snapshots
+              credentialsSecret:
+                name: ${local.itn_3_chain_id}-snapshots
+                key: credentials.json
+

@@ -44,6 +44,9 @@ const (
 	ReasonTarballExportFinish    = "TarballFinished"
 	ReasonTarballDeleted         = "TarballDeleted"
 	ReasonTarballExportError     = "TarballExportError"
+	ReasonSnapshotIntegrityStart = "IntegrityCheckStart"
+	ReasonSnapshotDataOk         = "DataCorrupted"
+	ReasonSnapshotDataCorrupted  = "DataOk"
 	ReasonUpgradeCompleted       = "UpgradeCompleted"
 	ReasonUpgradeFailed          = "UpgradeFailed"
 	ReasonUpgradeMissingData     = "UpgradeMissingData"
@@ -594,6 +597,11 @@ type VolumeSnapshotsConfig struct {
 	// Whether to create a tarball of data directory in each snapshot and upload it to external storage.
 	// +optional
 	ExportTarball *ExportTarballConfig `json:"exportTarball,omitempty"`
+
+	// Whether the operator should verify the snapshot for corruption after it is ready. Defaults to `false`.
+	// +optional
+	// +default=false
+	Verify *bool `json:"verify,omitempty"`
 }
 
 // PvcSnapshot represents a snapshot to be used to restore a PVC.

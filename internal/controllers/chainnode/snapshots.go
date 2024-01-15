@@ -4,15 +4,19 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
@@ -22,8 +26,14 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
+type SnapshotIntegrityStatus string
+
 const (
 	timeLayout = "20060102150405"
+
+	snapshotIntegrityChecking  SnapshotIntegrityStatus = "checking"
+	snapshotIntegrityOk        SnapshotIntegrityStatus = "ok"
+	snapshotIntegrityCorrupted SnapshotIntegrityStatus = "corrupted"
 )
 
 func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv1.ChainNode) error {
@@ -52,26 +62,51 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 
 		// If the snapshot does not have the ready annotation, we haven't processed it yet. So we check if it's ready
 		// and if it is, we mark it as ready and register its timestamp in chainnode.
-		// In case tarball export is enabled, we also start the export right away.
+		// In case tarball export is enabled, we also start the export right away, unless integrity checks are enabled,
+		// in that case integrity check starts first
 		case snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(false) && isSnapshotReady(&snapshot):
 			logger.Info("pvc snapshot has finished", "snapshot", snapshot.GetName())
-			snapshot.ObjectMeta.Annotations[annotationPvcSnapshotReady] = strconv.FormatBool(true)
-			if err := r.Update(ctx, &snapshot); err != nil {
-				return err
-			}
-			setSnapshotInProgress(chainNode, false)
-			setSnapshotTime(chainNode, snapshot.CreationTimestamp.Time)
-			if err := r.Update(ctx, chainNode); err != nil {
-				return err
-			}
 			r.recorder.Eventf(chainNode,
 				corev1.EventTypeNormal,
 				appsv1.ReasonFinishedSnapshot,
 				"Finished PVC snapshot %s", snapshot.GetName(),
 			)
-			if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
+
+			// Update snapshot ready annotation
+			snapshot.ObjectMeta.Annotations[annotationPvcSnapshotReady] = strconv.FormatBool(true)
+			if err := r.Update(ctx, &snapshot); err != nil {
+				return err
+			}
+
+			// Update ChainNode status
+			setSnapshotInProgress(chainNode, false)
+			setSnapshotTime(chainNode, snapshot.CreationTimestamp.Time)
+			if err := r.Update(ctx, chainNode); err != nil {
+				return err
+			}
+
+			// If verify is enabled, lets start it now. If not, let's start tarball export if its enabled
+			if chainNode.Spec.Persistence.Snapshots.ShouldVerify() {
+				logger.Info("starting data integrity check", "snapshot", snapshot.GetName())
+				if err := r.startSnapshotIntegrityCheck(ctx, chainNode, &snapshot); err != nil {
+					return err
+				}
+				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
+				if err := r.Update(ctx, &snapshot); err != nil {
+					return err
+				}
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeNormal,
+					appsv1.ReasonSnapshotIntegrityStart,
+					"Starting snapshot %s integrity check", snapshot.GetName(),
+				)
+			} else if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
 				logger.Info("starting tarball export", "snapshot", snapshot.GetName())
 				if err := r.exportTarball(ctx, chainNode, &snapshot); err != nil {
+					return err
+				}
+				snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
+				if err := r.Update(ctx, &snapshot); err != nil {
 					return err
 				}
 				r.recorder.Eventf(chainNode,
@@ -81,12 +116,85 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				)
 			}
 
-		// If for some reason, there is an error starting the export above, it is never retried. So we do it here.
+		// Let's start the verification job if not started yet, and check if it has completed otherwise.
+		case chainNode.Spec.Persistence.Snapshots.ShouldVerify() &&
+			snapshot.Annotations[annotationSnapshotIntegrityStatus] != string(snapshotIntegrityOk) &&
+			snapshot.Annotations[annotationSnapshotIntegrityStatus] != string(snapshotIntegrityCorrupted):
+
+			status, err := r.getSnapshotIntegrityCheckStatus(ctx, chainNode, &snapshot)
+			if err != nil {
+				return err
+			}
+
+			switch status {
+			case snapshotIntegrityChecking:
+				logger.Info("data integrity check in progress", "snapshot", snapshot.GetName())
+
+			case snapshotIntegrityOk:
+				logger.Info("data integrity check finished successfully. Data is ok.", "snapshot", snapshot.GetName())
+				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityOk)
+				if err := r.Update(ctx, &snapshot); err != nil {
+					return err
+				}
+
+				// Let's start the tarball export right now if it is enabled
+				if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
+					logger.Info("starting tarball export", "snapshot", snapshot.GetName())
+					if err := r.exportTarball(ctx, chainNode, &snapshot); err != nil {
+						return err
+					}
+					snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
+					if err := r.Update(ctx, &snapshot); err != nil {
+						return err
+					}
+					r.recorder.Eventf(chainNode,
+						corev1.EventTypeNormal,
+						appsv1.ReasonTarballExportStart,
+						"Exporting tarball %s from snapshot", getTarballName(chainNode, &snapshot),
+					)
+				}
+
+			case snapshotIntegrityCorrupted:
+				logger.Info("data integrity check finished. Data is corrupted.", "snapshot", snapshot.GetName())
+				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityCorrupted)
+				if err := r.Update(ctx, &snapshot); err != nil {
+					return err
+				}
+				logger.Info("re-creating snapshot")
+				if err := r.Delete(ctx, &snapshot); err != nil {
+					return err
+				}
+				return r.startNewSnapshot(ctx, chainNode)
+
+			default:
+				// Integrity check job was not started yet. Let's start it.
+				logger.Info("starting data integrity check", "snapshot", snapshot.GetName())
+
+				if err := r.startSnapshotIntegrityCheck(ctx, chainNode, &snapshot); err != nil {
+					return err
+				}
+				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
+				if err := r.Update(ctx, &snapshot); err != nil {
+					return err
+				}
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeNormal,
+					appsv1.ReasonSnapshotIntegrityStart,
+					"Starting snapshot %s integrity check", snapshot.GetName(),
+				)
+			}
+
+		// If for some reason, there is an error starting the tarball export, it is never retried. So we do it here.
 		case chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() &&
+			(!chainNode.Spec.Persistence.Snapshots.ShouldVerify() || snapshot.Annotations[annotationSnapshotIntegrityStatus] == string(snapshotIntegrityOk)) &&
 			snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(true) &&
 			snapshot.Annotations[annotationExportingTarball] == "":
 			logger.Info("starting tarball export", "snapshot", snapshot.GetName())
 			if err := r.exportTarball(ctx, chainNode, &snapshot); err != nil {
+				return err
+			}
+			snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
+			if err := r.Update(ctx, &snapshot); err != nil {
 				return err
 			}
 			r.recorder.Eventf(chainNode,
@@ -162,7 +270,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		}
 		for _, snapshot := range tarballSnapshots {
 			if !utils.SliceContains[string](tarballNames, snapshot) {
-				logger.Info("deleting orphaned tarball upload job as volumesnapshot does not exist anymore")
+				logger.Info("deleting orphaned tarball upload job as volumesnapshot does not exist anymore", "snapshot", snapshot)
 				if err := exporter.DeleteSnapshot(ctx, snapshot); err != nil {
 					return err
 				}
@@ -178,33 +286,15 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 	// Create a snapshot if it's time for that
 	if shouldSnapshot(chainNode) {
 		logger.Info("creating new pvc snapshot")
-		return r.createSnapshot(ctx, chainNode)
+		return r.startNewSnapshot(ctx, chainNode)
 	}
 
 	return nil
 }
 
-func (r *Reconciler) createSnapshot(ctx context.Context, chainNode *appsv1.ChainNode) error {
-	if chainNode.Spec.Persistence.Snapshots.ShouldStopNode() {
-		pod, err := r.getPodSpec(ctx, chainNode, "")
-		if err != nil {
-			return err
-		}
-
-		ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
-		if err := ph.Delete(ctx); err != nil {
-			if !errors.IsNotFound(err) {
-				return err
-			}
-		} else {
-			if err := ph.WaitForPodDeleted(ctx, timeoutPodDeleted); err != nil {
-				return err
-			}
-		}
-	}
-
-	snapshot := getVolumeSnapshotSpec(chainNode)
-	if err := r.Create(ctx, snapshot); err != nil {
+func (r *Reconciler) startNewSnapshot(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	snapshot, err := r.createSnapshot(ctx, chainNode)
+	if err != nil {
 		return err
 	}
 
@@ -219,6 +309,29 @@ func (r *Reconciler) createSnapshot(ctx context.Context, chainNode *appsv1.Chain
 		return err
 	}
 	return r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeSnapshotting)
+}
+
+func (r *Reconciler) createSnapshot(ctx context.Context, chainNode *appsv1.ChainNode) (*snapshotv1.VolumeSnapshot, error) {
+	if chainNode.Spec.Persistence.Snapshots.ShouldStopNode() {
+		pod, err := r.getPodSpec(ctx, chainNode, "")
+		if err != nil {
+			return nil, err
+		}
+
+		ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
+		if err := ph.Delete(ctx); err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, err
+			}
+		} else {
+			if err := ph.WaitForPodDeleted(ctx, timeoutPodDeleted); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	snapshot := getVolumeSnapshotSpec(chainNode)
+	return snapshot, r.Create(ctx, snapshot)
 }
 
 func shouldSnapshot(chainNode *appsv1.ChainNode) bool {
@@ -345,13 +458,7 @@ func (r *Reconciler) exportTarball(ctx context.Context, chainNode *appsv1.ChainN
 	if err != nil {
 		return err
 	}
-
-	if err := exporter.CreateSnapshot(ctx, getTarballName(chainNode, snapshot), snapshot); err != nil {
-		return err
-	}
-
-	snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
-	return r.Update(ctx, snapshot)
+	return exporter.CreateSnapshot(ctx, getTarballName(chainNode, snapshot), snapshot)
 }
 
 func (r *Reconciler) isTarballReady(ctx context.Context, chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnapshot) (bool, error) {
@@ -401,4 +508,182 @@ func getTarballName(chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnap
 		name += "-" + *chainNode.Spec.Persistence.Snapshots.ExportTarball.Suffix
 	}
 	return name
+}
+
+func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnapshot) error {
+	if snapshot.Status.RestoreSize == nil {
+		return fmt.Errorf("restore size is not available yet")
+	}
+
+	apiVersion := strings.Split(snapshot.APIVersion, "/")
+	if len(apiVersion) == 0 {
+		return fmt.Errorf("unsupported api version")
+	}
+
+	config := &corev1.ConfigMap{}
+	err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), config)
+	if err != nil {
+		return err
+	}
+	configFilesMounts := make([]corev1.VolumeMount, len(config.Data))
+	i := 0
+	for k := range config.Data {
+		configFilesMounts[i] = corev1.VolumeMount{
+			Name:      "config",
+			MountPath: "/home/app/config/" + k,
+			SubPath:   k,
+		}
+		i++
+	}
+
+	// Create job to verify data integrity
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-integrity-check", snapshot.GetName()),
+			Namespace: chainNode.GetNamespace(),
+			Labels: map[string]string{
+				volumeSnapshot: snapshot.GetName(),
+			},
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: pointer.Int32(60),
+			BackoffLimit:            pointer.Int32(0),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyNever,
+					Volumes: []corev1.Volume{
+						{
+							Name: "data",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: fmt.Sprintf("%s-integrity-check", snapshot.GetName()),
+								},
+							},
+						},
+						{
+							Name: "config-empty-dir",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
+							Name: "config",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: chainNode.GetName(),
+									},
+								},
+							},
+						},
+					},
+					InitContainers: []corev1.Container{
+						{
+							Name:    "init-dummy-genesis",
+							Image:   "busybox",
+							Command: []string{"sh"},
+							Args: []string{
+								"-c",
+								fmt.Sprintf("echo '{\"chain_id\":%q}' > /home/app/config/genesis.json", chainNode.Status.ChainID),
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "config-empty-dir",
+									MountPath: "/home/app/config",
+								},
+							},
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:            chainNode.Spec.App.App,
+							Image:           chainNode.GetAppImage(),
+							ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
+							Command:         []string{chainNode.Spec.App.App},
+							Args:            []string{"rollback", "--home", "/home/app"},
+							VolumeMounts: append([]corev1.VolumeMount{
+								{
+									Name:      "data",
+									MountPath: "/home/app/data",
+								},
+								{
+									Name:      "config-empty-dir",
+									MountPath: "/home/app/config",
+								},
+							}, configFilesMounts...),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(snapshot, job, r.Scheme); err != nil {
+		return err
+	}
+
+	job, err = r.ClientSet.BatchV1().Jobs(chainNode.GetNamespace()).Create(ctx, job, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	// Create PVC from Snapshot
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-integrity-check", snapshot.GetName()),
+			Namespace: snapshot.GetNamespace(),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: *snapshot.Status.RestoreSize,
+				},
+			},
+			DataSource: &corev1.TypedLocalObjectReference{
+				APIGroup: &apiVersion[0],
+				Kind:     snapshot.Kind,
+				Name:     snapshot.Name,
+			},
+		},
+	}
+
+	if err = controllerutil.SetControllerReference(job, pvc, r.Scheme); err != nil {
+		return err
+	}
+
+	pvc, err = r.ClientSet.CoreV1().PersistentVolumeClaims(pvc.GetNamespace()).Create(ctx, pvc, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
+	return r.Update(ctx, snapshot)
+}
+
+func (r *Reconciler) getSnapshotIntegrityCheckStatus(ctx context.Context, chainNode *appsv1.ChainNode, snapshot *snapshotv1.VolumeSnapshot) (SnapshotIntegrityStatus, error) {
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			volumeSnapshot: snapshot.GetName(),
+		}).String(),
+	}
+	list, err := r.ClientSet.BatchV1().Jobs(snapshot.GetNamespace()).List(ctx, listOptions)
+	if err != nil {
+		return "", err
+	}
+
+	if len(list.Items) == 0 {
+		// No job is running
+		return "", nil
+	}
+	job := list.Items[0]
+	if job.Status.Failed > 0 {
+		return snapshotIntegrityCorrupted, nil
+	}
+	if job.Status.Succeeded > 0 {
+		return snapshotIntegrityOk, nil
+	}
+	return snapshotIntegrityChecking, nil
 }

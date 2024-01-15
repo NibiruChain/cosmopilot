@@ -522,5 +522,6 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 | snapshotClass | Name of the volume snapshot class to be used. Uses the default class if not specified. | *string | false |
 | stopNode | Whether the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
 | exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
+| verify | Whether the operator should verify the snapshot for corruption after it is ready. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
