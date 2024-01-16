@@ -38,7 +38,7 @@ const (
 
 	timeoutPodRunning              = 5 * time.Minute
 	timeoutPodDeleted              = 2 * time.Minute
-	startupTimeout                 = 1 * time.Hour
+	startupTimeout                 = 90 * time.Minute
 	timeoutWaitServiceIP           = 5 * time.Minute
 	minimumTimeBeforeFirstSnapshot = 10 * time.Minute
 	livenessProbeTimeoutSeconds    = 5
@@ -47,7 +47,7 @@ const (
 	prometheusScrapeInterval = "15s"
 
 	nodeUtilsContainerName = "node-utils"
-	nodeUtilsCPU           = "150m"
+	nodeUtilsCPU           = "300m"
 	nodeUtilsMemory        = "100Mi"
 	nodeUtilsPortName      = "node-utils"
 	nodeUtilsPort          = 8000
