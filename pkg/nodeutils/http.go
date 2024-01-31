@@ -96,7 +96,7 @@ func (s *NodeUtils) dataSize(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) latestHeight(w http.ResponseWriter, r *http.Request) {
-	log.WithField("size", s.latestBlockHeight.Load()).Info("retrieved latest height")
+	log.WithField("height", s.latestBlockHeight.Load()).Info("retrieved latest height")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strconv.FormatInt(s.latestBlockHeight.Load(), 10)))
 }

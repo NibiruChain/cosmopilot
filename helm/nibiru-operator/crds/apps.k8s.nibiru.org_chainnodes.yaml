@@ -1759,16 +1759,8 @@ spec:
                     description: Restore from the specified snapshot when creating
                       the PVC for this node.
                     properties:
-                      apiGroup:
-                        description: Group for the resource being referenced. Defaults
-                          to `snapshot.storage.k8s.io`.
-                        type: string
-                      kind:
-                        description: Type of resource being referenced. Defaults to
-                          `VolumeSnapshot`.
-                        type: string
                       name:
-                        description: Name of resource being referenced.
+                        description: Name of the volume snapshot being referenced.
                         type: string
                     required:
                     - name

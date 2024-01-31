@@ -623,18 +623,8 @@ type VolumeSnapshotsConfig struct {
 
 // PvcSnapshot represents a snapshot to be used to restore a PVC.
 type PvcSnapshot struct {
-	// Name of resource being referenced.
+	// Name of the volume snapshot being referenced.
 	Name string `json:"name"`
-
-	// Type of resource being referenced. Defaults to `VolumeSnapshot`.
-	// +optional
-	// +default=VolumeSnapshot
-	Kind *string `json:"kind,omitempty"`
-
-	// Group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`.
-	// +optional
-	// +default=snapshot.storage.k8s.io
-	APIGroup *string `json:"apiGroup,omitempty"`
 }
 
 // ExportTarballConfig holds config options for tarball upload.

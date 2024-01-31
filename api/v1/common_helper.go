@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
-	"k8s.io/utils/pointer"
 
 	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
 )
@@ -29,8 +28,6 @@ const (
 	DefaultP2pPort                 = 26656
 	DefaultStateSyncKeepRecent     = 2
 	DefaultSdkVersion              = V0_47
-	DefaultDataSourceKind          = "VolumeSnapshot"
-	DefaultDataSourceApiGroup      = "snapshot.storage.k8s.io"
 	DefaultCommissionMaxChangeRate = "0.1"
 	DefaultCommissionMaxRate       = "0.1"
 	DefaultCommissionRate          = "0.1"
@@ -280,22 +277,6 @@ func (gg *FromNodeRPCConfig) GetGenesisFromRPCUrl() string {
 	}
 
 	return fmt.Sprintf("%s%s:%d/genesis", protocol, hostname, port)
-}
-
-// PvcSnapshot helper methods
-
-func (ds *PvcSnapshot) GetKind() string {
-	if ds != nil && ds.Kind != nil {
-		return *ds.Kind
-	}
-	return DefaultDataSourceKind
-}
-
-func (ds *PvcSnapshot) GetApiGroup() *string {
-	if ds != nil && ds.APIGroup != nil {
-		return ds.APIGroup
-	}
-	return pointer.String(DefaultDataSourceApiGroup)
 }
 
 // VolumeSnapshotsConfig helper methods

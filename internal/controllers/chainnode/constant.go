@@ -67,6 +67,9 @@ const (
 	initContainerMemory = "250Mi"
 
 	volumeSnapshot = "volume-snapshot"
+
+	VolumeSnapshotDataSourceKind     = "VolumeSnapshot"
+	VolumeSnapshotDataSourceApiGroup = "snapshot.storage.k8s.io"
 )
 
 var (

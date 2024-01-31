@@ -1,4 +1,4 @@
 apiVersion: v2
 name: nibiru-operator
 version: 1.1.1
-appVersion: v1.3.5
+appVersion: v1.4.0

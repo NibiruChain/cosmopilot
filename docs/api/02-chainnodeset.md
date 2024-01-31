@@ -382,9 +382,7 @@ PvcSnapshot represents a snapshot to be used to restore a PVC.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| name | Name of resource being referenced. | string | true |
-| kind | Type of resource being referenced. Defaults to `VolumeSnapshot`. | *string | false |
-| apiGroup | Group for the resource being referenced. Defaults to `snapshot.storage.k8s.io`. | *string | false |
+| name | Name of the volume snapshot being referenced. | string | true |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -76,6 +79,22 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 		return nil, err
 	}
 
+	if chainNode.ShouldRestoreFromSnapshot() {
+		snapshot := &snapshotv1.VolumeSnapshot{}
+		err = r.Get(ctx, types.NamespacedName{
+			Namespace: chainNode.GetNamespace(),
+			Name:      chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
+		}, snapshot)
+		if err != nil {
+			return nil, err
+		}
+		if snapshot.Status.RestoreSize != nil {
+			storageSize = *snapshot.Status.RestoreSize
+		} else {
+			logger.Info("could not grab restore size from snapshot. Falling back to .persistence.size", "size", storageSize)
+		}
+	}
+
 	pvc := &corev1.PersistentVolumeClaim{}
 	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc)
 	if err != nil {
@@ -104,12 +123,16 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 			}
 			if chainNode.ShouldRestoreFromSnapshot() {
 				pvc.Spec.DataSource = &corev1.TypedLocalObjectReference{
-					APIGroup: chainNode.Spec.Persistence.RestoreFromSnapshot.GetApiGroup(),
-					Kind:     chainNode.Spec.Persistence.RestoreFromSnapshot.GetKind(),
+					APIGroup: pointer.String(VolumeSnapshotDataSourceApiGroup),
+					Kind:     VolumeSnapshotDataSourceKind,
 					Name:     chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
 				}
 			}
-			return pvc, r.Create(ctx, pvc)
+			if err := r.Create(ctx, pvc); err != nil {
+				return nil, err
+			}
+			chainNode.Status.PvcSize = storageSize.String()
+			return pvc, r.Status().Update(ctx, chainNode)
 		}
 		return nil, err
 	}
