@@ -1,0 +1,33 @@
+name: Publish OCI Helm Chart
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  manager:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - uses: azure/setup-helm@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version
+        id: get_version
+        uses: battila7/get-version-action@v2
+
+      - name: Login to Github Packages
+        run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.repository_owner }} --password-stdin ghcr.io
+
+      - name: Package Chart
+        run: helm package helm/nibiru-operator --version ${{ steps.get_version.outputs.version-without-v }} --app-version ${{ steps.get_version.outputs.version-without-v }}
+
+      - name: Push Chart
+        run: helm push nibiru-operator-${{ steps.get_version.outputs.version-without-v }}.tgz oci://ghcr.io/nibiruchain/helm
+
+      - name: Logout
+        run: helm registry logout ghcr.io
