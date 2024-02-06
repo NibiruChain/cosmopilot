@@ -51,7 +51,7 @@ const (
 
 	nonRootId = 1000
 
-	privValidatorListenAddress = "tcp://0.0.0.0:26659"
+	privValidatorListenAddress = "tcp://0.0.0.0:5555"
 
 	defaultStateSyncTrustPeriod = "168h0m0s"
 	defaultLogsLineCount        = 50

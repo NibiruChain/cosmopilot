@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/pkg/proxy"
 	"github.com/NibiruChain/nibiru-operator/pkg/tracer"
 )
 
@@ -21,6 +22,8 @@ type NodeUtils struct {
 	latestBlockHeight atomic.Int64
 	upgradeChecker    *UpgradeChecker
 	requiresUpgrade   bool
+	tmkmsActive       bool
+	tmkmsProxy        *proxy.TCP
 }
 
 func New(opts ...Option) (*NodeUtils, error) {
@@ -44,13 +47,22 @@ func New(opts ...Option) (*NodeUtils, error) {
 		return nil, err
 	}
 
-	return &NodeUtils{
+	nodeUtils := &NodeUtils{
 		cfg:            options,
 		router:         mux.NewRouter(),
 		client:         client,
 		tracer:         t,
 		upgradeChecker: uc,
-	}, nil
+	}
+
+	if options.TmkmsProxy {
+		nodeUtils.tmkmsProxy, err = proxy.NewTCPProxy(":26659", "127.0.0.1:5555", true)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return nodeUtils, nil
 }
 
 func (s *NodeUtils) Start() error {
@@ -61,6 +73,15 @@ func (s *NodeUtils) Start() error {
 			log.Errorf("error watching config file: %v", err)
 		}
 	}()
+
+	if s.tmkmsProxy != nil {
+		s.tmkmsActive = true
+		go func() {
+			err := s.tmkmsProxy.Start()
+			log.Errorf("tmkms connection finished with error: %v", err)
+			s.tmkmsActive = false
+		}()
+	}
 
 	// Goroutine to update latest height and check for upgrades
 	go func() {

@@ -46,4 +46,9 @@ func init() {
 		environ.GetBool("CREATE_FIFO", false),
 		"log level",
 	)
+
+	flag.BoolVar(&enableTmkmsProxy, "tmkms-proxy",
+		environ.GetBool("TMKMS_PROXY", false),
+		"enable tmkms proxy",
+	)
 }

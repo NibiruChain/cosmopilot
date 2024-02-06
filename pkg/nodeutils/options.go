@@ -11,6 +11,7 @@ func defaultOptions() *Options {
 		UpgradesConfig: "/config/upgrades.json",
 		TraceStore:     "/trace/trace.fifo",
 		CreateFifo:     false,
+		TmkmsProxy:     false,
 	}
 }
 
@@ -22,6 +23,7 @@ type Options struct {
 	UpgradesConfig string
 	TraceStore     string
 	CreateFifo     bool
+	TmkmsProxy     bool
 }
 
 type Option func(*Options)
@@ -62,8 +64,14 @@ func WithTraceStore(path string) Option {
 	}
 }
 
-func CreatFifo(create bool) Option {
+func CreateFifo(create bool) Option {
 	return func(opts *Options) {
 		opts.CreateFifo = create
+	}
+}
+
+func WithTmkmsProxy(enable bool) Option {
+	return func(opts *Options) {
+		opts.TmkmsProxy = enable
 	}
 }

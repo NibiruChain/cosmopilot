@@ -17,6 +17,7 @@ func (s *NodeUtils) registerRoutes() {
 	s.router.HandleFunc("/data_size", s.dataSize).Methods(http.MethodGet)
 	s.router.HandleFunc("/latest_height", s.latestHeight).Methods(http.MethodGet)
 	s.router.HandleFunc("/must_upgrade", s.mustUpgrade).Methods(http.MethodGet)
+	s.router.HandleFunc("/tmkms_active", s.tmkmsConnectionActive).Methods(http.MethodGet)
 }
 
 func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
@@ -109,4 +110,14 @@ func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 	w.Write([]byte(strconv.FormatBool(s.requiresUpgrade)))
+}
+
+func (s *NodeUtils) tmkmsConnectionActive(w http.ResponseWriter, r *http.Request) {
+	log.WithField("tmkms-active", s.tmkmsActive).Info("checked if tmkms is active")
+	if s.tmkmsActive {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusNotAcceptable)
+	}
+	w.Write([]byte(strconv.FormatBool(s.tmkmsActive)))
 }

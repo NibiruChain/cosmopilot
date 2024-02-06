@@ -11,14 +11,15 @@ import (
 )
 
 var (
-	host           string
-	port           int
-	dataPath       string
-	upgradesConfig string
-	blockThreshold time.Duration
-	traceStore     string
-	logLevel       string
-	createFifo     bool
+	host             string
+	port             int
+	dataPath         string
+	upgradesConfig   string
+	blockThreshold   time.Duration
+	traceStore       string
+	logLevel         string
+	createFifo       bool
+	enableTmkmsProxy bool
 )
 
 func main() {
@@ -35,7 +36,8 @@ func main() {
 		nodeutils.WithDataPath(dataPath),
 		nodeutils.WithUpgradesConfig(upgradesConfig),
 		nodeutils.WithTraceStore(traceStore),
-		nodeutils.CreatFifo(createFifo),
+		nodeutils.CreateFifo(createFifo),
+		nodeutils.WithTmkmsProxy(enableTmkmsProxy),
 	)
 	if err != nil {
 		log.Fatal(err)

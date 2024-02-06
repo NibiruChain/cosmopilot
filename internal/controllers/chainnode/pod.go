@@ -435,6 +435,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 							Name:  "LOG_LEVEL",
 							Value: chainNode.Spec.Config.GetNodeUtilsLogLevel(),
 						},
+						{
+							Name:  "TMKMS_PROXY",
+							Value: strconv.FormatBool(chainNode.IsValidator() && chainNode.UsesTmKms()),
+						},
 					},
 					Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
 					ReadinessProbe: &corev1.Probe{

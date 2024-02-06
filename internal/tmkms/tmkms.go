@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -296,6 +297,36 @@ func (kms *KMS) GetContainersSpec() []corev1.Container {
 					corev1.ResourceCPU:    tmkmsCpuResources,
 					corev1.ResourceMemory: tmkmsMemoryResources,
 				},
+			},
+			StartupProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/tmkms_active",
+						Port: intstr.IntOrString{
+							Type:   intstr.Int,
+							IntVal: 8000,
+						},
+						Scheme: "HTTP",
+					},
+				},
+				FailureThreshold: 10,
+				PeriodSeconds:    2,
+				TimeoutSeconds:   2,
+			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/tmkms_active",
+						Port: intstr.IntOrString{
+							Type:   intstr.Int,
+							IntVal: 8000,
+						},
+						Scheme: "HTTP",
+					},
+				},
+				FailureThreshold: 1,
+				PeriodSeconds:    5,
+				TimeoutSeconds:   2,
 			},
 		},
 	}
