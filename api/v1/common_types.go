@@ -34,7 +34,7 @@ const (
 	ReasonNodeDeleted            = "NodeDeleted"
 	ReasonInitGenesisFailure     = "InitGenesisFail"
 	ReasonUploadFailure          = "UploadFailed"
-	ReasonGenesisWrongHash       = "GenesisWrongHash"
+	ReasonGenesisError           = "GenesisError"
 	ReasonNoTrustHeight          = "NoTrustHeight"
 	ReasonNoPeers                = "NoPeers"
 	ReasonStartedSnapshot        = "SnapshotStarted"

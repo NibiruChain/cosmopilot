@@ -1,0 +1,63 @@
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNodeSet
+metadata:
+  name: cataclysm-1
+spec:
+  app:
+    image: ghcr.io/nibiruchain/nibiru
+    version: 1.0.0
+    app: nibid
+
+  genesis:
+    url: https://raw.githubusercontent.com/NibiruChain/Networks/main/Mainnet/cataclysm-1/genesis.json
+
+  nodes:
+    - name: fullnode
+      instances: 1
+
+      stateSyncRestore: true
+
+      ingress:
+        host: nibiru.voluzi.internal
+        enableGRPC: true
+        enableLCD: true
+        enableRPC: true
+        disableTLS: true
+        annotations:
+          nginx.ingress.kubernetes.io/cors-allow-origin: '*'
+          nginx.ingress.kubernetes.io/enable-cors: "true"
+
+      expose:
+        p2p: true
+        p2pServiceType: LoadBalancer
+
+      peers:
+        # Nibiru fullnode-0
+        - id: b7262df35a7e1d1fb4027464efe9d9d6218ca4c7
+          address: 35.233.111.89
+        # Nibiru fullnode-1
+        - id: ebf72163ad536ca73a037fa5d564d511be59c2f4
+          address: 34.34.137.54
+        # Nibiru snapshot-0
+        - id: 151acb0de556f4a059f9bd40d46190ee91f06422
+          address: 34.38.151.176
+        # Nibiru sentry-0
+        - id: 05106550b6e738d8ce50cb857520124bbcce318f
+          address: 35.189.236.126
+        # Nibiru sentry-1
+        - id: e7af24b15365bff9537e2776c2a5fdf01b933dc5
+          address: 34.76.178.49
+
+      config:
+        safeToEvict: true
+
+        override:
+          app.toml:
+            app-db-backend: goleveldb
+            min-retain-blocks: 500000
+            minimum-gas-prices: 0.025unibi
+            pruning: custom
+            pruning-interval: "10"
+            pruning-keep-recent: "100"
+          config.toml:
+            db_backend: rocksdb

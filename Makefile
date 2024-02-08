@@ -136,6 +136,30 @@ run.mirrord: manifests generate mirrord
 			-nodeutils-image="$(NODE_UTILS_IMG)" \
 			-worker-count=$(WORKER_COUNT) \
 			-worker-name="$(WORKER_NAME)" \
+			-certs-dir="$(CERTS_DIR)" \
+			-debug-mode
+
+.PHONY: attach.mirrord
+attach.mirrord: RELEASE_NAME?=nibiru-operator
+attach.mirrord: NAMESPACE?=nibiru-system
+attach.mirrord: WORKER_NAME?=
+attach.mirrord: WORKER_COUNT?=1
+attach.mirrord: CERTS_DIR?=/tmp
+attach.mirrord: manifests generate mirrord
+	@mkdir -p $(CERTS_DIR)
+	@for f in tls.key ca.crt tls.crt; do \
+		$(KUBECTL) -n $(NAMESPACE) get secret $(RELEASE_NAME)-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
+	done
+	$(MIRRORD) exec -t deployment/$(RELEASE_NAME) \
+		-n $(NAMESPACE) \
+		-a $(NAMESPACE) \
+		-p --steal \
+		--no-telemetry \
+		go -- run ./cmd/manager \
+			-nodeutils-image="$(NODE_UTILS_IMG)" \
+			-worker-count=$(WORKER_COUNT) \
+			-worker-name="$(WORKER_NAME)" \
+			-certs-dir="$(CERTS_DIR)" \
 			-debug-mode
 
 .PHONY: docker-build
@@ -229,12 +253,12 @@ KIND ?= $(LOCALBIN)/kind
 MIRRORD ?= $(LOCALBIN)/mirrord
 
 ## Tool Versions
-KUBECTL_VERSION ?= v1.27.2
+KUBECTL_VERSION ?= v1.29.1
 CONTROLLER_TOOLS_VERSION ?= v0.11.3
-HELM_VERSION ?= v3.13.1
+HELM_VERSION ?= v3.14.0
 CRD_TO_MARKDOWN_VERSION ?= 0.0.3
-KIND_VERSION ?= 0.19.0
-MIRRORD_VERSION ?= 3.74.0
+KIND_VERSION ?= 0.21.0
+MIRRORD_VERSION ?= 3.86.1
 
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be removed before downloading.

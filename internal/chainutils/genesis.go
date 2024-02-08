@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"path/filepath"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkcmd"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
+	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
 func ExtractChainIdFromGenesis(genesis string) (string, error) {
@@ -229,4 +232,77 @@ func (a *App) NewGenesis(ctx context.Context,
 
 	genesis, _, err := ph.Exec(ctx, "busybox", []string{"cat", filepath.Join(defaultHome, defaultGenesisFile)})
 	return genesis, err
+}
+
+func (a *App) LoadGenesisFromConfigMap(ctx context.Context, configMapName string) (string, error) {
+	cm, err := a.client.CoreV1().ConfigMaps(a.owner.GetNamespace()).Get(ctx, configMapName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	genesis, ok := cm.Data[GenesisFilename]
+	if !ok {
+		return "", fmt.Errorf("%q not found in specified configmap", GenesisFilename)
+	}
+	return genesis, nil
+}
+
+func RetrieveGenesisFromURL(url string, sha *string) (string, error) {
+	response, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	genesis := string(body)
+
+	if sha != nil {
+		hash := utils.Sha256(genesis)
+		if hash != *sha {
+			return "", fmt.Errorf("genesis 256 SHA does not match the one specified")
+		}
+	}
+
+	return genesis, nil
+}
+
+func RetrieveGenesisFromNodeRPC(url string, sha *string) (string, error) {
+	res, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	out := struct {
+		Result struct {
+			Genesis json.RawMessage `json:"genesis"`
+		} `json:"result"`
+	}{}
+
+	if err := json.Unmarshal(body, &out); err != nil {
+		return "", err
+	}
+
+	b, err := json.MarshalIndent(out.Result.Genesis, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	genesis := string(b) + "\n"
+
+	if sha != nil {
+		hash := utils.Sha256(genesis)
+		if hash != *sha {
+			return "", fmt.Errorf("genesis 256 SHA does not match the one specified")
+		}
+	}
+
+	return genesis, nil
 }

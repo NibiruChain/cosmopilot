@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnode"
+	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 	"github.com/NibiruChain/nibiru-operator/test/framework"
 )
 
@@ -34,5 +34,5 @@ func testCreateGenesis(tf *framework.TestFramework, ns *corev1.Namespace, app ap
 	genesisCmName := fmt.Sprintf("%s-genesis", chainNode.Spec.Validator.Init.ChainID)
 	genesis, err := tf.KubeClient.CoreV1().ConfigMaps(ns.GetName()).Get(tf.Context(), genesisCmName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(genesis.Data[chainnode.GenesisFilename]).NotTo(BeEmpty())
+	Expect(genesis.Data[chainutils.GenesisFilename]).NotTo(BeEmpty())
 }

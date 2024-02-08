@@ -2,8 +2,6 @@ apiVersion: apps.k8s.nibiru.org/v1
 kind: ChainNodeSet
 metadata:
   name: nibiru-testnet
-  labels:
-    worker-name: helder
 spec:
   app:
     image: ghcr.io/nibiruchain/nibiru
@@ -41,41 +39,8 @@ spec:
       assets: ["100000000000000unibi", "1000000000000000000unusd", "10000000000000000uusdt"]
       stakeAmount: 100000000unibi
       unbondingTime: 120s
-      votingPeriod: 60s
+      votingPeriod: 120s
       additionalInitCommands:
-        - image: ghcr.io/nibiruchain/node-tools
-          command: [ "sh" , "-c" ]
-          args:
-            - >
-              curl -s "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd" -o /temp/coingecko.json;
-              jq '.bitcoin.usd' /temp/coingecko.json > /temp/bitcoin;
-              jq '.ethereum.usd' /temp/coingecko.json > /temp/ethereum;
-              jq '.app_state.oracle.params.min_voters = "1"' /home/app/config/genesis.json | sponge /home/app/config/genesis.json;
-
-        - command: [ "sh" , "-c" ]
-          args:
-            - >
-              nibid genesis add-genesis-perp-market \
-                --pair=ubtc:unusd \
-                --oracle-pair="ubtc:uusd" \
-                --sqrt-depth=40000000000000 \
-                --price-multiplier=$(cat /temp/bitcoin) \
-                --max-leverage=10 \
-                --mmr=0.05 \
-                --home=/home/app
-
-        - command: [ "sh" , "-c" ]
-          args:
-            - >
-              nibid genesis add-genesis-perp-market \
-                --pair=ueth:unusd \
-                --oracle-pair="ueth:unusd" \
-                --sqrt-depth=40000000000000 \
-                --price-multiplier=$(cat /temp/ethereum) \
-                --max-leverage=15 \
-                --mmr=0.05 \
-                --home=/home/app
-
         - command: [ "sh", "-c" ]
           args:
             - >

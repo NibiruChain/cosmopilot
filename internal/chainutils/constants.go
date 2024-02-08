@@ -29,6 +29,7 @@ const (
 	defaultData        = "data"
 	defaultConfig      = "config"
 	defaultGenesisFile = "config/genesis.json"
+	GenesisFilename    = "genesis.json"
 
 	paginationLimit = 1000
 	httpTimeout     = 10 * time.Second

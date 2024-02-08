@@ -58,4 +58,9 @@ func init() {
 		environ.GetBool("DEBUG_MODE", false),
 		"whether to enable debug mode",
 	)
+
+	flag.StringVar(&certsDir, "certs-dir",
+		environ.GetString("CERTS_DIR", ""),
+		"directory where manager should look for certificates for serving webhooks",
+	)
 }

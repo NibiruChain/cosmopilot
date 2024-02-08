@@ -1761,6 +1761,9 @@ spec:
                             type: string
                           description: Annotations to be appended to the ingress.
                           type: object
+                        disableTLS:
+                          description: Whether to disable TLS on ingress resource.
+                          type: boolean
                         enableGRPC:
                           description: Enable gRPC endpoint.
                           type: boolean

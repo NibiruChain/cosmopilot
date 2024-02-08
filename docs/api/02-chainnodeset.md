@@ -124,6 +124,7 @@ IngressConfig specifies configurations for ingress to expose API endpoints.
 | enableLCD | Enable LCD endpoint. | bool | false |
 | host | Host in which endpoints will be exposed. Endpoints are exposed on corresponding subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`. | string | true |
 | annotations | Annotations to be appended to the ingress. | map[string]string | false |
+| disableTLS | Whether to disable TLS on ingress resource. | bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

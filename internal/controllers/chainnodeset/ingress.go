@@ -113,21 +113,26 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 		},
 		Spec: v1.IngressSpec{
 			IngressClassName: pointer.String(ingressClassNameNginx),
-			TLS: []v1.IngressTLS{
-				{
-					Hosts:      []string{},
-					SecretName: group.GetIngressSecretName(nodeSet),
-				},
-			},
-			Rules: make([]v1.IngressRule, 0),
+			Rules:            make([]v1.IngressRule, 0),
 		},
+	}
+
+	if !group.Ingress.DisableTLS {
+		ingress.Spec.TLS = []v1.IngressTLS{
+			{
+				Hosts:      []string{},
+				SecretName: group.GetIngressSecretName(nodeSet),
+			},
+		}
 	}
 
 	pathType := v1.PathTypeImplementationSpecific
 
 	if group.Ingress.EnableRPC {
 		host := fmt.Sprintf("rpc.%s", group.Ingress.Host)
-		ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		if ingress.Spec.TLS != nil {
+			ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		}
 		ingress.Spec.Rules = append(ingress.Spec.Rules, v1.IngressRule{
 			Host: host,
 			IngressRuleValue: v1.IngressRuleValue{
@@ -153,7 +158,9 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 
 	if group.Ingress.EnableLCD {
 		host := fmt.Sprintf("lcd.%s", group.Ingress.Host)
-		ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		if ingress.Spec.TLS != nil {
+			ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		}
 		ingress.Spec.Rules = append(ingress.Spec.Rules, v1.IngressRule{
 			Host: host,
 			IngressRuleValue: v1.IngressRuleValue{
@@ -177,7 +184,7 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 		})
 	}
 
-	if group.Ingress.EnableGRPC {
+	if group.Ingress.EnableGRPC && !group.Ingress.DisableTLS {
 		// We just append the hostname to TLS config and add no rule as it will be handled by a separate ingress
 		// but will use the same certificate
 		ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, fmt.Sprintf("grpc.%s", group.Ingress.Host))
@@ -197,12 +204,6 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 		},
 		Spec: v1.IngressSpec{
 			IngressClassName: pointer.String(ingressClassNameNginx),
-			TLS: []v1.IngressTLS{
-				{
-					Hosts:      []string{fmt.Sprintf("grpc.%s", group.Ingress.Host)},
-					SecretName: group.GetIngressSecretName(nodeSet),
-				},
-			},
 			Rules: []v1.IngressRule{
 				{
 					Host: fmt.Sprintf("grpc.%s", group.Ingress.Host),
@@ -224,6 +225,14 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 				},
 			},
 		},
+	}
+	if !group.Ingress.DisableTLS {
+		ingress.Spec.TLS = []v1.IngressTLS{
+			{
+				Hosts:      []string{fmt.Sprintf("grpc.%s", group.Ingress.Host)},
+				SecretName: group.GetIngressSecretName(nodeSet),
+			},
+		}
 	}
 	return ingress, controllerutil.SetControllerReference(nodeSet, ingress, r.Scheme)
 }

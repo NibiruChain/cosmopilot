@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 )
 
@@ -91,6 +92,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	logger.Info("starting reconcile")
 	defer logger.Info("finishing reconcile")
 
+	app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, nodeSet,
+		nodeSet.Spec.App.GetSdkVersion(),
+		chainutils.WithImage(nodeSet.Spec.App.GetImage()),
+		chainutils.WithImagePullPolicy(nodeSet.Spec.App.ImagePullPolicy),
+		chainutils.WithBinary(nodeSet.Spec.App.App),
+	)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if nodeSet.Status.ChainID == "" {
 		if err := r.updatePhase(ctx, nodeSet, appsv1.PhaseChainNodeSetInitialing); err != nil {
 			return ctrl.Result{}, err
@@ -99,6 +110,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Make sure validator is set up first if it is configured
 	if err := r.ensureValidator(ctx, nodeSet); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := r.ensureGenesis(ctx, app, nodeSet); err != nil {
 		return ctrl.Result{}, err
 	}
 

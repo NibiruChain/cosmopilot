@@ -30,6 +30,7 @@ var (
 	runOpts              controllers.ControllerRunOptions
 	debugMode            bool
 	zapOpts              zap.Options
+	certsDir             string
 )
 
 func main() {
@@ -60,6 +61,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       leaderElectionID,
+		CertDir:                certsDir,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

@@ -473,8 +473,8 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		})
 		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 			Name:      "genesis",
-			MountPath: "/home/app/config/" + GenesisFilename,
-			SubPath:   GenesisFilename,
+			MountPath: "/home/app/config/" + chainutils.GenesisFilename,
+			SubPath:   chainutils.GenesisFilename,
 		})
 	} else {
 		//TODO: This is a workaround. Remove this when issue with genesis_file field not being used is fixed

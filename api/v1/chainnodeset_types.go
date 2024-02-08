@@ -270,4 +270,8 @@ type IngressConfig struct {
 	// Annotations to be appended to the ingress.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Whether to disable TLS on ingress resource.
+	// +optional
+	DisableTLS bool `json:"disableTLS,omitempty"`
 }

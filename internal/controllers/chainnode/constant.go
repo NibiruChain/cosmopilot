@@ -11,7 +11,6 @@ const (
 	PrivKeyFilename    = "priv_validator_key.json"
 	appTomlFilename    = "app.toml"
 	configTomlFilename = "config.toml"
-	GenesisFilename    = "genesis.json"
 	genesisLocation    = "data/genesis.json"
 	MnemonicKey        = "mnemonic"
 	tarballFinished    = "finished"

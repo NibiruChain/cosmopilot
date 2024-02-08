@@ -15,7 +15,6 @@ import (
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
 func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
@@ -38,25 +37,18 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 		)
 		return nil
 	}
-	return r.getGenesis(ctx, chainNode)
+	return r.getGenesis(ctx, app, chainNode)
 }
 
-func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode) error {
+func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
 	if chainNode.Spec.Genesis.ConfigMap != nil {
-		logger.Info("retrieving genesis from configmap", "configmap", *chainNode.Spec.Genesis.ConfigMap)
-		cm := &corev1.ConfigMap{}
-		if err := r.Get(ctx, types.NamespacedName{
-			Name:      *chainNode.Spec.Genesis.ConfigMap,
-			Namespace: chainNode.GetNamespace(),
-		}, cm); err != nil {
+		logger.Info("loading genesis from configmap", "configmap", *chainNode.Spec.Genesis.ConfigMap)
+		genesis, err := app.LoadGenesisFromConfigMap(ctx, *chainNode.Spec.Genesis.ConfigMap)
+		if err != nil {
+			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
 			return err
-		}
-
-		genesis, ok := cm.Data[GenesisFilename]
-		if !ok {
-			return fmt.Errorf("%q not found in specified configmap", GenesisFilename)
 		}
 
 		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
@@ -76,73 +68,48 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 		return r.Status().Update(ctx, chainNode)
 	}
 
-	genesis := ""
-	chainID := ""
+	var genesis string
 	var err error
 
-	if chainNode.Spec.Genesis.Url != nil {
+	switch {
+	case chainNode.Spec.Genesis.Url != nil:
 		logger.Info("retrieving genesis from url", "url", *chainNode.Spec.Genesis.Url)
-		genesis, err = utils.FetchJson(*chainNode.Spec.Genesis.Url)
+
+		genesis, err = chainutils.RetrieveGenesisFromURL(*chainNode.Spec.Genesis.Url, chainNode.Spec.Genesis.GenesisSHA)
 		if err != nil {
+			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
 			return err
 		}
 
-		if chainNode.Spec.Genesis.GenesisSHA != nil {
-			hash := utils.Sha256(genesis)
-			if hash != *chainNode.Spec.Genesis.GenesisSHA {
-				r.recorder.Eventf(chainNode,
-					corev1.EventTypeWarning,
-					appsv1.ReasonGenesisWrongHash,
-					"Genesis 256 SHA does not match the one specified by the user",
-				)
-				return fmt.Errorf("genesis 256 SHA does not match the one specified by the user")
-			}
-		}
-
-		chainID, err = chainutils.ExtractChainIdFromGenesis(genesis)
-		if err != nil {
-			return err
-		}
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeNormal,
 			appsv1.ReasonGenesisImported,
 			"Genesis downloaded using specified URL",
 		)
-	}
 
-	if chainNode.Spec.Genesis.FromNodeRPC != nil {
+	case chainNode.Spec.Genesis.FromNodeRPC != nil:
 		genesisUrl := chainNode.Spec.Genesis.FromNodeRPC.GetGenesisFromRPCUrl()
 		logger.Info("retrieving genesis from node RPC", "endpoint", genesisUrl)
-		genesis, err = utils.GetGenesisFromNodeRPC(genesisUrl)
+
+		genesis, err = chainutils.RetrieveGenesisFromNodeRPC(genesisUrl, chainNode.Spec.Genesis.GenesisSHA)
 		if err != nil {
+			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
 			return err
 		}
 
-		if chainNode.Spec.Genesis.GenesisSHA != nil {
-			hash := utils.Sha256(genesis)
-			if hash != *chainNode.Spec.Genesis.GenesisSHA {
-				r.recorder.Eventf(chainNode,
-					corev1.EventTypeWarning,
-					appsv1.ReasonGenesisWrongHash,
-					"Genesis 256 SHA does not match the one specified by the user",
-				)
-				return fmt.Errorf("genesis 256 SHA does not match the one specified by the user")
-			}
-		}
-
-		chainID, err = chainutils.ExtractChainIdFromGenesis(genesis)
-		if err != nil {
-			return err
-		}
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeNormal,
 			appsv1.ReasonGenesisImported,
 			"Genesis downloaded using specified RPC node",
 		)
+
+	default:
+		return fmt.Errorf("genesis could not be retrived using any of the available methods")
 	}
 
-	if genesis == "" || chainID == "" {
-		return fmt.Errorf("genesis could not be retrived using any of the available methods")
+	chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
+	if err != nil {
+		return err
 	}
 
 	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
@@ -151,7 +118,8 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 			return err
 		}
 		logger.Info("writing genesis to data volume", "pvc", pvc.GetName())
-		if err := k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).WriteToFile(ctx, genesis, GenesisFilename); err != nil {
+		if err := k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).
+			WriteToFile(ctx, genesis, chainutils.GenesisFilename); err != nil {
 			return err
 		}
 
@@ -163,7 +131,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, chainNode *appsv1.ChainNode
 				Namespace: chainNode.Namespace,
 				Labels:    WithChainNodeLabels(chainNode),
 			},
-			Data: map[string]string{GenesisFilename: genesis},
+			Data: map[string]string{chainutils.GenesisFilename: genesis},
 		}
 		if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 			return err
@@ -260,7 +228,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 			Name:      fmt.Sprintf("%s-genesis", chainNode.Spec.Validator.Init.ChainID),
 			Namespace: chainNode.Namespace,
 		},
-		Data: map[string]string{GenesisFilename: genesis},
+		Data: map[string]string{chainutils.GenesisFilename: genesis},
 	}
 	if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 		return err
