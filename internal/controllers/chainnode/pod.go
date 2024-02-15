@@ -735,6 +735,10 @@ func podSpecChanged(existing, new *corev1.Pod) bool {
 	orderVolumeMounts(existingCopy)
 	orderVolumeMounts(newCopy)
 
+	if len(existingCopy.Spec.Containers) != len(new.Spec.Containers) {
+		return true
+	}
+
 	patchResult, err := patch.DefaultPatchMaker.Calculate(existingCopy, newCopy,
 		patch.IgnoreStatusFields(),
 		patch.IgnoreVolumeClaimTemplateTypeMetaAndStatus(),
