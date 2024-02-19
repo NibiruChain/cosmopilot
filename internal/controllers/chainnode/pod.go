@@ -460,6 +460,11 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		},
 	}
 
+	// Always use latest version we know if we are doing state-sync restore
+	if chainNode.StateSyncRestoreEnabled() && chainNode.Status.LatestHeight == 0 {
+		pod.Spec.Containers[0].Image = chainNode.GetLatestAppImage()
+	}
+
 	if !chainNode.Spec.Genesis.ShouldUseDataVolume() {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
 			Name: "genesis",

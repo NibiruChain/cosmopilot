@@ -17,16 +17,6 @@ spec:
 
       stateSyncRestore: true
 
-      ingress:
-        host: nibiru.voluzi.internal
-        enableGRPC: true
-        enableLCD: true
-        enableRPC: true
-        disableTLS: true
-        annotations:
-          nginx.ingress.kubernetes.io/cors-allow-origin: '*'
-          nginx.ingress.kubernetes.io/enable-cors: "true"
-
       expose:
         p2p: true
         p2pServiceType: LoadBalancer

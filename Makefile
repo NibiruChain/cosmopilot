@@ -47,7 +47,7 @@ docs: crd-to-markdown
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: generate controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	@$(CONTROLLER_GEN) \
 		rbac:roleName=manager-role crd webhook paths="./..." \
 		output:crd:artifacts:config=helm/nibiru-operator/crds \

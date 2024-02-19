@@ -93,6 +93,18 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 		} else {
 			logger.Info("could not grab restore size from snapshot. Falling back to .persistence.size", "size", storageSize)
 		}
+
+		// Get height from the snapshot so that operator knows which version to run in case there were upgrades
+		if hs, ok := snapshot.Annotations[annotationDataHeight]; ok {
+			height, err := strconv.ParseInt(hs, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			chainNode.Status.LatestHeight = height
+			if err := r.Status().Update(ctx, chainNode); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	pvc := &corev1.PersistentVolumeClaim{}
@@ -107,6 +119,7 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 					Labels:    WithChainNodeLabels(chainNode),
 					Annotations: map[string]string{
 						annotationDataInitialized: strconv.FormatBool(chainNode.ShouldRestoreFromSnapshot()),
+						annotationDataHeight:      strconv.FormatInt(chainNode.Status.LatestHeight, 10),
 					},
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -135,6 +148,37 @@ func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode)
 			return pvc, r.Status().Update(ctx, chainNode)
 		}
 		return nil, err
+	}
+
+	// This happens when a chainnode is created but the volume for it already exists. We try to get the
+	// block height for the data on that volume, so that operator will know which version to run this
+	// node with.
+	if chainNode.Status.PvcSize == "" {
+		if dataHeight, ok := pvc.Annotations[annotationDataHeight]; ok {
+			height, err := strconv.ParseInt(dataHeight, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if chainNode.Status.LatestHeight != height {
+				chainNode.Status.LatestHeight = height
+				if err := r.Status().Update(ctx, chainNode); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning || chainNode.Status.Phase == appsv1.PhaseChainNodeSyncing {
+		if err := r.updateLatestHeight(ctx, chainNode); err != nil {
+			return nil, err
+		}
+		dataHeight := strconv.FormatInt(chainNode.Status.LatestHeight, 10)
+		if pvc.Annotations[annotationDataHeight] != dataHeight {
+			pvc.Annotations[annotationDataHeight] = dataHeight
+			if err := r.Update(ctx, pvc); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	switch pvc.Spec.Resources.Requests.Storage().Cmp(storageSize) {

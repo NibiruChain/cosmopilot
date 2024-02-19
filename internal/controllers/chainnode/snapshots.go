@@ -329,7 +329,9 @@ func (r *Reconciler) createSnapshot(ctx context.Context, chainNode *appsv1.Chain
 			}
 		}
 	}
-
+	if err := r.updateLatestHeight(ctx, chainNode); err != nil {
+		return nil, err
+	}
 	snapshot := getVolumeSnapshotSpec(chainNode)
 	return snapshot, r.Create(ctx, snapshot)
 }
@@ -371,6 +373,7 @@ func getVolumeSnapshotSpec(chainNode *appsv1.ChainNode) *snapshotv1.VolumeSnapsh
 			Namespace: chainNode.GetNamespace(),
 			Annotations: map[string]string{
 				annotationPvcSnapshotReady: strconv.FormatBool(false),
+				annotationDataHeight:       strconv.FormatInt(chainNode.Status.LatestHeight, 10),
 			},
 			Labels: WithChainNodeLabels(chainNode, map[string]string{
 				LabelChainNode: chainNode.GetName(),

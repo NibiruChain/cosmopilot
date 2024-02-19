@@ -208,8 +208,28 @@ func (chainNode *ChainNode) GetAppVersion() string {
 	return version
 }
 
+func (chainNode *ChainNode) GetLatestVersion() string {
+	version := chainNode.Spec.App.GetImageVersion()
+	var h int64 = 0
+	for _, u := range chainNode.Status.Upgrades {
+		if (u.Status == UpgradeCompleted || u.Status == UpgradeSkipped) && u.Height > h {
+			h = u.Height
+			version = u.GetVersion()
+		}
+	}
+	return version
+}
+
+func (chainNode *ChainNode) GetAppImageWithVersion(version string) string {
+	return fmt.Sprintf("%s:%s", chainNode.Spec.App.Image, version)
+}
+
 func (chainNode *ChainNode) GetAppImage() string {
-	return fmt.Sprintf("%s:%s", chainNode.Spec.App.Image, chainNode.GetAppVersion())
+	return chainNode.GetAppImageWithVersion(chainNode.GetAppVersion())
+}
+
+func (chainNode *ChainNode) GetLatestAppImage() string {
+	return chainNode.GetAppImageWithVersion(chainNode.GetLatestVersion())
 }
 
 // Validator methods
