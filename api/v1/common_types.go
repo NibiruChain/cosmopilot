@@ -203,6 +203,10 @@ type Config struct {
 	// Compute Resources for node-utils container.
 	// +optional
 	NodeUtilsResources *corev1.ResourceRequirements `json:"nodeUtilsResources,omitempty"`
+
+	// Whether to persist address book file in data directory. Defaults to `false`.
+	// +optional
+	PersistAddressBook *bool `json:"persistAddressBook,omitempty"`
 }
 
 // FirewallConfig allows configuring cosmos-firewall rules.

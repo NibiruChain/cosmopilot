@@ -209,6 +209,13 @@ func (cfg *Config) GetNodeUtilsLogLevel() string {
 	return DefaultNodeUtilsLogLevel
 }
 
+func (cfg *Config) ShouldPersistAddressBook() bool {
+	if cfg != nil && cfg.PersistAddressBook != nil {
+		return *cfg.PersistAddressBook
+	}
+	return false
+}
+
 func (exp *ExposeConfig) Enabled() bool {
 	if exp != nil && exp.P2P != nil {
 		return *exp.P2P

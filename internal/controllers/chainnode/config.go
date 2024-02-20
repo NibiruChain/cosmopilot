@@ -30,7 +30,6 @@ var (
 			"cors_allowed_origins": []string{"*"},
 		},
 		"p2p": map[string]interface{}{
-			"addr_book_file":     "/home/app/data/addrbook.json",
 			"addr_book_strict":   false,
 			"allow_duplicate_ip": true,
 		},
@@ -82,6 +81,18 @@ func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chai
 	})
 	if err != nil {
 		return "", err
+	}
+
+	// Persist address book file
+	if chainNode.Spec.Config.ShouldPersistAddressBook() {
+		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
+			"p2p": map[string]interface{}{
+				"addr_book_file": "/home/app/data/addrbook.json",
+			},
+		})
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// Set external address if there is one

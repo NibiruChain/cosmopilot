@@ -1185,6 +1185,10 @@ spec:
                     description: Allows overriding configs on `.toml` configuration
                       files.
                     x-kubernetes-preserve-unknown-fields: true
+                  persistAddressBook:
+                    description: Whether to persist address book file in data directory.
+                      Defaults to `false`.
+                    type: boolean
                   reconcilePeriod:
                     description: Period at which a reconcile loop will happen for
                       this ChainNode. Defaults to `15s`.
