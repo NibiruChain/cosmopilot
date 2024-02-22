@@ -13,18 +13,20 @@ const (
 
 func defaultConfig() *Config {
 	return &Config{
-		Image:      DefaultTmKmsImage,
-		Chains:     make([]*ChainConfig, 0),
-		Validators: make([]*ValidatorConfig, 0),
-		Providers:  make(map[string][]Provider),
+		Image:        DefaultTmKmsImage,
+		Chains:       make([]*ChainConfig, 0),
+		Validators:   make([]*ValidatorConfig, 0),
+		Providers:    make(map[string][]Provider),
+		PersistState: true,
 	}
 }
 
 type Config struct {
-	Image      string                `toml:"-"`
-	Chains     []*ChainConfig        `toml:"chain"`
-	Validators []*ValidatorConfig    `toml:"validator"`
-	Providers  map[string][]Provider `toml:"providers"`
+	Image        string                `toml:"-"`
+	Chains       []*ChainConfig        `toml:"chain"`
+	Validators   []*ValidatorConfig    `toml:"validator"`
+	Providers    map[string][]Provider `toml:"providers"`
+	PersistState bool                  `toml:"-"`
 }
 
 type Option func(*Config)
@@ -38,5 +40,11 @@ type Provider interface {
 func WithImage(s string) Option {
 	return func(cfg *Config) {
 		cfg.Image = s
+	}
+}
+
+func PersistState(b bool) Option {
+	return func(cfg *Config) {
+		cfg.PersistState = b
 	}
 }

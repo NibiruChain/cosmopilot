@@ -217,6 +217,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				RunAsGroup: pointer.Int64(nonRootId),
 				FSGroup:    pointer.Int64(nonRootId),
 			},
+			TerminationGracePeriodSeconds: pointer.Int64(10),
 			Volumes: []corev1.Volume{
 				{
 					Name: "data",

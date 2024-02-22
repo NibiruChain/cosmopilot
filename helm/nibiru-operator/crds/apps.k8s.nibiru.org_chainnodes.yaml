@@ -2110,6 +2110,10 @@ spec:
                         - consensus_key_prefix
                         - type
                         type: object
+                      persistState:
+                        description: Whether to persist "priv_validator_state.json"
+                          file on a PVC. Defaults to `true`.
+                        type: boolean
                       provider:
                         description: Signing provider to be used by tmkms. Currently
                           only `vault` is supported.

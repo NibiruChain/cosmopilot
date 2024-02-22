@@ -17,7 +17,11 @@ import (
 func (r *Reconciler) ensureTmKMSConfig(ctx context.Context, chainNode *appsv1.ChainNode) error {
 	if !chainNode.UsesTmKms() {
 		// Configuration not specified or removed. Let's try to delete it anyway.
-		_ = tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode).UndeployConfig(ctx)
+		_ = tmkms.New(r.ClientSet,
+			r.Scheme,
+			fmt.Sprintf("%s-tmkms", chainNode.GetName()),
+			chainNode).
+			UndeployConfig(ctx)
 		return nil
 	}
 
@@ -69,7 +73,15 @@ func (r *Reconciler) getTmkms(ctx context.Context, chainNode *appsv1.ChainNode) 
 		tmkms.WithProtocolVersion(chainNode.Spec.Validator.TmKMS.GetProtocolVersion()),
 	)
 
-	return tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode, chainConfig, validatorConfig, providerConfig), nil
+	return tmkms.New(
+		r.ClientSet,
+		r.Scheme,
+		fmt.Sprintf("%s-tmkms", chainNode.GetName()),
+		chainNode,
+		tmkms.PersistState(chainNode.Spec.Validator.TmKMS.ShouldPersistState()),
+		chainConfig,
+		validatorConfig,
+		providerConfig), nil
 }
 
 func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *appsv1.ChainNode) error {
@@ -98,6 +110,7 @@ func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *a
 	}
 
 	err = tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode,
+		tmkms.PersistState(chainNode.Spec.Validator.TmKMS.ShouldPersistState()),
 		tmkms.WithChain(chainNode.Status.ChainID),
 		tmkms.WithValidator(chainNode.Status.ChainID,
 			fmt.Sprintf("tcp://%s:%d", chainNode.GetNodeFQDN(), chainutils.PrivValPort),

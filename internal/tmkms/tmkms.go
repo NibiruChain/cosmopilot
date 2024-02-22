@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	tmkmsCpu    = "100m"
-	tmkmsMemory = "64Mi"
+	tmkmsCpu     = "100m"
+	tmkmsMemory  = "64Mi"
+	tmkmsPvcSize = "1Gi"
 )
 
 var (
@@ -61,6 +62,9 @@ func (kms *KMS) DeployConfig(ctx context.Context) error {
 		return err
 	}
 
+	if kms.Config.PersistState {
+		return kms.ensurePVC(ctx)
+	}
 	return nil
 }
 
@@ -214,15 +218,42 @@ func (kms *KMS) ensureConfigMap(ctx context.Context) error {
 	return err
 }
 
+func (kms *KMS) ensurePVC(ctx context.Context) error {
+	storageSize, err := resource.ParseQuantity(tmkmsPvcSize)
+	if err != nil {
+		return err
+	}
+
+	spec := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kms.Name,
+			Namespace: kms.Owner.GetNamespace(),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: storageSize,
+				},
+			},
+		},
+	}
+
+	_, err = kms.Client.CoreV1().PersistentVolumeClaims(kms.Owner.GetNamespace()).Get(ctx, kms.Name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			_, err = kms.Client.CoreV1().PersistentVolumeClaims(kms.Owner.GetNamespace()).Create(ctx, spec, metav1.CreateOptions{})
+		}
+		return err
+	}
+	return nil
+}
+
 func (kms *KMS) GetVolumes() []corev1.Volume {
 	// Build volumes list with providers volumes
 	volumes := []corev1.Volume{
-		{
-			Name: "tmkms-data",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
 		{
 			Name: "tmkms-identity",
 			VolumeSource: corev1.VolumeSource{
@@ -242,6 +273,25 @@ func (kms *KMS) GetVolumes() []corev1.Volume {
 			},
 		},
 	}
+
+	if kms.Config.PersistState {
+		volumes = append(volumes, corev1.Volume{
+			Name: "tmkms-data",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: kms.Name,
+				},
+			},
+		})
+	} else {
+		volumes = append(volumes, corev1.Volume{
+			Name: "tmkms-data",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
 	for provider := range kms.Config.Providers {
 		for _, p := range kms.Config.Providers[provider] {
 			volumes = append(volumes, p.getVolumes()...)

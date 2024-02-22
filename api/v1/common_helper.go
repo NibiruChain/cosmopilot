@@ -250,6 +250,13 @@ func (kms *TmKMS) GetProtocolVersion() tmkms.ProtocolVersion {
 	return tmkms.ProtocolVersionV0_34
 }
 
+func (kms *TmKMS) ShouldPersistState() bool {
+	if kms != nil && kms.PersistState != nil {
+		return *kms.PersistState
+	}
+	return true
+}
+
 // StateSync methods
 
 func (ss *StateSyncConfig) Enabled() bool {
