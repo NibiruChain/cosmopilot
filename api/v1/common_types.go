@@ -449,6 +449,10 @@ type ExposeConfig struct {
 	// +optional
 	// +default="NodePort"
 	P2pServiceType *corev1.ServiceType `json:"p2pServiceType,omitempty"`
+
+	// Annotations to be appended to the p2p service.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // TmKMS allows configuring tmkms for signing for this validator node instead of

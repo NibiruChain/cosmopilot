@@ -1636,6 +1636,11 @@ spec:
               expose:
                 description: Allows exposing P2P traffic to public.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations to be appended to the p2p service.
+                    type: object
                   p2p:
                     description: Whether to expose p2p endpoint for this node. Defaults
                       to `false`.

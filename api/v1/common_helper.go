@@ -237,6 +237,13 @@ func (exp *ExposeConfig) GetServiceType() corev1.ServiceType {
 	return DefaultP2pServiceType
 }
 
+func (exp *ExposeConfig) GetAnnotations() map[string]string {
+	if exp != nil && exp.Annotations != nil {
+		return exp.Annotations
+	}
+	return nil
+}
+
 // TmKMS helper methods
 
 func (kms *TmKMS) GetKeyFormat() *TmKmsKeyFormat {

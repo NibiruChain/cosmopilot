@@ -293,9 +293,10 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Service, error) {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-p2p", chainNode.GetName()),
-			Namespace: chainNode.GetNamespace(),
-			Labels:    WithChainNodeLabels(chainNode),
+			Name:        fmt.Sprintf("%s-p2p", chainNode.GetName()),
+			Namespace:   chainNode.GetNamespace(),
+			Labels:      WithChainNodeLabels(chainNode),
+			Annotations: chainNode.Spec.Expose.GetAnnotations(),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:                     chainNode.Spec.Expose.GetServiceType(),
