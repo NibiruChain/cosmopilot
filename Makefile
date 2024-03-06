@@ -79,7 +79,7 @@ test.e2e: WORKER_COUNT?=1
 test.e2e: TEST_TIMEOUT?=20m
 test.e2e: manifests generate fmt vet mirrord setup-test-env install ## Run integration tests.
 	@# Create dummy operator service just to have all resources. mirrod will steal its traffic then.
-	@$(HELM) get metadata nibiru-operator -n nibiru-system || $(MAKE) NAME=nginxinc/nginx-unprivileged VERSION=latest PROBES_ENABLED=false deploy
+	@$(HELM) get metadata nibiru-operator -n nibiru-system || $(MAKE) NAME=nginxinc/nginx-unprivileged APP_VERSION=latest PROBES_ENABLED=false deploy
 	@mkdir -p $(CERTS_DIR)
 	@for f in tls.key ca.crt tls.crt; do \
 		$(KUBECTL) -n nibiru-system get secret nibiru-operator-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
@@ -201,13 +201,15 @@ deploy: WORKER_NAME?=
 deploy: WORKER_COUNT?=1
 deploy: DEBUG_MODE?=false
 deploy: PROBES_ENABLED?=true
+deploy: APP_VERSION?=$(VERSION:v%=%)
 deploy: manifests helm ## Deploy controller to the K8s cluster
+	@$(HELM) package helm/nibiru-operator --version $(VERSION:v%=%) --app-version $(VERSION:v%=%) -d testbin/
 	@$(HELM) upgrade $(RELEASE_NAME) \
 		--install \
 		--create-namespace \
 		--namespace=$(NAMESPACE) \
 		--set image=$(NAME) \
-		--set imageTag=$(VERSION:v%=%) \
+		--set imageTag=$(APP_VERSION:v%=%) \
 		--set nodeUtilsImage=$(NODE_UTILS_IMG) \
 		--set probesEnabled=$(PROBES_ENABLED) \
 		--set workerName=$(WORKER_NAME) \
@@ -216,7 +218,7 @@ deploy: manifests helm ## Deploy controller to the K8s cluster
 		--set serviceMonitorEnabled=$(SERVICE_MONITOR_ENABLED) \
 		--set debugMode=$(DEBUG_MODE) \
 		--wait \
-		helm/nibiru-operator
+		./testbin/nibiru-operator-$(VERSION:v%=%).tgz
 
 .PHONY: undeploy
 undeploy: RELEASE_NAME?=nibiru-operator

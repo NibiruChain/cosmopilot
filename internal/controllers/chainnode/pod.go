@@ -24,7 +24,7 @@ import (
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
-func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) error {
+func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, configHash string) error {
 	logger := log.FromContext(ctx)
 
 	// Prepare pod spec
@@ -104,6 +104,18 @@ func (r *Reconciler) ensurePod(ctx context.Context, chainNode *appsv1.ChainNode,
 
 		logger.Info("upgrading node", "pod", pod.GetName())
 		if err := r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeOnGoing); err != nil {
+			return err
+		}
+
+		// Force update config files, to prevent restarting again because of config changes
+		configHash, err = r.ensureConfig(ctx, app, chainNode)
+		if err != nil {
+			return err
+		}
+
+		// Get new pod spec with updated configs
+		pod, err = r.getPodSpec(ctx, chainNode, configHash)
+		if err != nil {
 			return err
 		}
 
@@ -195,6 +207,8 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		readinessPath = "/health"
 	}
 
+	var sidecarRestartAlways = corev1.ContainerRestartPolicyAlways
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      chainNode.GetName(),
@@ -270,25 +284,68 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			},
 			InitContainers: []corev1.Container{
 				{
-					Name:    "init-trace-fifo",
-					Image:   "busybox",
-					Command: []string{"mkfifo"},
-					Args:    []string{"/trace/trace.fifo"},
+					Name:            nodeUtilsContainerName,
+					Image:           r.opts.NodeUtilsImage,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					RestartPolicy:   &sidecarRestartAlways,
+					Ports: []corev1.ContainerPort{
+						{
+							Name:          nodeUtilsPortName,
+							ContainerPort: 8000,
+							Protocol:      corev1.ProtocolTCP,
+						},
+					},
 					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "data",
+							MountPath: "/home/app/data",
+							ReadOnly:  true,
+						},
 						{
 							Name:      "trace",
 							MountPath: "/trace",
 						},
+						{
+							Name:      "upgrades-config",
+							MountPath: "/config",
+						},
 					},
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    initContainerCpuResources,
-							corev1.ResourceMemory: initContainerMemoryResources,
+					Env: []corev1.EnvVar{
+						{
+							Name:  "BLOCK_THRESHOLD",
+							Value: chainNode.Spec.Config.GetBlockThreshold(),
 						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    initContainerCpuResources,
-							corev1.ResourceMemory: initContainerMemoryResources,
+						{
+							Name:  "LOG_LEVEL",
+							Value: chainNode.Spec.Config.GetNodeUtilsLogLevel(),
 						},
+						{
+							Name:  "TMKMS_PROXY",
+							Value: strconv.FormatBool(chainNode.IsValidator() && chainNode.UsesTmKms()),
+						},
+						{
+							Name:  "CREATE_FIFO",
+							Value: "true",
+						},
+						{
+							Name:  "TRACE_STORE",
+							Value: "/trace/trace.fifo",
+						},
+					},
+					Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
+					ReadinessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/must_upgrade",
+								Port: intstr.IntOrString{
+									Type:   intstr.Int,
+									IntVal: nodeUtilsPort,
+								},
+								Scheme: "HTTP",
+							},
+						},
+						FailureThreshold: 1,
+						PeriodSeconds:    2,
 					},
 				},
 			},
@@ -400,62 +457,6 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						TimeoutSeconds:   readinessProbeTimeoutSeconds,
 					},
 					Resources: chainNode.Spec.Resources,
-				},
-				{
-					Name:            nodeUtilsContainerName,
-					Image:           r.opts.NodeUtilsImage,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Ports: []corev1.ContainerPort{
-						{
-							Name:          nodeUtilsPortName,
-							ContainerPort: 8000,
-							Protocol:      corev1.ProtocolTCP,
-						},
-					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app/data",
-							ReadOnly:  true,
-						},
-						{
-							Name:      "trace",
-							MountPath: "/trace",
-						},
-						{
-							Name:      "upgrades-config",
-							MountPath: "/config",
-						},
-					},
-					Env: []corev1.EnvVar{
-						{
-							Name:  "BLOCK_THRESHOLD",
-							Value: chainNode.Spec.Config.GetBlockThreshold(),
-						},
-						{
-							Name:  "LOG_LEVEL",
-							Value: chainNode.Spec.Config.GetNodeUtilsLogLevel(),
-						},
-						{
-							Name:  "TMKMS_PROXY",
-							Value: strconv.FormatBool(chainNode.IsValidator() && chainNode.UsesTmKms()),
-						},
-					},
-					Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
-					ReadinessProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/must_upgrade",
-								Port: intstr.IntOrString{
-									Type:   intstr.Int,
-									IntVal: nodeUtilsPort,
-								},
-								Scheme: "HTTP",
-							},
-						},
-						FailureThreshold: 1,
-						PeriodSeconds:    2,
-					},
 				},
 			},
 		},

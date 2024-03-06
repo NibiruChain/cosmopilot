@@ -190,7 +190,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Ensure pod is running
-	if err := r.ensurePod(ctx, chainNode, configHash); err != nil {
+	if err := r.ensurePod(ctx, app, chainNode, configHash); err != nil {
 		return ctrl.Result{}, err
 	}
 

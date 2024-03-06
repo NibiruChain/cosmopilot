@@ -200,7 +200,7 @@ func (chainNode *ChainNode) GetAppVersion() string {
 	version := chainNode.Spec.App.GetImageVersion()
 	var h int64 = 0
 	for _, u := range chainNode.Status.Upgrades {
-		if (u.Status == UpgradeCompleted || u.Status == UpgradeSkipped) && u.Height > h && u.Height <= chainNode.Status.LatestHeight {
+		if (u.Status == UpgradeCompleted || u.Status == UpgradeSkipped || u.Status == UpgradeOnGoing) && u.Height > h && u.Height <= chainNode.Status.LatestHeight {
 			h = u.Height
 			version = u.GetVersion()
 		}
