@@ -43,31 +43,6 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
-	if chainNode.Spec.Genesis.ConfigMap != nil {
-		logger.Info("loading genesis from configmap", "configmap", *chainNode.Spec.Genesis.ConfigMap)
-		genesis, err := app.LoadGenesisFromConfigMap(ctx, *chainNode.Spec.Genesis.ConfigMap)
-		if err != nil {
-			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
-			return err
-		}
-
-		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
-		if err != nil {
-			return err
-		}
-
-		r.recorder.Eventf(chainNode,
-			corev1.EventTypeNormal,
-			appsv1.ReasonGenesisImported,
-			"Genesis imported from ConfigMap",
-		)
-
-		// update chainID in status
-		logger.Info("updating .status.chainID", "chainID", chainID)
-		chainNode.Status.ChainID = chainID
-		return r.Status().Update(ctx, chainNode)
-	}
-
 	var genesis string
 	var err error
 
@@ -103,6 +78,30 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 			"Genesis downloaded using specified RPC node",
 		)
 
+	case chainNode.Spec.Genesis.ConfigMap != nil:
+		logger.Info("loading genesis from configmap", "configmap", *chainNode.Spec.Genesis.ConfigMap)
+		genesis, err = app.LoadGenesisFromConfigMap(ctx, *chainNode.Spec.Genesis.ConfigMap)
+		if err != nil {
+			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			return err
+		}
+
+		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
+		if err != nil {
+			return err
+		}
+
+		r.recorder.Eventf(chainNode,
+			corev1.EventTypeNormal,
+			appsv1.ReasonGenesisImported,
+			"Genesis imported from ConfigMap",
+		)
+
+		// update chainID in status
+		logger.Info("updating .status.chainID", "chainID", chainID)
+		chainNode.Status.ChainID = chainID
+		return r.Status().Update(ctx, chainNode)
+
 	default:
 		return fmt.Errorf("genesis could not be retrived using any of the available methods")
 	}
@@ -114,11 +113,11 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 
 	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
 		pvc := &corev1.PersistentVolumeClaim{}
-		if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
+		if err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
 			return err
 		}
 		logger.Info("writing genesis to data volume", "pvc", pvc.GetName())
-		if err := k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).
+		if err = k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).
 			WriteToFile(ctx, genesis, chainutils.GenesisFilename); err != nil {
 			return err
 		}
@@ -127,18 +126,18 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		cm := &corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-genesis", chainID),
+				Name:      chainNode.Spec.Genesis.GetConfigMapName(chainID),
 				Namespace: chainNode.Namespace,
 				Labels:    WithChainNodeLabels(chainNode),
 			},
 			Data: map[string]string{chainutils.GenesisFilename: genesis},
 		}
-		if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 			return err
 		}
 
 		logger.Info("creating genesis configmap", "configmap", cm.GetName())
-		if err := r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
+		if err = r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
 			return err
 		}
 	}
@@ -225,17 +224,17 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-genesis", chainNode.Spec.Validator.Init.ChainID),
+			Name:      chainNode.Spec.Genesis.GetConfigMapName(chainNode.Spec.Validator.Init.ChainID),
 			Namespace: chainNode.Namespace,
 		},
 		Data: map[string]string{chainutils.GenesisFilename: genesis},
 	}
-	if err := controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
+	if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 		return err
 	}
 
 	logger.Info("creating genesis configmap", "configmap", cm.GetName())
-	if err := r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
+	if err = r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 

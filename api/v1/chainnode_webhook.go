@@ -49,32 +49,9 @@ func (chainNode *ChainNode) Validate(old *ChainNode) (admission.Warnings, error)
 		return nil, fmt.Errorf("bad format for .spec.size: %v", err)
 	}
 
-	// Ensure a genesis is specified when .spec.validator.init is not. Also, that only one genesis
-	// retrieval method is used
-	if chainNode.Spec.Validator == nil || chainNode.Spec.Validator.Init == nil {
-		if chainNode.Spec.Genesis == nil {
-			return nil, fmt.Errorf(".spec.genesis is required except when initializing new genesis with .spec.validator.init")
-		}
-
-		counter := 0
-		if chainNode.Spec.Genesis.Url != nil {
-			counter += 1
-		}
-		if chainNode.Spec.Genesis.FromNodeRPC != nil {
-			counter += 1
-		}
-		if chainNode.Spec.Genesis.ConfigMap != nil {
-			counter += 1
-		}
-
-		if counter == 0 {
-			return nil, fmt.Errorf("a retrieval method must be specifyed on .spec.genesis")
-		}
-
-		if counter != 1 {
-			return nil, fmt.Errorf("only one retrieval method must be specifyed on .spec.genesis")
-		}
-
+	// Ensure a genesis is specified when .spec.validator.init is not.
+	if (chainNode.Spec.Validator == nil || chainNode.Spec.Validator.Init == nil) && chainNode.Spec.Genesis == nil {
+		return nil, fmt.Errorf(".spec.genesis is required except when initializing new genesis with .spec.validator.init")
 	}
 
 	// Do not accept both genesis and validator init

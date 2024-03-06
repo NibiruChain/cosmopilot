@@ -374,7 +374,7 @@ type AccountAssets struct {
 	Assets []string `json:"assets"`
 }
 
-// InitCommand represents an initialization command. It may be used for running addtional operators
+// InitCommand represents an initialization command. It may be used for running additional commands
 // on genesis or volume initialization.
 type InitCommand struct {
 	// Image to be used to run this command. Defaults to app image.
@@ -403,7 +403,8 @@ type GenesisConfig struct {
 	// +optional
 	GenesisSHA *string `json:"genesisSHA,omitempty"`
 
-	// ConfigMap specifies a configmap to load the genesis from.
+	// ConfigMap specifies a configmap to load the genesis from. It can also be used to specify the name of the
+	// configmap to store the genesis when retrieving genesis using other methods.
 	// +optional
 	ConfigMap *string `json:"configMap,omitempty"`
 

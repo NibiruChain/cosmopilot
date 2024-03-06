@@ -1807,7 +1807,8 @@ spec:
                 properties:
                   configMap:
                     description: ConfigMap specifies a configmap to load the genesis
-                      from.
+                      from. It can also be used to specify the name of the configmap
+                      to store the genesis when retrieving genesis using other methods.
                     type: string
                   fromNodeRPC:
                     description: Get the genesis from an existing node using its RPC
@@ -1884,7 +1885,7 @@ spec:
                       also `/temp`, a temporary volume shared by all init containers.
                     items:
                       description: InitCommand represents an initialization command.
-                        It may be used for running addtional operators on genesis
+                        It may be used for running additional commands on genesis
                         or volume initialization.
                       properties:
                         args:
@@ -2174,7 +2175,7 @@ spec:
                           volume shared by all init containers.'
                         items:
                           description: InitCommand represents an initialization command.
-                            It may be used for running addtional operators on genesis
+                            It may be used for running additional commands on genesis
                             or volume initialization.
                           properties:
                             args:

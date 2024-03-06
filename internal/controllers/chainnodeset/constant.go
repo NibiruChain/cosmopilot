@@ -4,6 +4,7 @@ import "time"
 
 const (
 	ChainNodeWaitTimeout = 3 * time.Minute
+	ChainNodeKind        = "ChainNode"
 
 	LabelChainNodeSet          = "nodeset"
 	LabelChainNodeSetGroup     = "group"

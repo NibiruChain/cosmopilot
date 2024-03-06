@@ -25,17 +25,28 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, nod
 	if nodeSet.Status.ChainID != "" {
 		cm := &corev1.ConfigMap{}
 		if err := r.Get(ctx, types.NamespacedName{
-			Name:      fmt.Sprintf("%s-genesis", nodeSet.Status.ChainID),
+			Name:      nodeSet.Spec.Genesis.GetConfigMapName(nodeSet.Status.ChainID),
 			Namespace: nodeSet.GetNamespace(),
 		}, cm); err != nil {
 			return err
 		}
 
-		if cm.OwnerReferences != nil && len(cm.OwnerReferences) > 0 && cm.OwnerReferences[0].UID == nodeSet.UID {
+		// If configmap has no owner, lets not touch it.
+		if cm.OwnerReferences == nil {
 			return nil
 		}
 
-		logger.Info("changing genesis configmap owner to chainnodeset")
+		// If configmap is owned by ChainNodeSet already, there is nothing to do.
+		if len(cm.OwnerReferences) > 0 && cm.OwnerReferences[0].UID == nodeSet.UID {
+			return nil
+		}
+
+		// If configmap has owner, but it's not of ChainNode kind, lets not touch it.
+		if len(cm.OwnerReferences) > 0 && cm.OwnerReferences[0].Kind != ChainNodeKind {
+			return nil
+		}
+
+		logger.Info("changing genesis configmap ownership to chainnodeset")
 		cm.OwnerReferences = nil
 		if err := controllerutil.SetControllerReference(nodeSet, cm, r.Scheme); err != nil {
 			return err
@@ -48,31 +59,6 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, nod
 
 func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSet *appsv1.ChainNodeSet) error {
 	logger := log.FromContext(ctx)
-
-	if nodeSet.Spec.Genesis.ConfigMap != nil {
-		logger.Info("loading genesis from configmap", "configmap", *nodeSet.Spec.Genesis.ConfigMap)
-		genesis, err := app.LoadGenesisFromConfigMap(ctx, *nodeSet.Spec.Genesis.ConfigMap)
-		if err != nil {
-			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
-			return err
-		}
-
-		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
-		if err != nil {
-			return err
-		}
-
-		r.recorder.Eventf(nodeSet,
-			corev1.EventTypeNormal,
-			appsv1.ReasonGenesisImported,
-			"Genesis imported from ConfigMap",
-		)
-
-		// update chainID in status
-		logger.Info("updating .status.chainID", "chainID", chainID)
-		nodeSet.Status.ChainID = chainID
-		return r.Status().Update(ctx, nodeSet)
-	}
 
 	var genesis string
 	var err error
@@ -109,6 +95,30 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSe
 			"Genesis downloaded using specified RPC node",
 		)
 
+	case nodeSet.Spec.Genesis.ConfigMap != nil:
+		logger.Info("loading genesis from configmap", "configmap", *nodeSet.Spec.Genesis.ConfigMap)
+		genesis, err = app.LoadGenesisFromConfigMap(ctx, *nodeSet.Spec.Genesis.ConfigMap)
+		if err != nil {
+			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			return err
+		}
+
+		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
+		if err != nil {
+			return err
+		}
+
+		r.recorder.Eventf(nodeSet,
+			corev1.EventTypeNormal,
+			appsv1.ReasonGenesisImported,
+			"Genesis imported from ConfigMap",
+		)
+
+		// update chainID in status
+		logger.Info("updating .status.chainID", "chainID", chainID)
+		nodeSet.Status.ChainID = chainID
+		return r.Status().Update(ctx, nodeSet)
+
 	default:
 		return fmt.Errorf("genesis could not be retrived using any of the available methods")
 	}
@@ -121,7 +131,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSe
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-genesis", chainID),
+			Name:      nodeSet.Spec.Genesis.GetConfigMapName(chainID),
 			Namespace: nodeSet.Namespace,
 			Labels:    utils.ExcludeMapKeys(nodeSet.ObjectMeta.Labels, controllers.LabelWorkerName),
 		},

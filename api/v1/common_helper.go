@@ -89,6 +89,13 @@ func (g *GenesisConfig) ShouldUseDataVolume() bool {
 	return false
 }
 
+func (g *GenesisConfig) GetConfigMapName(chainID string) string {
+	if g != nil && g.ConfigMap != nil {
+		return *g.ConfigMap
+	}
+	return fmt.Sprintf("%s-genesis", chainID)
+}
+
 // GetSidecarImagePullPolicy returns the pull policy to be used for the sidecar container image
 func (cfg *Config) GetSidecarImagePullPolicy(name string) corev1.PullPolicy {
 	if cfg == nil || cfg.Sidecars == nil {

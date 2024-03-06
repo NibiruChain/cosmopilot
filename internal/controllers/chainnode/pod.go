@@ -473,7 +473,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("%s-genesis", chainNode.Status.ChainID),
+						Name: chainNode.Spec.Genesis.GetConfigMapName(chainNode.Status.ChainID),
 					},
 				},
 			},
