@@ -325,11 +325,14 @@ func (kms *KMS) GetContainersSpec() []corev1.Container {
 		}
 	}
 
+	var sidecarRestartAlways = corev1.ContainerRestartPolicyAlways
+
 	containers := []corev1.Container{
 		{
 			Name:            tmkmsAppName,
 			Image:           kms.Config.Image,
 			ImagePullPolicy: corev1.PullAlways,
+			RestartPolicy:   &sidecarRestartAlways,
 			Args:            []string{"start", "-c", "/data/" + configFileName},
 			VolumeMounts:    volumeMounts,
 			Env: []corev1.EnvVar{

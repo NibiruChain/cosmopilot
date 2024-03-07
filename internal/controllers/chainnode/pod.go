@@ -522,12 +522,39 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		pod.Spec.ImagePullSecrets = chainNode.Spec.Config.ImagePullSecrets
 	}
 
+	if chainNode.IsValidator() {
+		if chainNode.UsesTmKms() {
+			kms, err := r.getTmkms(ctx, chainNode)
+			if err != nil {
+				return nil, err
+			}
+			pod.Spec.Volumes = append(pod.Spec.Volumes, kms.GetVolumes()...)
+			pod.Spec.InitContainers = append(pod.Spec.InitContainers, kms.GetContainersSpec()...)
+
+		} else {
+			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+				Name: "priv-key",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
+					},
+				},
+			})
+			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+				Name:      "priv-key",
+				MountPath: "/home/app/config/" + PrivKeyFilename,
+				SubPath:   PrivKeyFilename,
+			})
+		}
+	}
+
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Sidecars != nil {
 		for _, c := range chainNode.Spec.Config.Sidecars {
 			container := corev1.Container{
 				Name:            c.Name,
 				Image:           c.Image,
 				ImagePullPolicy: chainNode.Spec.Config.GetSidecarImagePullPolicy(c.Name),
+				RestartPolicy:   &sidecarRestartAlways,
 				Command:         c.Command,
 				Args:            c.Args,
 				Env:             c.Env,
@@ -545,33 +572,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				}
 			}
 
-			pod.Spec.Containers = append(pod.Spec.Containers, container)
-		}
-	}
-
-	if chainNode.IsValidator() {
-		if chainNode.UsesTmKms() {
-			kms, err := r.getTmkms(ctx, chainNode)
-			if err != nil {
-				return nil, err
-			}
-			pod.Spec.Volumes = append(pod.Spec.Volumes, kms.GetVolumes()...)
-			pod.Spec.Containers = append(pod.Spec.Containers, kms.GetContainersSpec()...)
-
-		} else {
-			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-				Name: "priv-key",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
-					},
-				},
-			})
-			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-				Name:      "priv-key",
-				MountPath: "/home/app/config/" + PrivKeyFilename,
-				SubPath:   PrivKeyFilename,
-			})
+			pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
 		}
 	}
 
