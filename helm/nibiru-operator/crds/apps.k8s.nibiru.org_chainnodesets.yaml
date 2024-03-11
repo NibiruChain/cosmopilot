@@ -149,6 +149,56 @@ spec:
                       than ConfigMap limit of 1MiB.
                     type: boolean
                 type: object
+              ingresses:
+                description: List of ingresses to create for this ChainNodeSet. This
+                  allows to create ingresses targeting multiple groups of nodes.
+                items:
+                  description: GlobalIngressConfig specifies configurations for ingress
+                    to expose API endpoints of several groups of nodes.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations to be appended to the ingress.
+                      type: object
+                    disableTLS:
+                      description: Whether to disable TLS on ingress resource.
+                      type: boolean
+                    enableGRPC:
+                      description: Enable gRPC endpoint.
+                      type: boolean
+                    enableLCD:
+                      description: Enable LCD endpoint.
+                      type: boolean
+                    enableRPC:
+                      description: Enable RPC endpoint.
+                      type: boolean
+                    groups:
+                      description: Groups of nodes to which this ingress will point
+                        to.
+                      items:
+                        type: string
+                      minItems: 1
+                      type: array
+                    host:
+                      description: Host in which endpoints will be exposed. Endpoints
+                        are exposed on corresponding subdomain of this host. An example
+                        host `nodes.example.com` will have endpoints exposed at `rpc.nodes.example.com`,
+                        `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+                      type: string
+                    name:
+                      description: The name of this ingress
+                      minLength: 1
+                      type: string
+                    tlsSecretName:
+                      description: Name of the secret containing TLS certificate.
+                      type: string
+                  required:
+                  - groups
+                  - host
+                  - name
+                  type: object
+                type: array
               nodes:
                 description: List of groups of ChainNodes to be run.
                 items:
@@ -1968,6 +2018,9 @@ spec:
                             example host `nodes.example.com` will have endpoints exposed
                             at `rpc.nodes.example.com`, `grpc.nodes.example.com` and
                             `lcd.nodes.example.com`.
+                          type: string
+                        tlsSecretName:
+                          description: Name of the secret containing TLS certificate.
                           type: string
                       required:
                       - host

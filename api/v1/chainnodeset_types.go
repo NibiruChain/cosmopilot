@@ -71,6 +71,11 @@ type ChainNodeSetSpec struct {
 	// does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`.
 	// +optional
 	RollingUpdates *bool `json:"rollingUpdates,omitempty"`
+
+	// List of ingresses to create for this ChainNodeSet. This allows to create ingresses targeting
+	// multiple groups of nodes.
+	// +optional
+	Ingresses []GlobalIngressConfig `json:"ingresses,omitempty"`
 }
 
 // ChainNodeSetStatus defines the observed state of ChainNodeSet.
@@ -274,4 +279,48 @@ type IngressConfig struct {
 	// Whether to disable TLS on ingress resource.
 	// +optional
 	DisableTLS bool `json:"disableTLS,omitempty"`
+
+	// Name of the secret containing TLS certificate.
+	// +optional
+	TlsSecretName *string `json:"tlsSecretName,omitempty"`
+}
+
+// GlobalIngressConfig specifies configurations for ingress to expose API endpoints of several groups of nodes.
+type GlobalIngressConfig struct {
+	// The name of this ingress
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// Groups of nodes to which this ingress will point to.
+	// +kubebuilder:validation:MinItems=1
+	Groups []string `json:"groups"`
+
+	// Enable RPC endpoint.
+	// +optional
+	EnableRPC bool `json:"enableRPC,omitempty"`
+
+	// Enable gRPC endpoint.
+	// +optional
+	EnableGRPC bool `json:"enableGRPC,omitempty"`
+
+	// Enable LCD endpoint.
+	// +optional
+	EnableLCD bool `json:"enableLCD,omitempty"`
+
+	// Host in which endpoints will be exposed. Endpoints are exposed on corresponding
+	// subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
+	// `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+	Host string `json:"host"`
+
+	// Annotations to be appended to the ingress.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Whether to disable TLS on ingress resource.
+	// +optional
+	DisableTLS bool `json:"disableTLS,omitempty"`
+
+	// Name of the secret containing TLS certificate.
+	// +optional
+	TlsSecretName *string `json:"tlsSecretName,omitempty"`
 }

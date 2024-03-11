@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +23,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/utils"
 	"github.com/NibiruChain/nibiru-operator/pkg/informer"
 )
 
@@ -239,6 +241,17 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			NodeSelector:     group.NodeSelector,
 			StateSyncRestore: group.StateSyncRestore,
 		},
+	}
+
+	globalIngressLabels := map[string]string{}
+	for _, ingress := range nodeSet.Spec.Ingresses {
+		if ingress.HasGroup(group.Name) {
+			globalIngressLabels[ingress.GetName(nodeSet)] = strconv.FormatBool(true)
+		}
+	}
+
+	if len(globalIngressLabels) > 0 {
+		node.Labels = utils.MergeMaps(node.Labels, globalIngressLabels)
 	}
 
 	// When enabling snapshots on a group, lets do it only for the first node of the group.

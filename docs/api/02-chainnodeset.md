@@ -9,6 +9,7 @@
 * [ChainNodeSetNodeStatus](#chainnodesetnodestatus)
 * [ChainNodeSetSpec](#chainnodesetspec)
 * [ChainNodeSetStatus](#chainnodesetstatus)
+* [GlobalIngressConfig](#globalingressconfig)
 * [IngressConfig](#ingressconfig)
 * [NodeGroupSpec](#nodegroupspec)
 * [NodeSetValidatorConfig](#nodesetvalidatorconfig)
@@ -91,6 +92,7 @@ ChainNodeSetSpec defines the desired state of ChainNode.
 | nodes | List of groups of ChainNodes to be run. | [][NodeGroupSpec](#nodegroupspec) | true |
 | serviceMonitor | Allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet. ServiceMonitor config on ChainNode overrides this one. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
 | rollingUpdates | Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. The operator will wait for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`. | *bool | false |
+| ingresses | List of ingresses to create for this ChainNodeSet. This allows to create ingresses targeting multiple groups of nodes. | [][GlobalIngressConfig](#globalingressconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -113,6 +115,24 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet.
 
 [Back to Custom Resources](#custom-resources)
 
+#### GlobalIngressConfig
+
+GlobalIngressConfig specifies configurations for ingress to expose API endpoints of several groups of nodes.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | The name of this ingress | string | true |
+| groups | Groups of nodes to which this ingress will point to. | []string | true |
+| enableRPC | Enable RPC endpoint. | bool | false |
+| enableGRPC | Enable gRPC endpoint. | bool | false |
+| enableLCD | Enable LCD endpoint. | bool | false |
+| host | Host in which endpoints will be exposed. Endpoints are exposed on corresponding subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`. | string | true |
+| annotations | Annotations to be appended to the ingress. | map[string]string | false |
+| disableTLS | Whether to disable TLS on ingress resource. | bool | false |
+| tlsSecretName | Name of the secret containing TLS certificate. | *string | false |
+
+[Back to Custom Resources](#custom-resources)
+
 #### IngressConfig
 
 IngressConfig specifies configurations for ingress to expose API endpoints.
@@ -125,6 +145,7 @@ IngressConfig specifies configurations for ingress to expose API endpoints.
 | host | Host in which endpoints will be exposed. Endpoints are exposed on corresponding subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`. | string | true |
 | annotations | Annotations to be appended to the ingress. | map[string]string | false |
 | disableTLS | Whether to disable TLS on ingress resource. | bool | false |
+| tlsSecretName | Name of the secret containing TLS certificate. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -2,8 +2,10 @@ package chainnode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,7 +14,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -175,6 +179,15 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 	if currentPod.Annotations[annotationConfigHash] != configHash {
 		logger.Info("config changed", "pod", pod.GetName())
 		return r.recreatePod(ctx, chainNode, pod)
+	}
+
+	// Patch pod without restart when labels change
+	if !reflect.DeepEqual(currentPod.Labels, pod.Labels) {
+		logger.Info("updating pod labels", "pod", pod.GetName())
+		modifiedPod := currentPod.DeepCopy()
+		modifiedPod.Labels = pod.Labels
+		_, err = r.PatchPod(ctx, currentPod, modifiedPod)
+		return err
 	}
 
 	if volumeSnapshotInProgress(chainNode) {
@@ -732,6 +745,28 @@ func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode
 	return true, r.setPhaseRunningOrSyncing(ctx, chainNode)
 }
 
+func (r *Reconciler) PatchPod(ctx context.Context, cur, mod *corev1.Pod) (*corev1.Pod, error) {
+	curJson, err := json.Marshal(cur)
+	if err != nil {
+		return nil, err
+	}
+
+	modJson, err := json.Marshal(mod)
+	if err != nil {
+		return nil, err
+	}
+
+	pa, err := strategicpatch.CreateTwoWayMergePatch(curJson, modJson, corev1.Pod{})
+	if err != nil {
+		return nil, err
+	}
+	if len(pa) == 0 || string(pa) == "{}" {
+		return cur, nil
+	}
+	return r.ClientSet.CoreV1().Pods(cur.GetNamespace()).
+		Patch(ctx, cur.GetName(), types.StrategicMergePatchType, pa, metav1.PatchOptions{})
+}
+
 func podSpecChanged(existing, new *corev1.Pod) bool {
 	// make copies
 	existingCopy := existing.DeepCopy()
@@ -739,6 +774,9 @@ func podSpecChanged(existing, new *corev1.Pod) bool {
 
 	// remove fields populated by kubernetes
 	removeFieldsForComparison(existingCopy)
+
+	// ignore labels because we can patch them without restart
+	existingCopy.Labels = newCopy.Labels
 
 	// order volume mounts
 	orderVolumeMounts(existingCopy)

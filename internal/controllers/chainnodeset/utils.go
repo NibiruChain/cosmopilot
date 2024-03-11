@@ -47,3 +47,21 @@ func WithChainNodeSetLabels(nodeSet *appsv1.ChainNodeSet, additional ...map[stri
 	}
 	return labels
 }
+
+func ContainsGroup(groups []appsv1.NodeGroupSpec, groupName string) bool {
+	for _, group := range groups {
+		if group.Name == groupName {
+			return true
+		}
+	}
+	return false
+}
+
+func ContainsGlobalIngress(ingresses []appsv1.GlobalIngressConfig, ingressName string) bool {
+	for _, ingress := range ingresses {
+		if ingress.Name == ingressName {
+			return true
+		}
+	}
+	return false
+}

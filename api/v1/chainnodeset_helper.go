@@ -78,6 +78,9 @@ func (group *NodeGroupSpec) GetInstances() int {
 }
 
 func (group *NodeGroupSpec) GetIngressSecretName(owner client.Object) string {
+	if group.Ingress != nil && group.Ingress.TlsSecretName != nil {
+		return *group.Ingress.TlsSecretName
+	}
 	return fmt.Sprintf("%s-%s-tls", owner.GetName(), group.Name)
 }
 
@@ -135,4 +138,43 @@ func (val *NodeSetValidatorConfig) GetInitVotingPeriod() string {
 		return *val.Init.VotingPeriod
 	}
 	return DefaultVotingPeriod
+}
+
+// Global Ingress helper methods
+
+func (gi *GlobalIngressConfig) GetName(owner client.Object) string {
+	return fmt.Sprintf("%s-global-%s", owner.GetName(), gi.Name)
+}
+
+func (gi *GlobalIngressConfig) GetGrpcName(owner client.Object) string {
+	return fmt.Sprintf("%s-global-%s-grpc", owner.GetName(), gi.Name)
+}
+
+func (gi *GlobalIngressConfig) GetTlsSecretName(owner client.Object) string {
+	if gi.TlsSecretName != nil {
+		return *gi.TlsSecretName
+	}
+	return fmt.Sprintf("%s-tls", gi.GetName(owner))
+}
+
+func (gi *GlobalIngressConfig) ShouldUseFirewallPorts(nodeSet *ChainNodeSet) bool {
+	for _, groupName := range gi.Groups {
+		for _, group := range nodeSet.Spec.Nodes {
+			if group.Name == groupName {
+				if group.Config != nil && group.Config.Firewall.Enabled() {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (gi *GlobalIngressConfig) HasGroup(name string) bool {
+	for _, groupName := range gi.Groups {
+		if groupName == name {
+			return true
+		}
+	}
+	return false
 }

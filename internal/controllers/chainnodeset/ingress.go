@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -18,6 +19,8 @@ import (
 )
 
 func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
+	logger := log.FromContext(ctx)
+
 	for _, group := range nodeSet.Spec.Nodes {
 		if group.Ingress == nil {
 			// let's try to delete ingresses if they exist
@@ -69,6 +72,68 @@ func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainN
 		}
 	}
 
+	for _, globalIngress := range nodeSet.Spec.Ingresses {
+		ingress, err := r.getGlobalIngressSpec(nodeSet, globalIngress)
+		if err != nil {
+			return err
+		}
+
+		if err = r.ensureIngress(ctx, ingress); err != nil {
+			return err
+		}
+
+		grpcIngress, err := r.getGrpcGlobalIngressSpec(nodeSet, globalIngress)
+		if err != nil {
+			return err
+		}
+
+		if !globalIngress.EnableGRPC {
+			if err = r.Delete(ctx, &v1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      globalIngress.GetGrpcName(nodeSet),
+					Namespace: nodeSet.Namespace,
+				},
+			}); err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+		} else {
+			if err = r.ensureIngress(ctx, grpcIngress); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Clean up if necessary
+	groupIngresses, err := r.listChainNodeSetIngresses(ctx, nodeSet, LabelScope, scopeGroup)
+	if err != nil {
+		return err
+	}
+
+	for _, ing := range groupIngresses.Items {
+		if _, ok := ing.Labels[LabelChainNodeSetGroup]; !ok ||
+			!ContainsGroup(nodeSet.Spec.Nodes, ing.Labels[LabelChainNodeSetGroup]) {
+			logger.Info("deleting ingress", "ingress", ing.GetName())
+			if err = r.Delete(ctx, &ing); err != nil {
+				return err
+			}
+		}
+	}
+
+	globalIngresses, err := r.listChainNodeSetIngresses(ctx, nodeSet, LabelScope, scopeGlobal)
+	if err != nil {
+		return err
+	}
+
+	for _, ing := range globalIngresses.Items {
+		if _, ok := ing.Labels[LabelGlobalIngress]; !ok ||
+			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, ing.Labels[LabelGlobalIngress]) {
+			logger.Info("deleting ingress", "ingress", ing.GetName())
+			if err = r.Delete(ctx, &ing); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -106,9 +171,13 @@ func (r *Reconciler) ensureIngress(ctx context.Context, ingress *v1.Ingress) err
 func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec) (*v1.Ingress, error) {
 	ingress := &v1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s", nodeSet.GetName(), group.Name),
-			Namespace:   nodeSet.GetNamespace(),
-			Labels:      WithChainNodeSetLabels(nodeSet),
+			Name:      fmt.Sprintf("%s-%s", nodeSet.GetName(), group.Name),
+			Namespace: nodeSet.GetNamespace(),
+			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
+				LabelChainNodeSet:      nodeSet.GetName(),
+				LabelChainNodeSetGroup: group.Name,
+				LabelScope:             scopeGroup,
+			}),
 			Annotations: group.Ingress.Annotations,
 		},
 		Spec: v1.IngressSpec{
@@ -197,9 +266,13 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 	pathType := v1.PathTypeImplementationSpecific
 	ingress := &v1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s-grpc", nodeSet.GetName(), group.Name),
-			Namespace:   nodeSet.GetNamespace(),
-			Labels:      WithChainNodeSetLabels(nodeSet),
+			Name:      fmt.Sprintf("%s-%s-grpc", nodeSet.GetName(), group.Name),
+			Namespace: nodeSet.GetNamespace(),
+			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
+				LabelChainNodeSet:      nodeSet.GetName(),
+				LabelChainNodeSetGroup: group.Name,
+				LabelScope:             scopeGroup,
+			}),
 			Annotations: nginxGrpcAnnotations,
 		},
 		Spec: v1.IngressSpec{
@@ -235,4 +308,163 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 		}
 	}
 	return ingress, controllerutil.SetControllerReference(nodeSet, ingress, r.Scheme)
+}
+
+func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIngress appsv1.GlobalIngressConfig) (*v1.Ingress, error) {
+	ingress := &v1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      globalIngress.GetName(nodeSet),
+			Namespace: nodeSet.GetNamespace(),
+			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
+				LabelChainNodeSet:  nodeSet.GetName(),
+				LabelGlobalIngress: globalIngress.Name,
+				LabelScope:         scopeGlobal,
+			}),
+			Annotations: globalIngress.Annotations,
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: pointer.String(ingressClassNameNginx),
+			Rules:            make([]v1.IngressRule, 0),
+		},
+	}
+
+	if !globalIngress.DisableTLS {
+		ingress.Spec.TLS = []v1.IngressTLS{
+			{
+				Hosts:      []string{},
+				SecretName: globalIngress.GetTlsSecretName(nodeSet),
+			},
+		}
+	}
+
+	pathType := v1.PathTypeImplementationSpecific
+
+	if globalIngress.EnableRPC {
+		host := fmt.Sprintf("rpc.%s", globalIngress.Host)
+		if ingress.Spec.TLS != nil {
+			ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		}
+		ingress.Spec.Rules = append(ingress.Spec.Rules, v1.IngressRule{
+			Host: host,
+			IngressRuleValue: v1.IngressRuleValue{
+				HTTP: &v1.HTTPIngressRuleValue{
+					Paths: []v1.HTTPIngressPath{
+						{
+							PathType: &pathType,
+							Backend: v1.IngressBackend{
+								Service: &v1.IngressServiceBackend{
+									Name: globalIngress.GetName(nodeSet),
+									Port: v1.ServiceBackendPort{
+										Number: chainutils.RpcPort,
+									},
+								},
+								Resource: nil,
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+
+	if globalIngress.EnableLCD {
+		host := fmt.Sprintf("lcd.%s", globalIngress.Host)
+		if ingress.Spec.TLS != nil {
+			ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		}
+		ingress.Spec.Rules = append(ingress.Spec.Rules, v1.IngressRule{
+			Host: host,
+			IngressRuleValue: v1.IngressRuleValue{
+				HTTP: &v1.HTTPIngressRuleValue{
+					Paths: []v1.HTTPIngressPath{
+						{
+							PathType: &pathType,
+							Backend: v1.IngressBackend{
+								Service: &v1.IngressServiceBackend{
+									Name: globalIngress.GetName(nodeSet),
+									Port: v1.ServiceBackendPort{
+										Number: chainutils.LcdPort,
+									},
+								},
+								Resource: nil,
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+
+	if globalIngress.EnableGRPC && !globalIngress.DisableTLS {
+		// We just append the hostname to TLS config and add no rule as it will be handled by a separate ingress
+		// but will use the same certificate
+		ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, fmt.Sprintf("grpc.%s", globalIngress.Host))
+	}
+
+	return ingress, controllerutil.SetControllerReference(nodeSet, ingress, r.Scheme)
+}
+
+func (r *Reconciler) getGrpcGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIngress appsv1.GlobalIngressConfig) (*v1.Ingress, error) {
+	pathType := v1.PathTypeImplementationSpecific
+	ingress := &v1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      globalIngress.GetGrpcName(nodeSet),
+			Namespace: nodeSet.GetNamespace(),
+			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
+				LabelChainNodeSet:  nodeSet.GetName(),
+				LabelGlobalIngress: globalIngress.Name,
+				LabelScope:         scopeGlobal,
+			}),
+			Annotations: nginxGrpcAnnotations,
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: pointer.String(ingressClassNameNginx),
+			Rules: []v1.IngressRule{
+				{
+					Host: fmt.Sprintf("grpc.%s", globalIngress.Host),
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{Paths: []v1.HTTPIngressPath{
+							{
+								PathType: &pathType,
+								Backend: v1.IngressBackend{
+									Service: &v1.IngressServiceBackend{
+										Name: globalIngress.GetName(nodeSet),
+										Port: v1.ServiceBackendPort{
+											Number: chainutils.GrpcPort,
+										},
+									},
+								},
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+
+	if !globalIngress.DisableTLS {
+		ingress.Spec.TLS = []v1.IngressTLS{
+			{
+				Hosts:      []string{fmt.Sprintf("grpc.%s", globalIngress.Host)},
+				SecretName: globalIngress.GetTlsSecretName(nodeSet),
+			},
+		}
+	}
+	return ingress, controllerutil.SetControllerReference(nodeSet, ingress, r.Scheme)
+}
+
+func (r *Reconciler) listChainNodeSetIngresses(ctx context.Context, nodeSet *appsv1.ChainNodeSet, l ...string) (*v1.IngressList, error) {
+	if len(l)%2 != 0 {
+		return nil, fmt.Errorf("list of labels must contain pairs of key-value")
+	}
+
+	selectorMap := map[string]string{LabelChainNodeSet: nodeSet.GetName()}
+	for i := 0; i < len(l); i += 2 {
+		selectorMap[l[i]] = l[i+1]
+	}
+
+	ingressList := &v1.IngressList{}
+	return ingressList, r.List(ctx, ingressList, &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(selectorMap),
+	})
 }
