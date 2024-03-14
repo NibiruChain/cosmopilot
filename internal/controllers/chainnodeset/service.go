@@ -49,6 +49,14 @@ func (r *Reconciler) ensureServices(ctx context.Context, nodeSet *appsv1.ChainNo
 		if err = r.ensureService(ctx, svc); err != nil {
 			return err
 		}
+
+		svc, err = r.getGlobalInternalServiceSpec(nodeSet, ingress)
+		if err != nil {
+			return err
+		}
+		if err = r.ensureService(ctx, svc); err != nil {
+			return err
+		}
 	}
 
 	// Clean up if necessary
@@ -176,7 +184,6 @@ func (r *Reconciler) getInternalServiceSpec(nodeSet *appsv1.ChainNodeSet, group 
 			}),
 		},
 		Spec: corev1.ServiceSpec{
-			PublishNotReadyAddresses: true,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       chainutils.RpcPortName,
@@ -250,6 +257,48 @@ func (r *Reconciler) getGlobalServiceSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 		svc.Spec.Ports[0].TargetPort = intstr.FromInt32(controllers.FirewallRpcPort)
 		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.FirewallLcdPort)
 		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.FirewallGrpcPort)
+	}
+
+	return svc, controllerutil.SetControllerReference(nodeSet, svc, r.Scheme)
+}
+
+func (r *Reconciler) getGlobalInternalServiceSpec(nodeSet *appsv1.ChainNodeSet, globalIngress appsv1.GlobalIngressConfig) (*corev1.Service, error) {
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-internal", globalIngress.GetName(nodeSet)),
+			Namespace: nodeSet.GetNamespace(),
+			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
+				LabelChainNodeSet:  nodeSet.GetName(),
+				LabelGlobalIngress: globalIngress.Name,
+				LabelScope:         scopeGlobal,
+			}),
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       chainutils.RpcPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.RpcPort,
+					TargetPort: intstr.FromInt32(chainutils.RpcPort),
+				},
+				{
+					Name:       chainutils.LcdPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.LcdPort,
+					TargetPort: intstr.FromInt32(chainutils.LcdPort),
+				},
+				{
+					Name:       chainutils.GrpcPortName,
+					Protocol:   corev1.ProtocolTCP,
+					Port:       chainutils.GrpcPort,
+					TargetPort: intstr.FromInt32(chainutils.GrpcPort),
+				},
+			},
+			Selector: map[string]string{
+				LabelChainNodeSet:              nodeSet.GetName(),
+				globalIngress.GetName(nodeSet): strconv.FormatBool(true),
+			},
+		},
 	}
 
 	return svc, controllerutil.SetControllerReference(nodeSet, svc, r.Scheme)
