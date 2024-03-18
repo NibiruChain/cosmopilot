@@ -337,6 +337,10 @@ func (r *Reconciler) createSnapshot(ctx context.Context, chainNode *appsv1.Chain
 }
 
 func shouldSnapshot(chainNode *appsv1.ChainNode) bool {
+	if chainNode.Status.Phase == appsv1.PhaseChainNodeSyncing && chainNode.Spec.Persistence.Snapshots.ShouldDisableWhileSyncing() {
+		return false
+	}
+
 	period, err := strfmt.ParseDuration(chainNode.Spec.Persistence.Snapshots.Frequency)
 	if err != nil {
 		return false

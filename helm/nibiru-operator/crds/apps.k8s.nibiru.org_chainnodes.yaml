@@ -1947,6 +1947,10 @@ spec:
                     description: Whether the operator should create volume snapshots
                       according to this config.
                     properties:
+                      disableWhileSyncing:
+                        description: Whether to disable snapshots while the node is
+                          syncing
+                        type: boolean
                       exportTarball:
                         description: Whether to create a tarball of data directory
                           in each snapshot and upload it to external storage.

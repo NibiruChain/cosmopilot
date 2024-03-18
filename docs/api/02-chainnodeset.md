@@ -552,5 +552,6 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 | stopNode | Whether the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
 | exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
 | verify | Whether the operator should verify the snapshot for corruption after it is ready. Defaults to `false`. | *bool | false |
+| disableWhileSyncing | Whether to disable snapshots while the node is syncing | *bool | false |
 
 [Back to Custom Resources](#custom-resources)

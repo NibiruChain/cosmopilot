@@ -644,6 +644,10 @@ type VolumeSnapshotsConfig struct {
 	// +optional
 	// +default=false
 	Verify *bool `json:"verify,omitempty"`
+
+	// Whether to disable snapshots while the node is syncing
+	// +optional
+	DisableWhileSyncing *bool `json:"disableWhileSyncing,omitempty"`
 }
 
 // PvcSnapshot represents a snapshot to be used to restore a PVC.
