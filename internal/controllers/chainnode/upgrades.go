@@ -50,6 +50,12 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 		if chainNode.Status.LatestHeight > u.Height {
 			u.Status = appsv1.UpgradeSkipped
 		}
+
+		// Maybe set this upgrade as gov planned upgraded
+		if upgrade.ForceGovUpgrade() {
+			u.Source = appsv1.OnChainUpgrade
+		}
+
 		chainNode.Status.Upgrades = AddOrUpdateUpgrade(chainNode.Status.Upgrades, u, chainNode.Status.LatestHeight)
 	}
 
@@ -191,6 +197,8 @@ func AddOrUpdateUpgrade(upgrades []appsv1.Upgrade, upgrade appsv1.Upgrade, curre
 			if u.Status != appsv1.UpgradeCompleted && u.Height < currentHeight {
 				upgrades[i].Status = appsv1.UpgradeSkipped
 			}
+
+			upgrades[i].Source = upgrade.Source
 			return upgrades
 		}
 	}

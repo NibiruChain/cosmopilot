@@ -95,17 +95,35 @@ func (s *NodeUtils) Start() error {
 
 			if trace.Metadata != nil {
 				s.latestBlockHeight.Swap(trace.Metadata.BlockHeight)
-				if s.upgradeChecker.ShouldUpgrade(s.latestBlockHeight.Load()) {
-					log.WithField("height", s.latestBlockHeight.Load()).Warn("stopping tracer to force application stop for upgrade")
-					s.requiresUpgrade = true
+				height := s.latestBlockHeight.Load()
+				if s.upgradeChecker.ShouldUpgrade(height) {
+					upgrade, _ := s.upgradeChecker.GetUpgrade(height)
 
-					// wait for upgrade-info.json to be written to disk
-					time.Sleep(5 * time.Second)
+					if upgrade.Source == OnChainUpgrade {
+						// wait for upgrade-info.json to be written to disk
+						log.WithField("height", height).Info("waiting for upgrade-info.json to be written to disk")
+						for {
+							hasUpgradeInfo, err := s.upgradeChecker.HasUpgradeInfo(height, s.cfg.DataPath)
+							if err != nil {
+								log.Errorf("failed to check if upgrade-info has expected upgrade: %v", err)
+								continue
+							}
 
-					err := s.StopNode()
-					if err != nil {
-						log.Errorf("failed to stop tracer: %v", err)
+							if hasUpgradeInfo {
+								break
+							}
+
+							time.Sleep(time.Second)
+						}
 					}
+
+					log.WithField("height", height).Warn("stopping tracer to force application stop for upgrade")
+					s.requiresUpgrade = true
+					err := s.StopNode()
+					if err == nil {
+						return
+					}
+					log.Errorf("failed to stop tracer: %v", err)
 				}
 			}
 		}

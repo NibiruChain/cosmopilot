@@ -7,13 +7,21 @@ import (
 	"os"
 	"path/filepath"
 
+	upgradeTypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
 )
 
+type UpgradeSource string
+
 const (
 	UpgradeCompleted = "completed"
 	UpgradeOnGoing   = "ongoing"
+
+	ManualUpgrade  UpgradeSource = "manual"
+	OnChainUpgrade UpgradeSource = "on-chain"
+
+	UpgradeInfoFile = "upgrade-info.json"
 )
 
 type UpgradeChecker struct {
@@ -26,8 +34,10 @@ type UpgradesConfig struct {
 }
 
 type Upgrade struct {
-	Height int64  `json:"height"`
-	Status string `json:"status"`
+	Height int64         `json:"height"`
+	Status string        `json:"status"`
+	Image  string        `json:"image"`
+	Source UpgradeSource `json:"source"`
 }
 
 func NewUpgradeChecker(configFile string) (*UpgradeChecker, error) {
@@ -92,4 +102,43 @@ func (u *UpgradeChecker) ShouldUpgrade(height int64) bool {
 		}
 	}
 	return false
+}
+
+func (u *UpgradeChecker) GetUpgrade(height int64) (*Upgrade, error) {
+	for _, upgrade := range u.config.Upgrades {
+		if upgrade.Height == height {
+			return &upgrade, nil
+		}
+	}
+	return nil, fmt.Errorf("upgrade not found")
+}
+
+func (u *UpgradeChecker) LoadPlan(upgradeInfoPath string) (*upgradeTypes.Plan, error) {
+	file, err := os.Open(upgradeInfoPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var plan upgradeTypes.Plan
+	if err = json.Unmarshal(bytes, &plan); err != nil {
+		return nil, err
+	}
+	return &plan, nil
+}
+
+func (u *UpgradeChecker) HasUpgradeInfo(height int64, path string) (bool, error) {
+	if _, err := os.Stat(filepath.Join(path, UpgradeInfoFile)); err == nil {
+		plan, err := u.LoadPlan(filepath.Join(path, UpgradeInfoFile))
+		if err != nil {
+			return false, err
+		}
+		return plan.Height == height, nil
+	}
+	return false, nil
 }

@@ -369,6 +369,13 @@ func (u *UpgradeSpec) GetVersion() string {
 	return DefaultImageVersion
 }
 
+func (u *UpgradeSpec) ForceGovUpgrade() bool {
+	if u != nil && u.ForceOnChain != nil {
+		return *u.ForceOnChain
+	}
+	return false
+}
+
 func (u *Upgrade) GetVersion() string {
 	if parts := strings.Split(u.Image, ":"); len(parts) == 2 {
 		return parts[1]

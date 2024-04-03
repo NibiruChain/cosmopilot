@@ -525,6 +525,7 @@ UpgradeSpec represents a manual upgrade.
 | ----- | ----------- | ------ | -------- |
 | height | Height at which the upgrade should occur. | int64 | true |
 | image | Container image replacement to be used in the upgrade. | string | true |
+| forceOnChain | Whether to force this upgrade to be processed as a gov planned upgrade. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

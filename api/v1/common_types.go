@@ -728,6 +728,11 @@ type UpgradeSpec struct {
 
 	// Container image replacement to be used in the upgrade.
 	Image string `json:"image"`
+
+	// Whether to force this upgrade to be processed as a gov planned upgrade.
+	// Defaults to `false`.
+	// +optional
+	ForceOnChain *bool `json:"forceOnChain,omitempty"`
 }
 
 // Upgrade represents an upgrade processed by the operator and added to status.
