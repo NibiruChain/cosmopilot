@@ -25,69 +25,153 @@ func (r *Reconciler) ensureTmKMSConfig(ctx context.Context, chainNode *appsv1.Ch
 		return nil
 	}
 
-	kms, err := r.getTmkms(ctx, chainNode)
+	provider, kms, err := r.getTmkms(chainNode)
 	if err != nil {
 		return err
 	}
 
-	return kms.DeployConfig(ctx)
+	if err = kms.DeployConfig(ctx); err != nil {
+		return err
+	}
+
+	// Provider specific operations
+	switch p := provider.(type) {
+	// NOTE: Vault is deprecated and will be removed in a future version
+	case *tmkms.VaultProvider:
+		if chainNode.ShouldUploadVaultKey() {
+			key, err := r.loadPrivKey(ctx, chainNode)
+			if err != nil {
+				return err
+			}
+
+			// If the key is empty, then it was uploaded already
+			if key == "" {
+				return nil
+			}
+
+			if err = p.UploadKey(ctx, kms, key); err != nil {
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeWarning,
+					appsv1.ReasonUploadFailure,
+					"failed to upload key: %v", err,
+				)
+				return err
+			}
+
+			if chainNode.Annotations == nil {
+				chainNode.Annotations = make(map[string]string)
+			}
+
+			chainNode.Annotations[annotationVaultKeyUploaded] = strconv.FormatBool(true)
+			return r.Update(ctx, chainNode)
+		}
+
+	case *tmkms.HashicorpProvider:
+		if chainNode.ShouldUploadVaultKey() {
+			key, err := r.loadPrivKey(ctx, chainNode)
+			if err != nil {
+				return err
+			}
+
+			// If the key is empty, then it was uploaded already
+			if key == "" {
+				return nil
+			}
+
+			if err = p.UploadKey(ctx, kms, key); err != nil {
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeWarning,
+					appsv1.ReasonUploadFailure,
+					"failed to upload key: %v", err,
+				)
+				return err
+			}
+
+			if chainNode.Annotations == nil {
+				chainNode.Annotations = make(map[string]string)
+			}
+
+			chainNode.Annotations[annotationVaultKeyUploaded] = strconv.FormatBool(true)
+			return r.Update(ctx, chainNode)
+		}
+	}
+
+	return nil
 }
 
-func (r *Reconciler) getTmkms(ctx context.Context, chainNode *appsv1.ChainNode) (*tmkms.KMS, error) {
+func (r *Reconciler) getTmkms(chainNode *appsv1.ChainNode) (tmkms.Provider, *tmkms.KMS, error) {
 	if !chainNode.UsesTmKms() {
-		return nil, fmt.Errorf("no tmkms configuration available in chainnode")
+		return nil, nil, fmt.Errorf("no tmkms configuration available in chainnode")
 	}
 
-	var providerConfig tmkms.Option
-	switch provider := chainNode.Spec.Validator.TmKMS.Provider; {
-	case provider.Vault != nil:
-		providerConfig = tmkms.WithVaultProvider(
+	var tmkmsOptions []tmkms.Option
+
+	var provider tmkms.Provider
+	switch providerCfg := chainNode.Spec.Validator.TmKMS.Provider; {
+
+	// Deprecated: Vault is deprecated and will be removed in a future version
+	case providerCfg.Vault != nil:
+		provider = tmkms.NewVaultProvider(
 			chainNode.Status.ChainID,
-			provider.Vault.Address,
-			provider.Vault.Key,
-			provider.Vault.TokenSecret,
-			provider.Vault.CertificateSecret,
-			provider.Vault.AutoRenewToken,
+			providerCfg.Vault.Address,
+			providerCfg.Vault.Key,
+			providerCfg.Vault.TokenSecret,
+			providerCfg.Vault.CertificateSecret,
+			providerCfg.Vault.AutoRenewToken,
 		)
-		if chainNode.ShouldUploadVaultKey() {
-			if err := r.ensureTmkmsVaultUploadKey(ctx, chainNode); err != nil {
-				return nil, err
-			}
-		}
+		tmkmsOptions = append(tmkmsOptions, tmkms.WithProvider(provider))
+
+		// TODO: remove this when we have official release of tmkms (see https://github.com/iqlusioninc/tmkms/pull/843)
+		tmkmsOptions = append(tmkmsOptions, tmkms.WithImage("ghcr.io/nibiruchain/tmkms:vault"))
+
+	case providerCfg.Hashicorp != nil:
+		provider = tmkms.NewHashicorpProvider(
+			chainNode.Status.ChainID,
+			providerCfg.Hashicorp.Address,
+			providerCfg.Hashicorp.Key,
+			providerCfg.Hashicorp.TokenSecret,
+			providerCfg.Hashicorp.CertificateSecret,
+			providerCfg.Hashicorp.AutoRenewToken,
+			providerCfg.Hashicorp.SkipCertificateVerify,
+		)
+		tmkmsOptions = append(tmkmsOptions, tmkms.WithProvider(provider))
+
+		// TODO: remove this when we have official release of tmkms (see https://github.com/iqlusioninc/tmkms/pull/843)
+		tmkmsOptions = append(tmkmsOptions, tmkms.WithImage("ghcr.io/nibiruchain/tmkms:new-vault"))
+
 	default:
-		return nil, fmt.Errorf("no supported provider configured")
+		return nil, nil, fmt.Errorf("no supported provider configured")
 	}
 
-	chainConfig := tmkms.WithChain(
+	tmkmsOptions = append(tmkmsOptions, tmkms.WithChain(
 		chainNode.Status.ChainID,
 		tmkms.WithKeyFormat(
 			chainNode.Spec.Validator.TmKMS.GetKeyFormat().Type,
 			chainNode.Spec.Validator.TmKMS.GetKeyFormat().AccountKeyPrefix,
 			chainNode.Spec.Validator.TmKMS.GetKeyFormat().ConsensusKeyPrefix,
 		),
-	)
+	))
 
-	validatorConfig := tmkms.WithValidator(
+	tmkmsOptions = append(tmkmsOptions, tmkms.WithValidator(
 		chainNode.Status.ChainID,
 		fmt.Sprintf("tcp://localhost:%d", chainutils.PrivValPort),
 		tmkms.WithProtocolVersion(chainNode.Spec.Validator.TmKMS.GetProtocolVersion()),
-	)
+	))
 
-	return tmkms.New(
+	tmkmsOptions = append(tmkmsOptions, tmkms.PersistState(chainNode.Spec.Validator.TmKMS.ShouldPersistState()))
+
+	return provider, tmkms.New(
 		r.ClientSet,
 		r.Scheme,
 		fmt.Sprintf("%s-tmkms", chainNode.GetName()),
 		chainNode,
-		tmkms.PersistState(chainNode.Spec.Validator.TmKMS.ShouldPersistState()),
-		chainConfig,
-		validatorConfig,
-		providerConfig), nil
+		tmkmsOptions...), nil
 }
 
-func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *appsv1.ChainNode) error {
+func (r *Reconciler) loadPrivKey(ctx context.Context, chainNode *appsv1.ChainNode) (string, error) {
 	uploaded, ok := chainNode.Annotations[annotationVaultKeyUploaded]
 	if ok && uploaded == strconv.FormatBool(true) {
-		return nil
+		return "", nil
 	}
 
 	secret := &corev1.Secret{}
@@ -96,52 +180,18 @@ func (r *Reconciler) ensureTmkmsVaultUploadKey(ctx context.Context, chainNode *a
 		Name:      chainNode.Spec.Validator.GetPrivKeySecretName(chainNode),
 	}, secret)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	data, ok := secret.Data[PrivKeyFilename]
 	if !ok {
-		return fmt.Errorf("%s is not present in the secret", PrivKeyFilename)
+		return "", fmt.Errorf("%s is not present in the secret", PrivKeyFilename)
 	}
 
 	privKey, err := cometbft.LoadPrivKey(data)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	err = tmkms.New(r.ClientSet, r.Scheme, fmt.Sprintf("%s-tmkms", chainNode.GetName()), chainNode,
-		tmkms.PersistState(chainNode.Spec.Validator.TmKMS.ShouldPersistState()),
-		tmkms.WithChain(chainNode.Status.ChainID),
-		tmkms.WithValidator(chainNode.Status.ChainID,
-			fmt.Sprintf("tcp://%s:%d", chainNode.GetNodeFQDN(), chainutils.PrivValPort),
-		),
-		tmkms.WithVaultProvider(
-			chainNode.Status.ChainID,
-			chainNode.Spec.Validator.TmKMS.Provider.Vault.Address,
-			chainNode.Spec.Validator.TmKMS.Provider.Vault.Key,
-			chainNode.Spec.Validator.TmKMS.Provider.Vault.TokenSecret,
-			chainNode.Spec.Validator.TmKMS.Provider.Vault.CertificateSecret,
-			chainNode.Spec.Validator.TmKMS.Provider.Vault.AutoRenewToken,
-		)).UploadKeyToVault(ctx,
-		chainNode.Spec.Validator.TmKMS.Provider.Vault.Key,
-		privKey.PrivKey.Value,
-		chainNode.Spec.Validator.TmKMS.Provider.Vault.Address,
-		chainNode.Spec.Validator.TmKMS.Provider.Vault.TokenSecret,
-		chainNode.Spec.Validator.TmKMS.Provider.Vault.CertificateSecret,
-	)
-	if err != nil {
-		r.recorder.Eventf(chainNode,
-			corev1.EventTypeWarning,
-			appsv1.ReasonUploadFailure,
-			"failed to upload key: %v", err,
-		)
-		return err
-	}
-
-	if chainNode.Annotations == nil {
-		chainNode.Annotations = make(map[string]string)
-	}
-
-	chainNode.Annotations[annotationVaultKeyUploaded] = strconv.FormatBool(true)
-	return r.Update(ctx, chainNode)
+	return privKey.PrivKey.Value, nil
 }

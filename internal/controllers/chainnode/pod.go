@@ -537,7 +537,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 
 	if chainNode.IsValidator() {
 		if chainNode.UsesTmKms() {
-			kms, err := r.getTmkms(ctx, chainNode)
+			_, kms, err := r.getTmkms(chainNode)
 			if err != nil {
 				return nil, err
 			}

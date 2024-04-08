@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	DefaultTmKmsImage = "ghcr.io/nibiruchain/tmkms:vault"
+	DefaultTmKmsImage = "ghcr.io/iqlusioninc/tmkms"
 	configFileName    = "config.toml"
 	tmkmsAppName      = "tmkms"
 	identityKeyName   = "kms-identity.key"
@@ -46,5 +46,14 @@ func WithImage(s string) Option {
 func PersistState(b bool) Option {
 	return func(cfg *Config) {
 		cfg.PersistState = b
+	}
+}
+
+func WithProvider(p Provider) Option {
+	return func(cfg *Config) {
+		if _, ok := cfg.Providers[hashicorpProviderName]; !ok {
+			cfg.Providers[hashicorpProviderName] = make([]Provider, 0)
+		}
+		cfg.Providers[hashicorpProviderName] = append(cfg.Providers[hashicorpProviderName], p)
 	}
 }

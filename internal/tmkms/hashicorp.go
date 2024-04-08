@@ -3,46 +3,85 @@ package tmkms
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/NibiruChain/nibiru-operator/internal/k8s"
 )
 
-type VaultProvider struct {
-	ChainID           string                    `toml:"chain_id"`
-	Address           string                    `toml:"api_endpoint"`
-	Key               string                    `toml:"pk_name"`
+const (
+	hashicorpProviderName = "hashicorp"
+	hashicorpMountDir     = "/vault/"
+
+	tokenRenewerCpu    = "100m"
+	tokenRenewerMemory = "64Mi"
+)
+
+var (
+	tokenRenewerCpuResources    = resource.MustParse(tokenRenewerCpu)
+	tokenRenewerMemoryResources = resource.MustParse(tokenRenewerMemory)
+)
+
+type HashicorpProvider struct {
+	Keys    []*HashicorpKey   `toml:"keys"`
+	Adapter *HashicorpAdapter `toml:"adapter"`
+
 	CertificateSecret *corev1.SecretKeySelector `toml:"-"`
 	TokenSecret       *corev1.SecretKeySelector `toml:"-"`
-	TokenFile         string                    `toml:"token_file"`
-	CaCert            string                    `toml:"ca_cert"`
 	AutoRenewToken    bool                      `toml:"-"`
 }
 
-func NewVaultProvider(chainID, address, key string, token, ca *corev1.SecretKeySelector, autoRenewToken bool) Provider {
-	vault := &VaultProvider{
-		ChainID:           chainID,
-		Address:           address,
-		Key:               key,
-		CertificateSecret: ca,
-		TokenSecret:       token,
-		TokenFile:         hashicorpMountDir + token.Key,
-		AutoRenewToken:    autoRenewToken,
-	}
-	if ca == nil {
-		vault.CaCert = ""
-	} else {
-		vault.CaCert = hashicorpMountDir + ca.Key
-	}
-
-	return vault
+type HashicorpKey struct {
+	ChainID string         `toml:"chain_id"`
+	Key     string         `toml:"key"`
+	Auth    *HashicorpAuth `toml:"auth"`
 }
 
-func (v VaultProvider) getVolumes() []corev1.Volume {
+type HashicorpAuth struct {
+	AccessToken     string `toml:"access_token,omitempty"`
+	AccessTokenFile string `toml:"access_token_file,omitempty"`
+}
+
+type HashicorpAdapter struct {
+	VaultAddress    string `toml:"vault_addr"`
+	VaultCaCert     string `toml:"vault_cacert,omitempty"`
+	VaultSkipVerify bool   `toml:"vault_skip_verify,omitempty"`
+}
+
+func NewHashicorpProvider(chainID, address, key string, token, ca *corev1.SecretKeySelector, autoRenewToken, skipVerify bool) Provider {
+	hashicorp := &HashicorpProvider{
+		Keys: []*HashicorpKey{
+			{
+				ChainID: chainID,
+				Key:     key,
+				Auth: &HashicorpAuth{
+					AccessTokenFile: hashicorpMountDir + token.Key,
+				},
+			},
+		},
+		Adapter: &HashicorpAdapter{
+			VaultAddress:    address,
+			VaultCaCert:     "",
+			VaultSkipVerify: skipVerify,
+		},
+		CertificateSecret: ca,
+		TokenSecret:       token,
+		AutoRenewToken:    autoRenewToken,
+	}
+
+	if ca != nil {
+		hashicorp.Adapter.VaultCaCert = hashicorpMountDir + ca.Key
+	}
+
+	return hashicorp
+}
+
+func (v HashicorpProvider) getVolumes() []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
 			Name: "vault-token",
@@ -68,7 +107,7 @@ func (v VaultProvider) getVolumes() []corev1.Volume {
 	return volumes
 }
 
-func (v VaultProvider) getVolumeMounts() []corev1.VolumeMount {
+func (v HashicorpProvider) getVolumeMounts() []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "vault-token",
@@ -89,7 +128,7 @@ func (v VaultProvider) getVolumeMounts() []corev1.VolumeMount {
 	return volumeMounts
 }
 
-func (v VaultProvider) getContainers() []corev1.Container {
+func (v HashicorpProvider) getContainers() []corev1.Container {
 	var containers []corev1.Container
 
 	if v.AutoRenewToken {
@@ -99,11 +138,15 @@ func (v VaultProvider) getContainers() []corev1.Container {
 			Env: []corev1.EnvVar{
 				{
 					Name:  "VAULT_ADDR",
-					Value: v.Address,
+					Value: v.Adapter.VaultAddress,
 				},
 				{
 					Name:  "VAULT_TOKEN_PATH",
 					Value: hashicorpMountDir + v.TokenSecret.Key,
+				},
+				{
+					Name:  "VAULT_SKIP_VERIFY",
+					Value: strconv.FormatBool(v.Adapter.VaultSkipVerify),
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
@@ -144,7 +187,12 @@ func (v VaultProvider) getContainers() []corev1.Container {
 	return containers
 }
 
-func (v VaultProvider) UploadKey(ctx context.Context, kms *KMS, key string) error {
+func (v HashicorpProvider) UploadKey(ctx context.Context, kms *KMS, key string) error {
+	if len(v.Keys) != 1 {
+		return fmt.Errorf("config has no keys configured. this is not supposed to happen")
+	}
+	hashicorpKey := v.Keys[0]
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-vault-upload", kms.Name),
@@ -157,7 +205,17 @@ func (v VaultProvider) UploadKey(ctx context.Context, kms *KMS, key string) erro
 					Name: "vault-token",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: v.Key,
+							SecretName: v.TokenSecret.Name,
+						},
+					},
+				},
+				{
+					Name: "tmkms-config",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: kms.Name,
+							},
 						},
 					},
 				},
@@ -167,20 +225,16 @@ func (v VaultProvider) UploadKey(ctx context.Context, kms *KMS, key string) erro
 					Name:            tmkmsAppName,
 					Image:           kms.Config.Image,
 					ImagePullPolicy: corev1.PullAlways,
-					Args:            []string{"hashicorp", "upload", v.Key, "--payload", key},
-					Env: []corev1.EnvVar{
-						{
-							Name:  "VAULT_ADDR",
-							Value: v.Address,
-						},
-						{
-							Name: "VAULT_TOKEN",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: v.TokenSecret,
-							},
-						},
+					Args: []string{"hashicorp", "upload", hashicorpKey.Key,
+						"--payload", key,
+						"-c", "/data/" + configFileName,
 					},
 					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "tmkms-config",
+							MountPath: "/data/" + configFileName,
+							SubPath:   configFileName,
+						},
 						{
 							Name:      "vault-token",
 							ReadOnly:  true,
@@ -201,10 +255,6 @@ func (v VaultProvider) UploadKey(ctx context.Context, kms *KMS, key string) erro
 					SecretName: v.CertificateSecret.Name,
 				},
 			},
-		})
-		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "VAULT_CACERT",
-			Value: hashicorpMountDir + v.CertificateSecret.Key,
 		})
 		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 			Name:      "vault-ca-cert",

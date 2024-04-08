@@ -2349,8 +2349,81 @@ spec:
                         description: Signing provider to be used by tmkms. Currently
                           only `vault` is supported.
                         properties:
+                          hashicorp:
+                            description: Hashicorp provider.
+                            properties:
+                              address:
+                                description: Full address of the Vault cluster.
+                                type: string
+                              autoRenewToken:
+                                description: Whether to automatically renew vault
+                                  token. Defaults to `false`.
+                                type: boolean
+                              certificateSecret:
+                                description: Secret containing the CA certificate
+                                  of the Vault cluster.
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.  Must
+                                      be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info:
+                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind,
+                                      uid?'
+                                    type: string
+                                  optional:
+                                    description: Specify whether the Secret or its
+                                      key must be defined
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              key:
+                                description: Key to be used by this validator.
+                                type: string
+                              skipCertificateVerify:
+                                description: Whether to skip certificate verification.
+                                  Defaults to `false`.
+                                type: boolean
+                              tokenSecret:
+                                description: Secret containing the token to be used.
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.  Must
+                                      be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info:
+                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind,
+                                      uid?'
+                                    type: string
+                                  optional:
+                                    description: Specify whether the Secret or its
+                                      key must be defined
+                                    type: boolean
+                                required:
+                                - key
+                                type: object
+                                x-kubernetes-map-type: atomic
+                              uploadGenerated:
+                                description: UploadGenerated indicates if the controller
+                                  should upload the generated private key to vault.
+                                  Defaults to `false`. Will be set to `true` if this
+                                  validator is initializing a new genesis. This should
+                                  not be used in production.
+                                type: boolean
+                            required:
+                            - address
+                            - key
+                            - tokenSecret
+                            type: object
                           vault:
-                            description: Vault provider.
+                            description: 'Vault provider. Deprecated: use hashicorp
+                              instead. Will be removed in a future version.'
                             properties:
                               address:
                                 description: Full address of the Vault cluster.

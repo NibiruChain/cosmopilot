@@ -506,12 +506,16 @@ type TmKmsKeyFormat struct {
 
 // TmKmsProvider allows configuring providers for tmKMS. Note that only one should be configured.
 type TmKmsProvider struct {
-	// Vault provider.
+	// Hashicorp provider.
+	// +optional
+	Hashicorp *TmKmsHashicorpProvider `json:"hashicorp,omitempty"`
+
+	// Vault provider. Deprecated: use hashicorp instead. Will be removed in a future version.
 	// +optional
 	Vault *TmKmsVaultProvider `json:"vault,omitempty"`
 }
 
-// TmKmsVaultProvider holds `vault` provider specific configurations.
+// TmKmsVaultProvider holds `vault` provider specific configurations. Deprecated: please use hashicorp.
 type TmKmsVaultProvider struct {
 	// Full address of the Vault cluster.
 	Address string `json:"address"`
@@ -535,6 +539,36 @@ type TmKmsVaultProvider struct {
 	// Whether to automatically renew vault token. Defaults to `false`.
 	// +optional
 	AutoRenewToken bool `json:"autoRenewToken,omitempty"`
+}
+
+// TmKmsHashicorpProvider holds `hashicorp` provider specific configurations.
+type TmKmsHashicorpProvider struct {
+	// Full address of the Vault cluster.
+	Address string `json:"address"`
+
+	// Key to be used by this validator.
+	Key string `json:"key"`
+
+	// Secret containing the CA certificate of the Vault cluster.
+	// +optional
+	CertificateSecret *corev1.SecretKeySelector `json:"certificateSecret,omitempty"`
+
+	// Secret containing the token to be used.
+	TokenSecret *corev1.SecretKeySelector `json:"tokenSecret"`
+
+	// UploadGenerated indicates if the controller should upload the generated private key to vault.
+	// Defaults to `false`. Will be set to `true` if this validator is initializing a new genesis.
+	// This should not be used in production.
+	// +optional
+	UploadGenerated bool `json:"uploadGenerated,omitempty"`
+
+	// Whether to automatically renew vault token. Defaults to `false`.
+	// +optional
+	AutoRenewToken bool `json:"autoRenewToken,omitempty"`
+
+	// Whether to skip certificate verification. Defaults to `false`.
+	// +optional
+	SkipCertificateVerify bool `json:"skipCertificateVerify,omitempty"`
 }
 
 // StateSyncConfig holds configurations for enabling state-sync snapshots on a node.
