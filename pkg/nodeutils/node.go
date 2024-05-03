@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync/atomic"
-	"time"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -87,6 +86,7 @@ func (s *NodeUtils) Start() error {
 	go func() {
 		for trace := range s.tracer.Traces {
 			log.Trace(trace)
+			log.Trace(trace.Metadata)
 
 			if trace.Err != nil {
 				log.Errorf("error on trace: %v", trace.Err)
@@ -94,11 +94,18 @@ func (s *NodeUtils) Start() error {
 			}
 
 			if trace.Metadata != nil {
-				s.latestBlockHeight.Swap(trace.Metadata.BlockHeight)
+				heightUpdated := s.latestBlockHeight.CompareAndSwap(s.latestBlockHeight.Load(), trace.Metadata.BlockHeight)
 				height := s.latestBlockHeight.Load()
+
 				if s.upgradeChecker.ShouldUpgrade(height) {
 					upgrade, _ := s.upgradeChecker.GetUpgrade(height)
 
+					// If it's an on-chain upgrade, the application is supposed to panic and require the upgrade.
+					// Just in case, we still validate that the upgrade-info.json file contains the expected upgrade info
+					// for this height, before marking node-utils with upgrade required.
+					// In manual upgrades case, we don't assume the application will panic but still want to stop the node at the
+					// right height. However, application can send several traces with the same height, so if we want
+					// stop the node after the whole block is processed, let's do it on the first trace of the next height
 					if upgrade.Source == OnChainUpgrade {
 						// wait for upgrade-info.json to be written to disk
 						log.WithField("height", height).Info("waiting for upgrade-info.json to be written to disk")
@@ -110,20 +117,19 @@ func (s *NodeUtils) Start() error {
 							}
 
 							if hasUpgradeInfo {
+								s.requiresUpgrade = true
 								break
 							}
-
-							time.Sleep(time.Second)
 						}
+					} else if heightUpdated {
+						log.WithField("height", height).Warn("stopping tracer to force application stop for upgrade")
+						s.requiresUpgrade = true
+						err := s.StopNode()
+						if err == nil {
+							return
+						}
+						log.Errorf("failed to stop tracer: %v", err)
 					}
-
-					log.WithField("height", height).Warn("stopping tracer to force application stop for upgrade")
-					s.requiresUpgrade = true
-					err := s.StopNode()
-					if err == nil {
-						return
-					}
-					log.Errorf("failed to stop tracer: %v", err)
 				}
 			}
 		}

@@ -15,8 +15,7 @@ import (
 type UpgradeSource string
 
 const (
-	UpgradeCompleted = "completed"
-	UpgradeOnGoing   = "ongoing"
+	UpgradeScheduled = "scheduled"
 
 	ManualUpgrade  UpgradeSource = "manual"
 	OnChainUpgrade UpgradeSource = "on-chain"
@@ -94,19 +93,13 @@ func (u *UpgradeChecker) loadConfig() error {
 }
 
 func (u *UpgradeChecker) ShouldUpgrade(height int64) bool {
-	for _, upgrade := range u.config.Upgrades {
-		if upgrade.Height == height &&
-			upgrade.Status != UpgradeCompleted &&
-			upgrade.Status != UpgradeOnGoing {
-			return true
-		}
-	}
-	return false
+	_, err := u.GetUpgrade(height)
+	return err == nil
 }
 
 func (u *UpgradeChecker) GetUpgrade(height int64) (*Upgrade, error) {
 	for _, upgrade := range u.config.Upgrades {
-		if upgrade.Height == height {
+		if height >= upgrade.Height && upgrade.Status == UpgradeScheduled {
 			return &upgrade, nil
 		}
 	}
