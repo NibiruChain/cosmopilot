@@ -143,6 +143,10 @@ type ChainNodeSetNodeStatus struct {
 	// +optional
 	PublicAddress string `json:"publicAddress,omitempty"`
 
+	// Port to reach this node publicly.
+	// +optional
+	PublicPort string `json:"publicPort,omitempty"`
+
 	// P2P port for connecting to this node.
 	Port int `json:"port"`
 

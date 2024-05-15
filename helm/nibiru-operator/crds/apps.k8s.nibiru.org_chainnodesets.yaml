@@ -4767,6 +4767,9 @@ spec:
                     publicAddress:
                       description: Hostname or IP address to reach this node publicly.
                       type: string
+                    publicPort:
+                      description: Port to reach this node publicly.
+                      type: string
                     seed:
                       description: Indicates if this node is running in seed mode.
                       type: boolean
