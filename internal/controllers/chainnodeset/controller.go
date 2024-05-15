@@ -108,9 +108,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	// Make sure validator is set up first if it is configured
-	if err := r.ensureValidator(ctx, nodeSet); err != nil {
-		return ctrl.Result{}, err
+	// Start validator first if we are initializing a new genesis
+	if nodeSet.Status.Phase == appsv1.PhaseChainNodeSetRunning || nodeSet.ShouldInitGenesis() {
+		if err := r.ensureValidator(ctx, nodeSet); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if err := r.ensureGenesis(ctx, app, nodeSet); err != nil {
