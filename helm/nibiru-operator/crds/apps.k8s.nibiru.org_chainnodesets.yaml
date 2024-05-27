@@ -4769,7 +4769,7 @@ spec:
                       type: string
                     publicPort:
                       description: Port to reach this node publicly.
-                      type: string
+                      type: integer
                     seed:
                       description: Indicates if this node is running in seed mode.
                       type: boolean

@@ -140,7 +140,10 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 		}
 		if node.Status.PublicAddress != "" {
 			if parts := strings.Split(node.Status.PublicAddress, ":"); len(parts) == 2 {
-				publicPort := parts[1]
+				publicPort, err := strconv.Atoi(parts[1])
+				if err != nil {
+					return err
+				}
 				if parts = strings.Split(parts[0], "@"); len(parts) == 2 {
 					nodeStatus.Public = true
 					nodeStatus.PublicPort = publicPort

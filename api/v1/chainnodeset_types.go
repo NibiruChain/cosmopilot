@@ -145,7 +145,7 @@ type ChainNodeSetNodeStatus struct {
 
 	// Port to reach this node publicly.
 	// +optional
-	PublicPort string `json:"publicPort,omitempty"`
+	PublicPort int `json:"publicPort,omitempty"`
 
 	// P2P port for connecting to this node.
 	Port int `json:"port"`
