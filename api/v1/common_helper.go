@@ -172,6 +172,13 @@ func (cfg *Config) GetNodeUtilsResources() corev1.ResourceRequirements {
 	}
 }
 
+func (cfg *Config) IsEvmEnabled() bool {
+	if cfg != nil && cfg.EvmEnabled != nil {
+		return *cfg.EvmEnabled
+	}
+	return false
+}
+
 // Peer helper methods
 
 func (peer *Peer) GetPort() int {

@@ -16,6 +16,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 )
 
 func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
@@ -253,6 +254,34 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 		})
 	}
 
+	if group.Ingress.EnableEvmRPC {
+		host := fmt.Sprintf("evm-rpc.%s", group.Ingress.Host)
+		if ingress.Spec.TLS != nil {
+			ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		}
+		ingress.Spec.Rules = append(ingress.Spec.Rules, v1.IngressRule{
+			Host: host,
+			IngressRuleValue: v1.IngressRuleValue{
+				HTTP: &v1.HTTPIngressRuleValue{
+					Paths: []v1.HTTPIngressPath{
+						{
+							PathType: &pathType,
+							Backend: v1.IngressBackend{
+								Service: &v1.IngressServiceBackend{
+									Name: group.GetServiceName(nodeSet),
+									Port: v1.ServiceBackendPort{
+										Number: controllers.EvmRpcPort,
+									},
+								},
+								Resource: nil,
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+
 	if group.Ingress.EnableGRPC && !group.Ingress.DisableTLS {
 		// We just append the hostname to TLS config and add no rule as it will be handled by a separate ingress
 		// but will use the same certificate
@@ -384,6 +413,34 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 									Name: globalIngress.GetName(nodeSet),
 									Port: v1.ServiceBackendPort{
 										Number: chainutils.LcdPort,
+									},
+								},
+								Resource: nil,
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+
+	if globalIngress.EnableEvmRPC {
+		host := fmt.Sprintf("evm-rpc.%s", globalIngress.Host)
+		if ingress.Spec.TLS != nil {
+			ingress.Spec.TLS[0].Hosts = append(ingress.Spec.TLS[0].Hosts, host)
+		}
+		ingress.Spec.Rules = append(ingress.Spec.Rules, v1.IngressRule{
+			Host: host,
+			IngressRuleValue: v1.IngressRuleValue{
+				HTTP: &v1.HTTPIngressRuleValue{
+					Paths: []v1.HTTPIngressPath{
+						{
+							PathType: &pathType,
+							Backend: v1.IngressBackend{
+								Service: &v1.IngressServiceBackend{
+									Name: globalIngress.GetName(nodeSet),
+									Port: v1.ServiceBackendPort{
+										Number: controllers.EvmRpcPort,
 									},
 								},
 								Resource: nil,

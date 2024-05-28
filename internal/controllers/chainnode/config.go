@@ -51,6 +51,7 @@ var (
 			"address": "tcp://0.0.0.0:1317",
 		},
 		"grpc": map[string]interface{}{
+			"enable":  true,
 			"address": "0.0.0.0:9090",
 		},
 	}

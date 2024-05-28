@@ -1236,6 +1236,10 @@ spec:
                       - name
                       type: object
                     type: array
+                  evmEnabled:
+                    description: Whether EVM is enabled on this node. Will add evm-rpc
+                      port to services. Defaults to `false`.
+                    type: boolean
                   firewall:
                     description: Deploys cosmos-firewall to protect API endpoints
                       to the node.

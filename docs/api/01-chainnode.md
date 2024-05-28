@@ -170,6 +170,7 @@ Config allows setting specific configurations for a node, including overriding c
 | nodeUtilsResources | Compute Resources for node-utils container. | *corev1.ResourceRequirements | false |
 | persistAddressBook | Whether to persist address book file in data directory. Defaults to `false`. | *bool | false |
 | terminationGracePeriodSeconds | Optional duration in seconds the pod needs to terminate gracefully. | *int64 | false |
+| evmEnabled | Whether EVM is enabled on this node. Will add evm-rpc port to services. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

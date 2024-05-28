@@ -209,6 +209,10 @@ type Config struct {
 	// Optional duration in seconds the pod needs to terminate gracefully.
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+
+	// Whether EVM is enabled on this node. Will add evm-rpc port to services. Defaults to `false`.
+	// +optional
+	EvmEnabled *bool `json:"evmEnabled,omitempty"`
 }
 
 // FirewallConfig allows configuring cosmos-firewall rules.

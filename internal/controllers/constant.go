@@ -6,4 +6,7 @@ const (
 	FirewallGrpcPort        = 19090
 	FirewallMetricsPortName = "fw-metrics"
 	FirewallMetricsPort     = 9001
+
+	EvmRpcPortName = "evm-rpc"
+	EvmRpcPort     = 8546
 )

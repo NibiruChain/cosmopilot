@@ -271,6 +271,10 @@ type IngressConfig struct {
 	// +optional
 	EnableLCD bool `json:"enableLCD,omitempty"`
 
+	// Enable EVM RPC endpoint.
+	// +optional
+	EnableEvmRPC bool `json:"enableEvmRPC,omitempty"`
+
 	// Host in which endpoints will be exposed. Endpoints are exposed on corresponding
 	// subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
 	// `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
@@ -310,6 +314,10 @@ type GlobalIngressConfig struct {
 	// Enable LCD endpoint.
 	// +optional
 	EnableLCD bool `json:"enableLCD,omitempty"`
+
+	// Enable EVM RPC endpoint.
+	// +optional
+	EnableEvmRPC bool `json:"enableEvmRPC,omitempty"`
 
 	// Host in which endpoints will be exposed. Endpoints are exposed on corresponding
 	// subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at

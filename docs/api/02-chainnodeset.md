@@ -127,6 +127,7 @@ GlobalIngressConfig specifies configurations for ingress to expose API endpoints
 | enableRPC | Enable RPC endpoint. | bool | false |
 | enableGRPC | Enable gRPC endpoint. | bool | false |
 | enableLCD | Enable LCD endpoint. | bool | false |
+| enableEvmRPC | Enable EVM RPC endpoint. | bool | false |
 | host | Host in which endpoints will be exposed. Endpoints are exposed on corresponding subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`. | string | true |
 | annotations | Annotations to be appended to the ingress. | map[string]string | false |
 | disableTLS | Whether to disable TLS on ingress resource. | bool | false |
@@ -143,6 +144,7 @@ IngressConfig specifies configurations for ingress to expose API endpoints.
 | enableRPC | Enable RPC endpoint. | bool | false |
 | enableGRPC | Enable gRPC endpoint. | bool | false |
 | enableLCD | Enable LCD endpoint. | bool | false |
+| enableEvmRPC | Enable EVM RPC endpoint. | bool | false |
 | host | Host in which endpoints will be exposed. Endpoints are exposed on corresponding subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`. | string | true |
 | annotations | Annotations to be appended to the ingress. | map[string]string | false |
 | disableTLS | Whether to disable TLS on ingress resource. | bool | false |
@@ -240,6 +242,7 @@ Config allows setting specific configurations for a node, including overriding c
 | nodeUtilsResources | Compute Resources for node-utils container. | *corev1.ResourceRequirements | false |
 | persistAddressBook | Whether to persist address book file in data directory. Defaults to `false`. | *bool | false |
 | terminationGracePeriodSeconds | Optional duration in seconds the pod needs to terminate gracefully. | *int64 | false |
+| evmEnabled | Whether EVM is enabled on this node. Will add evm-rpc port to services. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

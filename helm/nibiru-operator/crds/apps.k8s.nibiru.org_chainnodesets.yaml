@@ -168,6 +168,9 @@ spec:
                     disableTLS:
                       description: Whether to disable TLS on ingress resource.
                       type: boolean
+                    enableEvmRPC:
+                      description: Enable EVM RPC endpoint.
+                      type: boolean
                     enableGRPC:
                       description: Enable gRPC endpoint.
                       type: boolean
@@ -1387,6 +1390,10 @@ spec:
                             - name
                             type: object
                           type: array
+                        evmEnabled:
+                          description: Whether EVM is enabled on this node. Will add
+                            evm-rpc port to services. Defaults to `false`.
+                          type: boolean
                         firewall:
                           description: Deploys cosmos-firewall to protect API endpoints
                             to the node.
@@ -2058,6 +2065,9 @@ spec:
                           type: object
                         disableTLS:
                           description: Whether to disable TLS on ingress resource.
+                          type: boolean
+                        enableEvmRPC:
+                          description: Enable EVM RPC endpoint.
                           type: boolean
                         enableGRPC:
                           description: Enable gRPC endpoint.
@@ -3519,6 +3529,10 @@ spec:
                           - name
                           type: object
                         type: array
+                      evmEnabled:
+                        description: Whether EVM is enabled on this node. Will add
+                          evm-rpc port to services. Defaults to `false`.
+                        type: boolean
                       firewall:
                         description: Deploys cosmos-firewall to protect API endpoints
                           to the node.

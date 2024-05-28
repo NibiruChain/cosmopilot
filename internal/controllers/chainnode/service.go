@@ -206,6 +206,15 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 		},
 	}
 
+	if chainNode.Spec.Config.IsEvmEnabled() {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       controllers.EvmRpcPortName,
+			Protocol:   corev1.ProtocolTCP,
+			Port:       controllers.EvmRpcPort,
+			TargetPort: intstr.FromInt32(controllers.EvmRpcPort),
+		})
+	}
+
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
 		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.FirewallRpcPort)
 		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.FirewallLcdPort)
@@ -271,6 +280,15 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 				LabelChainID: chainNode.Status.ChainID,
 			}),
 		},
+	}
+
+	if chainNode.Spec.Config.IsEvmEnabled() {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       controllers.EvmRpcPortName,
+			Protocol:   corev1.ProtocolTCP,
+			Port:       controllers.EvmRpcPort,
+			TargetPort: intstr.FromInt32(controllers.EvmRpcPort),
+		})
 	}
 
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
