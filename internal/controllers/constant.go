@@ -13,4 +13,7 @@ const (
 	EvmRpcPort       = 8545
 	EvmRpcWsPortName = "evm-rpc-ws"
 	EvmRpcWsPort     = 8546
+
+	AppTomlFile         = "app.toml"
+	MinimumGasPricesKey = "minimum-gas-prices"
 )

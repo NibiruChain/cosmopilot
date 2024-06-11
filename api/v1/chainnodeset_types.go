@@ -255,6 +255,11 @@ type NodeGroupSpec struct {
 	// This is disabled by default.
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
+
+	// Whether these nodes should inherit gas price from validator (if there is not configured on this ChainNodeSet)
+	// Defaults to `true`.
+	// +optional
+	InheritValidatorGasPrice *bool `json:"inheritValidatorGasPrice,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints.

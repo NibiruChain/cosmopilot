@@ -2097,6 +2097,11 @@ spec:
                       required:
                       - host
                       type: object
+                    inheritValidatorGasPrice:
+                      description: Whether these nodes should inherit gas price from
+                        validator (if there is not configured on this ChainNodeSet)
+                        Defaults to `true`.
+                      type: boolean
                     instances:
                       description: Number of ChainNode instances to run on this group.
                       type: integer

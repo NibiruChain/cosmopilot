@@ -2,6 +2,7 @@ package chainnodeset
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -23,6 +24,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
 	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	"github.com/NibiruChain/nibiru-operator/internal/controllers"
 	"github.com/NibiruChain/nibiru-operator/internal/utils"
 	"github.com/NibiruChain/nibiru-operator/pkg/informer"
 )
@@ -246,6 +248,38 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			NodeSelector:     group.NodeSelector,
 			StateSyncRestore: group.StateSyncRestore,
 		},
+	}
+
+	if nodeSet.HasValidator() && group.ShouldInheritValidatorGasPrice() {
+		price := nodeSet.GetValidatorMinimumGasPrices()
+		if price != "" {
+			data := map[string]string{
+				controllers.MinimumGasPricesKey: price,
+			}
+			dataBytes, _ := json.Marshal(data)
+
+			if node.Spec.Config == nil {
+				node.Spec.Config = &appsv1.Config{
+					Override: &map[string]runtime.RawExtension{
+						controllers.AppTomlFile: {Raw: dataBytes},
+					},
+				}
+			} else if node.Spec.Config.Override == nil {
+				node.Spec.Config.Override = &map[string]runtime.RawExtension{
+					controllers.AppTomlFile: {Raw: dataBytes},
+				}
+			} else {
+				cfg := *node.Spec.Config.Override
+				var cfgData map[string]interface{}
+				if err := json.Unmarshal(cfg[controllers.AppTomlFile].Raw, &cfgData); err != nil {
+					return nil, err
+				}
+
+				cfgData[controllers.MinimumGasPricesKey] = price
+				newDataBytes, _ := json.Marshal(cfgData)
+				cfg[controllers.AppTomlFile] = runtime.RawExtension{Raw: newDataBytes}
+			}
+		}
 	}
 
 	globalIngressLabels := map[string]string{}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/goccy/go-json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -73,6 +74,22 @@ func (nodeSet *ChainNodeSet) RollingUpdatesEnabled() bool {
 	return false
 }
 
+func (nodeSet *ChainNodeSet) GetValidatorMinimumGasPrices() string {
+	if nodeSet.HasValidator() && nodeSet.Spec.Validator.Config != nil && nodeSet.Spec.Validator.Config.Override != nil {
+		cfgOverride := *nodeSet.Spec.Validator.Config.Override
+		if cfgRaw, ok := cfgOverride["app.toml"]; ok {
+			var cfg map[string]interface{}
+			if err := json.Unmarshal(cfgRaw.Raw, &cfg); err != nil {
+				return ""
+			}
+			if price, ok := cfg["minimum-gas-prices"]; ok {
+				return price.(string)
+			}
+		}
+	}
+	return ""
+}
+
 // Node group methods
 
 func (group *NodeGroupSpec) GetInstances() int {
@@ -91,6 +108,13 @@ func (group *NodeGroupSpec) GetIngressSecretName(owner client.Object) string {
 
 func (group *NodeGroupSpec) GetServiceName(owner client.Object) string {
 	return fmt.Sprintf("%s-%s", owner.GetName(), group.Name)
+}
+
+func (group *NodeGroupSpec) ShouldInheritValidatorGasPrice() bool {
+	if group.InheritValidatorGasPrice != nil {
+		return *group.InheritValidatorGasPrice
+	}
+	return true
 }
 
 // Validator methods
