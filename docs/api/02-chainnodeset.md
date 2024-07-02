@@ -171,6 +171,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | nodeSelector | Selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. | map[string]string | false |
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
 | stateSyncRestore | Configures these nodes to find state-sync snapshots on the network and restore from it. This is disabled by default. | *bool | false |
+| inheritValidatorGasPrice | Whether these nodes should inherit gas price from validator (if there is not configured on this ChainNodeSet) Defaults to `true`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

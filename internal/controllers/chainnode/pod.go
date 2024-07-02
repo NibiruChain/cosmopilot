@@ -339,7 +339,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						},
 						{
 							Name:  "CREATE_FIFO",
-							Value: "true",
+							Value: StringValueTrue,
 						},
 						{
 							Name:  "TRACE_STORE",

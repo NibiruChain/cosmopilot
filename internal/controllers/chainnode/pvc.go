@@ -20,19 +20,6 @@ import (
 	"github.com/NibiruChain/nibiru-operator/pkg/nodeutils"
 )
 
-func (r *Reconciler) ensurePersistence(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
-	pvc, err := r.ensurePvc(ctx, chainNode)
-	if err != nil {
-		return err
-	}
-
-	if pvc.Annotations[annotationDataInitialized] != "true" {
-		return r.initializeData(ctx, app, chainNode, pvc)
-	}
-
-	return nil
-}
-
 func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, pvc *corev1.PersistentVolumeClaim) error {
 	logger := log.FromContext(ctx)
 
@@ -58,7 +45,7 @@ func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, ch
 	if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
 		return err
 	}
-	pvc.Annotations[annotationDataInitialized] = strconv.FormatBool(true)
+	pvc.Annotations[annotationDataInitialized] = StringValueTrue
 	if err := r.Update(ctx, pvc); err != nil {
 		return err
 	}
@@ -71,147 +58,166 @@ func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, ch
 	return r.Status().Update(ctx, chainNode)
 }
 
-func (r *Reconciler) ensurePvc(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.PersistentVolumeClaim, error) {
+func (r *Reconciler) ensurePvc(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (*corev1.PersistentVolumeClaim, error) {
 	logger := log.FromContext(ctx)
 
-	storageSize, err := r.getStorageSize(ctx, chainNode)
+	pvc, err := r.getPVC(ctx, chainNode)
 	if err != nil {
 		return nil, err
 	}
 
-	if chainNode.ShouldRestoreFromSnapshot() {
-		snapshot := &snapshotv1.VolumeSnapshot{}
-		err = r.Get(ctx, types.NamespacedName{
-			Namespace: chainNode.GetNamespace(),
-			Name:      chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
-		}, snapshot)
+	// If PVC does not exist
+	if pvc == nil {
+		// Assume .spec size by default
+		storageSize, err := resource.ParseQuantity(chainNode.GetPersistenceSize())
 		if err != nil {
 			return nil, err
 		}
-		if snapshot.Status.RestoreSize != nil {
-			storageSize = *snapshot.Status.RestoreSize
-		} else {
-			logger.Info("could not grab restore size from snapshot. Falling back to .persistence.size", "size", storageSize)
-		}
 
-		// Get height from the snapshot so that operator knows which version to run in case there were upgrades
-		if hs, ok := snapshot.Annotations[annotationDataHeight]; ok {
-			height, err := strconv.ParseInt(hs, 10, 64)
+		if chainNode.ShouldRestoreFromSnapshot() {
+			snapshot := &snapshotv1.VolumeSnapshot{}
+			err = r.Get(ctx, types.NamespacedName{
+				Namespace: chainNode.GetNamespace(),
+				Name:      chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
+			}, snapshot)
 			if err != nil {
 				return nil, err
 			}
-			chainNode.Status.LatestHeight = height
-			if err := r.Status().Update(ctx, chainNode); err != nil {
-				return nil, err
+			if snapshot.Status.RestoreSize != nil {
+				storageSize = *snapshot.Status.RestoreSize
+			} else {
+				logger.Info("could not grab restore size from snapshot. Falling back to .persistence.size", "size", storageSize)
 			}
-		}
-	}
 
-	pvc := &corev1.PersistentVolumeClaim{}
-	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("creating pvc", "pvc", pvc.GetName(), "size", storageSize)
-			pvc := &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      chainNode.GetName(),
-					Namespace: chainNode.GetNamespace(),
-					Labels:    WithChainNodeLabels(chainNode),
-					Annotations: map[string]string{
-						annotationDataInitialized: strconv.FormatBool(chainNode.ShouldRestoreFromSnapshot()),
-						annotationDataHeight:      strconv.FormatInt(chainNode.Status.LatestHeight, 10),
-					},
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						corev1.ReadWriteOnce,
-					},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: storageSize,
-						},
-					},
-					StorageClassName: chainNode.GetPersistenceStorageClass(),
-				},
-			}
-			if chainNode.ShouldRestoreFromSnapshot() {
-				pvc.Spec.DataSource = &corev1.TypedLocalObjectReference{
-					APIGroup: pointer.String(VolumeSnapshotDataSourceApiGroup),
-					Kind:     VolumeSnapshotDataSourceKind,
-					Name:     chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
+			// Get height from the snapshot so that operator knows which version to run in case there were upgrades already.
+			if hs, ok := snapshot.Annotations[annotationDataHeight]; ok {
+				height, err := strconv.ParseInt(hs, 10, 64)
+				if err != nil {
+					return nil, err
 				}
-			}
-			if err := r.Create(ctx, pvc); err != nil {
-				return nil, err
-			}
-			chainNode.Status.PvcSize = storageSize.String()
-			return pvc, r.Status().Update(ctx, chainNode)
-		}
-		return nil, err
-	}
-
-	// This happens when a chainnode is created but the volume for it already exists. We try to get the
-	// block height for the data on that volume, so that operator will know which version to run this
-	// node with.
-	if chainNode.Status.PvcSize == "" {
-		if dataHeight, ok := pvc.Annotations[annotationDataHeight]; ok {
-			height, err := strconv.ParseInt(dataHeight, 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			if chainNode.Status.LatestHeight != height {
 				chainNode.Status.LatestHeight = height
-				chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
 				if err := r.Status().Update(ctx, chainNode); err != nil {
 					return nil, err
 				}
 			}
 		}
-	}
 
-	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning || chainNode.Status.Phase == appsv1.PhaseChainNodeSyncing {
-		if err = r.updateLatestHeight(ctx, chainNode); err != nil {
-			// When this error happens, the most likely scenario is that pod is not running. So lets not throw the error and
-			// let the rest of the reconcile loop handle the missing pod.
-			logger.Error(err, "error getting latest height (pod is probably missing)")
-			return pvc, nil
+		logger.Info("creating pvc", "pvc", chainNode.GetName(), "size", storageSize)
+
+		pvc = &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      chainNode.GetName(),
+				Namespace: chainNode.GetNamespace(),
+				Labels:    WithChainNodeLabels(chainNode),
+				Annotations: map[string]string{
+					annotationDataInitialized: strconv.FormatBool(chainNode.ShouldRestoreFromSnapshot()),
+					annotationDataHeight:      strconv.FormatInt(chainNode.Status.LatestHeight, 10),
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: storageSize,
+					},
+				},
+				StorageClassName: chainNode.GetPersistenceStorageClass(),
+			},
 		}
-		dataHeight := strconv.FormatInt(chainNode.Status.LatestHeight, 10)
-		if pvc.Annotations[annotationDataHeight] != dataHeight {
-			pvc.Annotations[annotationDataHeight] = dataHeight
-			if err := r.Update(ctx, pvc); err != nil {
-				return nil, err
+
+		if chainNode.ShouldRestoreFromSnapshot() {
+			pvc.Spec.DataSource = &corev1.TypedLocalObjectReference{
+				APIGroup: pointer.String(VolumeSnapshotDataSourceApiGroup),
+				Kind:     VolumeSnapshotDataSourceKind,
+				Name:     chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
+			}
+		}
+
+		if err = r.Create(ctx, pvc); err != nil {
+			return nil, err
+		}
+
+		chainNode.Status.PvcSize = storageSize.String()
+		if err = r.Status().Update(ctx, chainNode); err != nil {
+			return nil, err
+		}
+
+	} else {
+		// This happens when a chainnode is created but the volume for it already exists. We try to get the
+		// block height for the data on that volume, so that operator will know which version to run this
+		// node with.
+		if chainNode.Status.PvcSize == "" {
+			if dataHeight, ok := pvc.Annotations[annotationDataHeight]; ok {
+				height, err := strconv.ParseInt(dataHeight, 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				if chainNode.Status.LatestHeight != height {
+					chainNode.Status.LatestHeight = height
+					chainNode.Status.PvcSize = pvc.Spec.Resources.Requests.Storage().String()
+					if err = r.Status().Update(ctx, chainNode); err != nil {
+						return nil, err
+					}
+				}
 			}
 		}
 	}
 
-	switch pvc.Spec.Resources.Requests.Storage().Cmp(storageSize) {
+	if pvc.Annotations[annotationDataInitialized] != StringValueTrue {
+		return pvc, r.initializeData(ctx, app, chainNode, pvc)
+	}
+	return pvc, nil
+}
+
+func (r *Reconciler) ensurePvcUpdates(ctx context.Context, chainNode *appsv1.ChainNode, pvc *corev1.PersistentVolumeClaim) error {
+	logger := log.FromContext(ctx)
+
+	expectedStorageSize, err := r.getStorageSize(ctx, chainNode)
+	if err != nil {
+		return err
+	}
+
+	if err = r.updateLatestHeight(ctx, chainNode); err != nil {
+		return err
+	}
+
+	dataHeight := strconv.FormatInt(chainNode.Status.LatestHeight, 10)
+	if pvc.Annotations[annotationDataHeight] != dataHeight {
+		pvc.Annotations[annotationDataHeight] = dataHeight
+		if err = r.Update(ctx, pvc); err != nil {
+			return err
+		}
+	}
+
+	switch pvc.Spec.Resources.Requests.Storage().Cmp(expectedStorageSize) {
 	case -1:
-		logger.Info("resizing pvc", "pvc", pvc.GetName(), "old-size", pvc.Spec.Resources.Requests.Storage(), "new-size", storageSize)
+		logger.Info("resizing pvc", "pvc", pvc.GetName(), "old-size", pvc.Spec.Resources.Requests.Storage(), "new-size", expectedStorageSize)
 		pvc.Spec.Resources.Requests = corev1.ResourceList{
-			corev1.ResourceStorage: storageSize,
+			corev1.ResourceStorage: expectedStorageSize,
 		}
-		if err := r.Update(ctx, pvc); err != nil {
-			return nil, err
+		if err = r.Update(ctx, pvc); err != nil {
+			return err
 		}
-		chainNode.Status.PvcSize = storageSize.String()
+		chainNode.Status.PvcSize = expectedStorageSize.String()
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeNormal,
 			appsv1.ReasonPvcResized,
 			"Data volume was resized to %v", chainNode.Status.PvcSize,
 		)
-		return pvc, r.Status().Update(ctx, chainNode)
+		return r.Status().Update(ctx, chainNode)
 
 	case 1:
-		logger.Info("skipping pvc resize: new-size < old-size", "pvc", pvc.GetName(), "old-size", pvc.Spec.Resources.Requests.Storage(), "new-size", storageSize)
-		return pvc, nil
+		logger.Info("skipping pvc resize: new-size < old-size", "pvc", pvc.GetName(), "old-size", pvc.Spec.Resources.Requests.Storage(), "new-size", expectedStorageSize)
+		return nil
 
 	default:
-		if chainNode.Status.PvcSize != storageSize.String() {
-			chainNode.Status.PvcSize = storageSize.String()
-			return pvc, r.Status().Update(ctx, chainNode)
+		if chainNode.Status.PvcSize != expectedStorageSize.String() {
+			chainNode.Status.PvcSize = expectedStorageSize.String()
+			return r.Status().Update(ctx, chainNode)
 		}
-		return pvc, nil
+		return nil
 	}
 }
 
@@ -221,11 +227,6 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 	specSize, err := resource.ParseQuantity(chainNode.GetPersistenceSize())
 	if err != nil {
 		return resource.Quantity{}, err
-	}
-
-	// No PVC is available yet. Let's create it with .spec.persistence.size
-	if chainNode.Status.PvcSize == "" {
-		return specSize, nil
 	}
 
 	// Get current size of data
@@ -306,4 +307,16 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 	}
 
 	return newSize, nil
+}
+
+func (r *Reconciler) getPVC(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.PersistentVolumeClaim, error) {
+	pvc := &corev1.PersistentVolumeClaim{}
+	err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return pvc, nil
 }

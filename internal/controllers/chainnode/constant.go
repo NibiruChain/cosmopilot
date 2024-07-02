@@ -21,11 +21,12 @@ const (
 	LabelValidator = "validator"
 	LabelChainNode = "chain-node"
 
-	AnnotationStateSyncTrustHeight = "apps.k8s.nibiru.org/state-sync-trust-height"
-	AnnotationStateSyncTrustHash   = "apps.k8s.nibiru.org/state-sync-trust-hash"
+	StringValueTrue  = "true"
+	StringValueFalse = "false"
 
-	annotationDataHeight = "apps.k8s.nibiru.org/data-height"
-
+	AnnotationStateSyncTrustHeight    = "apps.k8s.nibiru.org/state-sync-trust-height"
+	AnnotationStateSyncTrustHash      = "apps.k8s.nibiru.org/state-sync-trust-hash"
+	annotationDataHeight              = "apps.k8s.nibiru.org/data-height"
 	annotationSafeEvict               = "cluster-autoscaler.kubernetes.io/safe-to-evict"
 	annotationConfigHash              = "apps.k8s.nibiru.org/config-hash"
 	annotationDataInitialized         = "apps.k8s.nibiru.org/data-initialized"
@@ -57,7 +58,8 @@ const (
 	defaultStateSyncTrustPeriod = "168h0m0s"
 	defaultLogsLineCount        = 50
 
-	snapshotCheckPeriod = 15 * time.Second
+	snapshotCheckPeriod   = 15 * time.Second
+	pvcDeletionWaitPeriod = 15 * time.Second
 
 	firewallContainerName = "firewall"
 	firewallVolumeName    = "firewall-config"

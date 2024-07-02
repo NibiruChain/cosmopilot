@@ -440,7 +440,7 @@ func (r *Reconciler) getChainPeers(ctx context.Context, chainNode *appsv1.ChainN
 			Unconditional: pointer.Bool(true),
 		}
 
-		if svc.Labels[LabelValidator] == "true" {
+		if svc.Labels[LabelValidator] == StringValueTrue {
 			peer.Private = pointer.Bool(true)
 		}
 

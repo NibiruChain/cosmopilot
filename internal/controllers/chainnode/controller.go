@@ -128,27 +128,29 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if chainNode.RequiresPrivKey() {
-		if err := r.ensureSigningKey(ctx, chainNode); err != nil {
+		if err = r.ensureSigningKey(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	if chainNode.RequiresAccount() {
-		if err := r.ensureAccount(ctx, chainNode); err != nil {
+		if err = r.ensureAccount(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	// If we don't have a PVC yet, lets create it before deploying the pod. But for any updates to the PVC
-	// we want to do it after the pod deployment because auto-resize feature requires the node to be running.
-	if chainNode.Status.PvcSize == "" {
-		if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
-			return ctrl.Result{}, err
-		}
+	pvc, err := r.ensurePvc(ctx, app, chainNode)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// If PVC is being deleted lets wait before trying again.
+	if pvc.DeletionTimestamp != nil {
+		return ctrl.Result{RequeueAfter: pvcDeletionWaitPeriod}, nil
 	}
 
 	// Ensure snapshots are taken if enabled and check if they are ready
-	if err := r.ensureVolumeSnapshots(ctx, chainNode); err != nil {
+	if err = r.ensureVolumeSnapshots(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -159,17 +161,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Get or initialize a genesis
-	if err := r.ensureGenesis(ctx, app, chainNode); err != nil {
+	if err = r.ensureGenesis(ctx, app, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create/update services for this node
-	if err := r.ensureServices(ctx, chainNode); err != nil {
+	if err = r.ensureServices(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create/update service monitors for this node
-	if err := r.ensureServiceMonitors(ctx, chainNode); err != nil {
+	if err = r.ensureServiceMonitors(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -180,27 +182,26 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Create/update upgrades config
-	if err := r.ensureUpgrades(ctx, chainNode); err != nil {
+	if err = r.ensureUpgrades(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Deploy TMKMS configs if configured
-	if err := r.ensureTmKMSConfig(ctx, chainNode); err != nil {
+	if err = r.ensureTmKMSConfig(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Ensure pod is running
-	if err := r.ensurePod(ctx, app, chainNode, configHash); err != nil {
+	if err = r.ensurePod(ctx, app, chainNode, configHash); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// For updating the PVC we want to do it after the pod deployment because auto-resize feature requires the node running.
-	if err := r.ensurePersistence(ctx, app, chainNode); err != nil {
+	if err = r.ensurePvcUpdates(ctx, chainNode, pvc); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if chainNode.ShouldCreateValidator() && chainNode.Status.ValidatorStatus == "" {
-		if err := r.createValidator(ctx, app, chainNode); err != nil {
+		if err = r.createValidator(ctx, app, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
