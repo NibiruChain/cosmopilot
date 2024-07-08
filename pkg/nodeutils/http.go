@@ -64,19 +64,19 @@ func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) health(w http.ResponseWriter, r *http.Request) {
-	// TODO: this only makes sure node is listening on gRPC.
+	// TODO: this only makes sure node is responding to rpc.
 	// We should check for possible issues with the node.
 
-	nodeInfo, err := s.client.NodeInfo(r.Context())
+	status, err := s.client.GetNodeStatus(r.Context())
 	if err != nil {
-		log.Errorf("error getting node info: %v", err)
+		log.Errorf("error getting node status: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	b, err := json.Marshal(nodeInfo)
+	b, err := json.Marshal(status)
 	if err != nil {
-		log.Errorf("error encoding node info to json: %v", err)
+		log.Errorf("error encoding node status to json: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
