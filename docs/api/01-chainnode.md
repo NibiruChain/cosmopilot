@@ -87,6 +87,7 @@ ChainNodeStatus defines the observed state of ChainNode
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | phase | Indicates the current phase for this ChainNode. | ChainNodePhase | false |
+| conditions | Conditions to track state of the ChainNode. | []metav1.Condition | false |
 | nodeID | Indicates this node's ID. | string | false |
 | ip | Internal IP address of this node. | string | false |
 | publicAddress | Public address for P2P when enabled. | string | false |

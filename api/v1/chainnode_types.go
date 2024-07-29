@@ -25,6 +25,12 @@ const (
 	PhaseChainNodeUpgrading    ChainNodePhase = "Upgrading"
 )
 
+const (
+	ConditionUpgrade = "Upgrade"
+
+	ReasonUpgradeSuccess = "UpgradeSuccessful"
+)
+
 //+kubebuilder:object:root=true
 
 // ChainNodeList contains a list of ChainNode.
@@ -115,6 +121,10 @@ type ChainNodeStatus struct {
 	// Indicates the current phase for this ChainNode.
 	// +optional
 	Phase ChainNodePhase `json:"phase,omitempty"`
+
+	// Conditions to track state of the ChainNode.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// Indicates this node's ID.
 	// +optional

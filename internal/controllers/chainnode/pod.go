@@ -133,7 +133,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 			)
 			var upgradeStatus appsv1.UpgradePhase
 			if upgraded {
-				// If there was an error on pod creation or watching but the image was already switched, we marked the upgrade
+				// If there was an error on pod creation or watching but the image was already swapped, we mark the upgrade
 				// completed anyway to avoid downgrading and corrupt data.
 				chainNode.Status.AppVersion = upgrade.GetVersion()
 				upgradeStatus = appsv1.UpgradeCompleted

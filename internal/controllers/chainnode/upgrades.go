@@ -137,6 +137,9 @@ func (r *Reconciler) setUpgradeStatus(ctx context.Context, chainNode *appsv1.Cha
 	for i, u := range chainNode.Status.Upgrades {
 		if u.Height == upgrade.Height {
 			chainNode.Status.Upgrades[i].Status = status
+			if status == appsv1.UpgradeCompleted {
+				addUpgradeStatusCondition(chainNode, upgrade)
+			}
 			logger.Info("setting upgrade status", "height", upgrade.Height, "status", status)
 			if err := r.Status().Update(ctx, chainNode); err != nil {
 				return err
@@ -204,4 +207,17 @@ func AddOrUpdateUpgrade(upgrades []appsv1.Upgrade, upgrade appsv1.Upgrade, curre
 	}
 	upgrades = append(upgrades, upgrade)
 	return upgrades
+}
+
+func addUpgradeStatusCondition(chainNode *appsv1.ChainNode, upgrade *appsv1.Upgrade) {
+	if chainNode.Status.Conditions == nil {
+		chainNode.Status.Conditions = make([]metav1.Condition, 0)
+	}
+	chainNode.Status.Conditions = append(chainNode.Status.Conditions, metav1.Condition{
+		Type:               appsv1.ConditionUpgrade,
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Reason:             appsv1.ReasonUpgradeSuccess,
+		Message:            fmt.Sprintf("Successfully upgraded node to image %s", upgrade.Image),
+	})
 }
