@@ -2279,6 +2279,27 @@ spec:
                         description: ChainID of the chain to initialize.
                         minLength: 1
                         type: string
+                      chainNodeAccounts:
+                        description: 'List of ChainNodes whose accounts should be
+                          included in genesis. NOTE: Operator will wait for there
+                          ChainNodes to exist and have accounts before proceeding.'
+                        items:
+                          description: ChainNodeAssets represents the assets associated
+                            with an account from another ChainNode.
+                          properties:
+                            assets:
+                              description: Assets assigned to this account.
+                              items:
+                                type: string
+                              type: array
+                            chainNode:
+                              description: Name of the ChainNode.
+                              type: string
+                          required:
+                          - assets
+                          - chainNode
+                          type: object
+                        type: array
                       commissionMaxChangeRate:
                         description: Maximum commission change rate percentage (per
                           day). Defaults to `0.1`.

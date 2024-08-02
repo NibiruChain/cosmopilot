@@ -156,7 +156,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		ChainID:                 chainNode.Spec.Validator.Init.ChainID,
 		Assets:                  chainNode.Spec.Validator.Init.Assets,
 		StakeAmount:             chainNode.Spec.Validator.Init.StakeAmount,
-		Accounts:                make([]chainutils.AccountAssets, len(chainNode.Spec.Validator.Init.Accounts)),
+		Accounts:                []chainutils.AccountAssets{},
 		CommissionMaxChangeRate: chainNode.Spec.Validator.GetCommissionMaxChangeRate(),
 		CommissionMaxRate:       chainNode.Spec.Validator.GetCommissionMaxRate(),
 		CommissionRate:          chainNode.Spec.Validator.GetCommissionRate(),
@@ -165,11 +165,25 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		VotingPeriod:            chainNode.Spec.Validator.GetInitVotingPeriod(),
 	}
 
-	for i, a := range chainNode.Spec.Validator.Init.Accounts {
-		genesisParams.Accounts[i] = chainutils.AccountAssets{
+	for _, a := range chainNode.Spec.Validator.Init.ChainNodeAccounts {
+		cn := &appsv1.ChainNode{}
+		if err := r.Get(ctx, client.ObjectKey{Namespace: chainNode.GetNamespace(), Name: a.ChainNode}, cn); err != nil {
+			return fmt.Errorf("failed to get chain node account: %w", err)
+		}
+		if cn.Status.AccountAddress == "" {
+			return fmt.Errorf("chain node has no account address")
+		}
+		genesisParams.Accounts = append(genesisParams.Accounts, chainutils.AccountAssets{
+			Address: cn.Status.AccountAddress,
+			Assets:  a.Assets,
+		})
+	}
+
+	for _, a := range chainNode.Spec.Validator.Init.Accounts {
+		genesisParams.Accounts = append(genesisParams.Accounts, chainutils.AccountAssets{
 			Address: a.Address,
 			Assets:  a.Assets,
-		}
+		})
 	}
 
 	initCommands := make([]*chainutils.InitCommand, len(chainNode.Spec.Validator.Init.AdditionalInitCommands))

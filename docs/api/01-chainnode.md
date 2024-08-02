@@ -11,6 +11,7 @@
 * [ValidatorConfig](#validatorconfig)
 * [AccountAssets](#accountassets)
 * [AppSpec](#appspec)
+* [ChainNodeAssets](#chainnodeassets)
 * [Config](#config)
 * [CreateValidatorConfig](#createvalidatorconfig)
 * [ExportTarballConfig](#exporttarballconfig)
@@ -145,6 +146,17 @@ AppSpec specifies the source image, version and binary name of the app to run. A
 | sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Valid options are: - \"v0.47\" (default) - \"v0.45\" | *SdkVersion | false |
 | checkGovUpgrades | Whether the operator should query gov proposals to find and schedule upgrades. Defaults to `true`. | *bool | false |
 | upgrades | List of upgrades to schedule for this node. | [][UpgradeSpec](#upgradespec) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### ChainNodeAssets
+
+ChainNodeAssets represents the assets associated with an account from another ChainNode.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| chainNode | Name of the ChainNode. | string | true |
+| assets | Assets assigned to this account. | []string | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -286,6 +298,7 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | assets | Assets is the list of tokens and their amounts to be assigned to this validators account. | []string | true |
 | stakeAmount | Amount to be staked by this validator. | string | true |
 | accounts | Accounts specify additional accounts and respective assets to be added to this chain. | [][AccountAssets](#accountassets) | false |
+| chainNodeAccounts | List of ChainNodes whose accounts should be included in genesis. NOTE: Operator will wait for there ChainNodes to exist and have accounts before proceeding. | [][ChainNodeAssets](#chainnodeassets) | false |
 | unbondingTime | Time required to totally unbond delegations. Defaults to `1814400s` (21 days). | *string | false |
 | votingPeriod | Voting period for this chain. Defaults to `120h`. | *string | false |
 | additionalInitCommands | Additional commands to run on genesis initialization. Note: App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |

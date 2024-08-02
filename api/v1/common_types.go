@@ -361,6 +361,10 @@ type GenesisInitConfig struct {
 	// +optional
 	Accounts []AccountAssets `json:"accounts,omitempty"`
 
+	// List of ChainNodes whose accounts should be included in genesis.
+	// NOTE: Operator will wait for there ChainNodes to exist and have accounts before proceeding.
+	ChainNodeAccounts []ChainNodeAssets `json:"chainNodeAccounts,omitempty"`
+
 	// Time required to totally unbond delegations. Defaults to `1814400s` (21 days).
 	// +optional
 	// +default=1814400s
@@ -383,6 +387,15 @@ type GenesisInitConfig struct {
 type AccountAssets struct {
 	// Address of the account.
 	Address string `json:"address"`
+
+	// Assets assigned to this account.
+	Assets []string `json:"assets"`
+}
+
+// ChainNodeAssets represents the assets associated with an account from another ChainNode.
+type ChainNodeAssets struct {
+	// Name of the ChainNode.
+	ChainNode string `json:"chainNode"`
 
 	// Assets assigned to this account.
 	Assets []string `json:"assets"`
