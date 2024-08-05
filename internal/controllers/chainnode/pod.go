@@ -245,11 +245,23 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			TerminationGracePeriodSeconds: chainNode.Spec.Config.GetTerminationGracePeriodSeconds(),
 			Volumes: []corev1.Volume{
 				{
+					Name: "app-empty-dir",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
 					Name: "data",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: chainNode.GetName(),
 						},
+					},
+				},
+				{
+					Name: "config-empty-dir",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				{
@@ -268,12 +280,6 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: chainNode.GetName(),
 						},
-					},
-				},
-				{
-					Name: "config-empty-dir",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				{
@@ -366,10 +372,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					Image:           chainNode.GetAppImage(),
 					ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
 					Command:         []string{chainNode.Spec.App.App},
-					Args: []string{"start",
+					Args: append([]string{"start",
 						"--home", "/home/app",
 						"--trace-store", "/trace/trace.fifo",
-					},
+					}, chainNode.GetAdditionalRunFlags()...),
 					Env: chainNode.Spec.Config.GetEnv(),
 					Ports: []corev1.ContainerPort{
 						{
@@ -405,17 +411,21 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					},
 					VolumeMounts: append([]corev1.VolumeMount{
 						{
+							Name:      "app-empty-dir",
+							MountPath: "/home/app",
+						},
+						{
 							Name:      "data",
 							MountPath: "/home/app/data",
+						},
+						{
+							Name:      "config-empty-dir",
+							MountPath: "/home/app/config",
 						},
 						{
 							Name:      "node-key",
 							MountPath: "/home/app/config/" + nodeKeyFilename,
 							SubPath:   nodeKeyFilename,
-						},
-						{
-							Name:      "config-empty-dir",
-							MountPath: "/home/app/config",
 						},
 						{
 							Name:      "trace",
@@ -473,6 +483,23 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		},
 	}
 
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Volumes != nil {
+		for _, volume := range chainNode.Spec.Config.Volumes {
+			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+				Name: volume.Name,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: fmt.Sprintf("%s-%s", chainNode.GetName(), volume.Name),
+					},
+				},
+			})
+			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+				Name:      volume.Name,
+				MountPath: volume.Path,
+			})
+		}
+	}
+
 	if chainNode.Spec.Config.IsEvmEnabled() {
 		pod.Spec.Containers[0].Ports = append(pod.Spec.Containers[0].Ports, corev1.ContainerPort{
 			Name:          controllers.EvmRpcPortName,
@@ -520,12 +547,12 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
-						Name:      "data",
-						MountPath: "/home/app/data",
-					},
-					{
 						Name:      "config-empty-dir",
 						MountPath: "/home/app/config",
+					},
+					{
+						Name:      "data",
+						MountPath: "/home/app/data",
 					},
 				},
 				Resources: corev1.ResourceRequirements{

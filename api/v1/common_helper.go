@@ -429,3 +429,12 @@ func (s *SidecarSpec) ShouldRestartPodOnFailure() bool {
 	}
 	return false
 }
+
+// VolumeSpec methods
+
+func (v *VolumeSpec) ShouldDeleteWithNode() bool {
+	if v.DeleteWithNode != nil {
+		return *v.DeleteWithNode
+	}
+	return false
+}

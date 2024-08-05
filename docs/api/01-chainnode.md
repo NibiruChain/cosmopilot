@@ -36,6 +36,7 @@
 * [UpgradeSpec](#upgradespec)
 * [ValidatorInfo](#validatorinfo)
 * [VolumeSnapshotsConfig](#volumesnapshotsconfig)
+* [VolumeSpec](#volumespec)
 
 #### ChainNode
 
@@ -184,6 +185,8 @@ Config allows setting specific configurations for a node, including overriding c
 | persistAddressBook | Whether to persist address book file in data directory. Defaults to `false`. | *bool | false |
 | terminationGracePeriodSeconds | Optional duration in seconds the pod needs to terminate gracefully. | *int64 | false |
 | evmEnabled | Whether EVM is enabled on this node. Will add evm-rpc port to services. Defaults to `false`. | *bool | false |
+| runFlags | List of flags to be appended to app container when starting the node. | []string | false |
+| volumes | Additional volumes to be created and mounted on this node. | [][VolumeSpec](#volumespec) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -503,5 +506,19 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 | exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
 | verify | Whether the operator should verify the snapshot for corruption after it is ready. Defaults to `false`. | *bool | false |
 | disableWhileSyncing | Whether to disable snapshots while the node is syncing | *bool | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### VolumeSpec
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | The name of the volume. | string | true |
+| size | Size of the volume. | string | true |
+| path | The path at which this volume should be mounted | string | true |
+| storageClass | Name of the storage class to use for this volume. Uses the default class if not specified. | *string | false |
+| deleteWithNode | Whether this volume should be deleted when node is deleted. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)

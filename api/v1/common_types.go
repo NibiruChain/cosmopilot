@@ -213,6 +213,33 @@ type Config struct {
 	// Whether EVM is enabled on this node. Will add evm-rpc port to services. Defaults to `false`.
 	// +optional
 	EvmEnabled *bool `json:"evmEnabled,omitempty"`
+
+	// List of flags to be appended to app container when starting the node.
+	// +optional
+	RunFlags []string `json:"runFlags,omitempty"`
+
+	// Additional volumes to be created and mounted on this node.
+	// +optional
+	Volumes []VolumeSpec `json:"volumes,omitempty"`
+}
+
+type VolumeSpec struct {
+	// The name of the volume.
+	Name string `json:"name"`
+
+	// Size of the volume.
+	Size string `json:"size"`
+
+	// The path at which this volume should be mounted
+	Path string `json:"path"`
+
+	// Name of the storage class to use for this volume. Uses the default class if not specified.
+	// +optional
+	StorageClassName *string `json:"storageClass,omitempty"`
+
+	// Whether this volume should be deleted when node is deleted. Defaults to `false`.
+	// +optional
+	DeleteWithNode *bool `json:"deleteWithNode,omitempty"`
 }
 
 // FirewallConfig allows configuring cosmos-firewall rules.

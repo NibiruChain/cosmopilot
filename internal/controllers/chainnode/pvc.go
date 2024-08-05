@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
@@ -58,7 +59,7 @@ func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, ch
 	return r.Status().Update(ctx, chainNode)
 }
 
-func (r *Reconciler) ensurePvc(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (*corev1.PersistentVolumeClaim, error) {
+func (r *Reconciler) ensureDataVolume(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (*corev1.PersistentVolumeClaim, error) {
 	logger := log.FromContext(ctx)
 
 	pvc, err := r.getPVC(ctx, chainNode)
@@ -327,4 +328,67 @@ func (r *Reconciler) getPVC(ctx context.Context, chainNode *appsv1.ChainNode) (*
 		return nil, err
 	}
 	return pvc, nil
+}
+
+func (r *Reconciler) ensureAdditionalVolumes(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	logger := log.FromContext(ctx)
+
+	if chainNode.Spec.Config == nil || chainNode.Spec.Config.Volumes == nil {
+		return nil
+	}
+
+	for _, volume := range chainNode.Spec.Config.Volumes {
+		volumeName := fmt.Sprintf("%s-%s", chainNode.GetName(), volume.Name)
+		specSize, err := resource.ParseQuantity(volume.Size)
+		if err != nil {
+			return err
+		}
+
+		pvc := &corev1.PersistentVolumeClaim{}
+		err = r.Get(ctx, types.NamespacedName{Namespace: chainNode.GetNamespace(), Name: volumeName}, pvc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("creating pvc", "name", volumeName, "size", volume.Size)
+				pvc = &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      volumeName,
+						Namespace: chainNode.GetNamespace(),
+						Labels:    WithChainNodeLabels(chainNode),
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{
+							corev1.ReadWriteOnce,
+						},
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: specSize,
+							},
+						},
+						StorageClassName: volume.StorageClassName,
+					},
+				}
+
+				if volume.ShouldDeleteWithNode() {
+					if err = controllerutil.SetControllerReference(chainNode, pvc, r.Scheme); err != nil {
+						return err
+					}
+				}
+
+				if err = r.Create(ctx, pvc); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		} else {
+			if pvc.Spec.Resources.Requests[corev1.ResourceStorage] != specSize {
+				logger.Info("updating pvc", "name", volumeName, "old-size", pvc.Spec.Resources.Requests[corev1.ResourceStorage], "new-size", volume.Size)
+				pvc.Spec.Resources.Requests[corev1.ResourceStorage] = specSize
+				if err = r.Update(ctx, pvc); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

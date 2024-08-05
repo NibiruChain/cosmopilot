@@ -242,6 +242,13 @@ func (chainNode *ChainNode) GetLatestAppImage() string {
 	return chainNode.GetAppImageWithVersion(chainNode.GetLatestVersion())
 }
 
+func (chainNode *ChainNode) GetAdditionalRunFlags() []string {
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.RunFlags != nil {
+		return chainNode.Spec.Config.RunFlags
+	}
+	return []string{}
+}
+
 // Validator methods
 
 func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {

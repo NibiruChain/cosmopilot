@@ -139,8 +139,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	pvc, err := r.ensurePvc(ctx, app, chainNode)
+	pvc, err := r.ensureDataVolume(ctx, app, chainNode)
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err = r.ensureAdditionalVolumes(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 

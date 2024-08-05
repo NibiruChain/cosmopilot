@@ -1409,6 +1409,12 @@ spec:
                       this ChainNode. Defaults to `15s`.
                     format: duration
                     type: string
+                  runFlags:
+                    description: List of flags to be appended to app container when
+                      starting the node.
+                    items:
+                      type: string
+                    type: array
                   safeToEvict:
                     description: SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict
                       annotation to the given value. It allows/disallows cluster-autoscaler
@@ -1848,6 +1854,34 @@ spec:
                       gracefully.
                     format: int64
                     type: integer
+                  volumes:
+                    description: Additional volumes to be created and mounted on this
+                      node.
+                    items:
+                      properties:
+                        deleteWithNode:
+                          description: Whether this volume should be deleted when
+                            node is deleted. Defaults to `false`.
+                          type: boolean
+                        name:
+                          description: The name of the volume.
+                          type: string
+                        path:
+                          description: The path at which this volume should be mounted
+                          type: string
+                        size:
+                          description: Size of the volume.
+                          type: string
+                        storageClass:
+                          description: Name of the storage class to use for this volume.
+                            Uses the default class if not specified.
+                          type: string
+                      required:
+                      - name
+                      - path
+                      - size
+                      type: object
+                    type: array
                 type: object
               expose:
                 description: Allows exposing P2P traffic to public.
