@@ -34,7 +34,7 @@ type Params struct {
 	CommissionMaxChangeRate string
 	CommissionMaxRate       string
 	CommissionRate          string
-	MinSelfDelegation       string
+	MinSelfDelegation       *string
 	GasPrices               string
 }
 

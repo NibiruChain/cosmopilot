@@ -4413,8 +4413,11 @@ spec:
                           to `0.1`.
                         type: string
                       minSelfDelegation:
-                        description: Minimum self delegation required on the validator.
-                          Defaults to `1`.
+                        description: 'Minimum self delegation required on the validator.
+                          Defaults to `1`. NOTE: In most chains this is a required
+                          flag. However, in a few other chains (Cosmos Hub for example),
+                          this flag does not even exist anymore. In those cases, set
+                          it to an empty string and operator will skip it.'
                         type: string
                       stakeAmount:
                         description: Amount to be staked by this validator.

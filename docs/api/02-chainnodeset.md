@@ -371,7 +371,7 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | commissionMaxChangeRate | Maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
 | commissionMaxRate | Maximum commission rate percentage. Defaults to `0.1`. | *string | false |
 | commissionRate | Initial commission rate percentage. Defaults to `0.1`. | *string | false |
-| minSelfDelegation | Minimum self delegation required on the validator. Defaults to `1`. | *string | false |
+| minSelfDelegation | Minimum self delegation required on the validator. Defaults to `1`. NOTE: In most chains this is a required flag. However, in a few other chains (Cosmos Hub for example), this flag does not even exist anymore. In those cases, set it to an empty string and operator will skip it. | *string | false |
 | assets | Assets is the list of tokens and their amounts to be assigned to this validators account. | []string | true |
 | stakeAmount | Amount to be staked by this validator. | string | true |
 | accounts | Accounts specify additional accounts and respective assets to be added to this chain. | [][AccountAssets](#accountassets) | false |

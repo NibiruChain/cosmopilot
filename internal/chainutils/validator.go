@@ -74,7 +74,7 @@ func (a *App) CreateValidator(
 						sdkcmd.WithArg(sdkcmd.CommissionMaxChangeRate, params.CommissionMaxChangeRate),
 						sdkcmd.WithArg(sdkcmd.CommissionMaxRate, params.CommissionMaxRate),
 						sdkcmd.WithArg(sdkcmd.CommissionRate, params.CommissionRate),
-						sdkcmd.WithArg(sdkcmd.MinSelfDelegation, params.MinSelfDelegation),
+						sdkcmd.WithOptionalArg(sdkcmd.MinSelfDelegation, params.MinSelfDelegation),
 						sdkcmd.WithOptionalArg(sdkcmd.Details, nodeInfo.Details),
 						sdkcmd.WithOptionalArg(sdkcmd.Website, nodeInfo.Website),
 						sdkcmd.WithOptionalArg(sdkcmd.Identity, nodeInfo.Identity),

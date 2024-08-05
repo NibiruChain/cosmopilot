@@ -7,6 +7,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -340,12 +341,18 @@ func (val *ValidatorConfig) GetCommissionRate() string {
 	return DefaultCommissionRate
 }
 
-func (val *ValidatorConfig) GetMinSelfDelegation() string {
+func (val *ValidatorConfig) GetMinSelfDelegation() *string {
 	if val.Init != nil && val.Init.MinSelfDelegation != nil {
-		return *val.Init.MinSelfDelegation
+		if *val.Init.MinSelfDelegation == "" {
+			return nil
+		}
+		return val.Init.MinSelfDelegation
 	}
 	if val.CreateValidator != nil && val.CreateValidator.MinSelfDelegation != nil {
-		return *val.CreateValidator.MinSelfDelegation
+		if *val.CreateValidator.MinSelfDelegation == "" {
+			return nil
+		}
+		return val.CreateValidator.MinSelfDelegation
 	}
-	return DefaultMinimumSelfDelegation
+	return pointer.String(DefaultMinimumSelfDelegation)
 }

@@ -374,6 +374,8 @@ type GenesisInitConfig struct {
 	CommissionRate *string `json:"commissionRate,omitempty"`
 
 	// Minimum self delegation required on the validator. Defaults to `1`.
+	// NOTE: In most chains this is a required flag. However, in a few other chains (Cosmos Hub for example),
+	// this flag does not even exist anymore. In those cases, set it to an empty string and operator will skip it.
 	// +optional
 	// +default="1"
 	MinSelfDelegation *string `json:"minSelfDelegation,omitempty"`
