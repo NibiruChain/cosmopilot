@@ -179,6 +179,13 @@ func (cfg *Config) IsEvmEnabled() bool {
 	return false
 }
 
+func (cfg *Config) UseDashedConfigToml() bool {
+	if cfg != nil && cfg.DashedConfigToml != nil {
+		return *cfg.DashedConfigToml
+	}
+	return false
+}
+
 // Peer helper methods
 
 func (peer *Peer) GetPort() int {

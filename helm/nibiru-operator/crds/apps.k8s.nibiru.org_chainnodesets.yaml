@@ -1273,6 +1273,10 @@ spec:
                             node unhealthy. Defaults to `15s`.
                           format: duration
                           type: string
+                        dashedConfigToml:
+                          description: Whether field naming in config.toml should
+                            use dashes instead of underscores. Defaults to `false`.
+                          type: boolean
                         env:
                           description: List of environment variables to set in the
                             app container.
@@ -3456,6 +3460,10 @@ spec:
                           node unhealthy. Defaults to `15s`.
                         format: duration
                         type: string
+                      dashedConfigToml:
+                        description: Whether field naming in config.toml should use
+                          dashes instead of underscores. Defaults to `false`.
+                        type: boolean
                       env:
                         description: List of environment variables to set in the app
                           container.

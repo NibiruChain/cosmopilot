@@ -53,8 +53,7 @@ const (
 
 	nonRootId = 1000
 
-	privValidatorListenAddress = "tcp://0.0.0.0:5555"
-
+	defaultAddrBookFile         = "/home/app/data/addrbook.json"
 	defaultStateSyncTrustPeriod = "168h0m0s"
 	defaultLogsLineCount        = 50
 

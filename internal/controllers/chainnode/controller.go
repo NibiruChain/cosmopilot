@@ -180,7 +180,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Create/update configmap with config files
-	configHash, err := r.ensureConfig(ctx, app, chainNode)
+	configHash, err := r.ensureConfigMap(ctx, app, chainNode)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

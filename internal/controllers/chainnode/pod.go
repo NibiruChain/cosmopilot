@@ -113,7 +113,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		}
 
 		// Force update config files, to prevent restarting again because of config changes
-		configHash, err = r.ensureConfig(ctx, app, chainNode)
+		configHash, err = r.ensureConfigMap(ctx, app, chainNode)
 		if err != nil {
 			return err
 		}

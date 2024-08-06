@@ -1,494 +1,207 @@
 package chainnode
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"sort"
-	"strconv"
 	"strings"
 
-	"github.com/jellydator/ttlcache/v3"
-	"github.com/mitchellh/hashstructure/v2"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
 )
 
-var (
-	defaultConfigToml = map[string]interface{}{
-		"rpc": map[string]interface{}{
-			"laddr":                "tcp://0.0.0.0:26657",
-			"cors_allowed_origins": []string{"*"},
-		},
-		"p2p": map[string]interface{}{
-			"addr_book_strict":   false,
-			"allow_duplicate_ip": true,
-		},
-		"instrumentation": map[string]interface{}{
-			"prometheus": true,
-		},
-		"log_format": "json",
+func GetKeyFormatter(chainNode *appsv1.ChainNode) *KeyFormatter {
+	return &KeyFormatter{
+		IsValidator: chainNode.IsValidator(),
+		UseTmkms:    chainNode.UsesTmKms(),
+		UseDashes:   chainNode.Spec.Config.UseDashedConfigToml(),
 	}
-
-	validatorConfigToml = map[string]interface{}{
-		"p2p": map[string]interface{}{
-			"pex": false,
-		},
-	}
-
-	defaultAppToml = map[string]interface{}{
-		"api": map[string]interface{}{
-			"enable":  true,
-			"address": "tcp://0.0.0.0:1317",
-		},
-		"grpc": map[string]interface{}{
-			"enable":  true,
-			"address": "0.0.0.0:9090",
-		},
-		"json-rpc": map[string]interface{}{
-			"enable":     true,
-			"address":    "0.0.0.0:8545",
-			"ws-address": "0.0.0.0:8546",
-		},
-	}
-)
-
-func (r *Reconciler) ensureConfig(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (string, error) {
-	logger := log.FromContext(ctx)
-
-	configs, err := r.getGeneratedConfigs(ctx, app, chainNode)
-	if err != nil {
-		return "", err
-	}
-
-	// Apply app.toml and config.toml defaults
-	configs[appTomlFilename], err = utils.Merge(configs[appTomlFilename], defaultAppToml)
-	if err != nil {
-		return "", err
-	}
-
-	configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], defaultConfigToml)
-	if err != nil {
-		return "", err
-	}
-
-	// Apply moniker
-	configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-		"moniker": chainNode.GetMoniker(),
-	})
-	if err != nil {
-		return "", err
-	}
-
-	// Persist address book file
-	if chainNode.Spec.Config.ShouldPersistAddressBook() {
-		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-			"p2p": map[string]interface{}{
-				"addr_book_file": "/home/app/data/addrbook.json",
-			},
-		})
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Set external address if there is one
-	if addr, ok := getExternalAddress(chainNode); ok {
-		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-			"p2p": map[string]interface{}{
-				"external_address": addr,
-			},
-		})
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Apply state-sync config
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.StateSync.Enabled() {
-		configs[appTomlFilename], err = utils.Merge(configs[appTomlFilename], map[string]interface{}{
-			"state-sync": map[string]interface{}{
-				"snapshot-interval":    chainNode.Spec.Config.StateSync.SnapshotInterval,
-				"snapshot-keep-recent": chainNode.Spec.Config.StateSync.GetKeepRecent(),
-			},
-		})
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Apply seed-mode if enabled
-	if chainNode.Spec.Config.SeedModeEnabled() {
-		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-			"p2p": map[string]interface{}{
-				"seed_mode": true,
-			},
-		})
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Use genesis from data dir
-	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
-		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-			"genesis_file": genesisLocation,
-		})
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Apply validator configs
-	if chainNode.IsValidator() {
-		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], validatorConfigToml)
-		if err != nil {
-			return "", err
-		}
-		if chainNode.UsesTmKms() {
-			configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-				"priv_validator_laddr": privValidatorListenAddress,
-			})
-			if err != nil {
-				return "", err
-			}
-		}
-	}
-
-	// Apply user specified configs
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Override != nil {
-		for filename, b := range *chainNode.Spec.Config.Override {
-			var data map[string]interface{}
-			if err := json.Unmarshal(b.Raw, &data); err != nil {
-				return "", err
-			}
-			if _, ok := configs[filename]; ok {
-				configs[filename], err = utils.Merge(configs[filename], data)
-			} else {
-				configs[filename] = data
-			}
-		}
-	}
-
-	// Get hash before adding peer configuration
-	hash, err := getConfigHash(configs)
-	if err != nil {
-		return "", err
-	}
-
-	// Apply state-sync restore config if enabled and node hasn't started yet
-	if chainNode.StateSyncRestoreEnabled() && chainNode.Status.LatestHeight == 0 {
-		peers, stateSyncAnnotations, err := r.getChainPeers(ctx, chainNode, AnnotationStateSyncTrustHeight, AnnotationStateSyncTrustHash)
-		if err != nil {
-			return "", err
-		}
-
-		rpcServers := make([]string, 0)
-
-		switch {
-		case len(peers) > 1:
-			for _, peer := range peers {
-				rpcServers = append(rpcServers, fmt.Sprintf("http://%s:%d", peer.Address, chainutils.RpcPort))
-			}
-
-		case len(peers) == 1:
-			for i := 0; i < 2; i++ {
-				rpcServers = append(rpcServers, fmt.Sprintf("http://%s:%d", peers[0].Address, chainutils.RpcPort))
-			}
-
-		default:
-			logger.Info("not restoring from state-sync: could not find other peers for this chain")
-			r.recorder.Event(chainNode,
-				corev1.EventTypeWarning,
-				appsv1.ReasonNoPeers,
-				"not restoring from state-sync: could not find other peers for this chain",
-			)
-		}
-
-		if len(rpcServers) >= 2 {
-			trustHeight, trustHash := getMostRecentHeightFromServicesAnnotations(stateSyncAnnotations)
-			if trustHeight == 0 {
-				logger.Info("not restoring from state-sync: no chainnode with valid trust height config is available")
-				r.recorder.Event(chainNode,
-					corev1.EventTypeWarning,
-					appsv1.ReasonNoTrustHeight,
-					"not restoring from state-sync: no chainnode with valid trust height config is available",
-				)
-			} else {
-				logger.Info("configuring state-sync",
-					"rpc_servers", strings.Join(rpcServers, ","),
-					"trust_height", trustHeight,
-					"trust_hash", trustHash,
-				)
-				configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-					"statesync": map[string]interface{}{
-						"enable":       true,
-						"rpc_servers":  strings.Join(rpcServers, ","),
-						"trust_height": trustHeight,
-						"trust_hash":   trustHash,
-						"trust_period": defaultStateSyncTrustPeriod,
-					},
-				})
-				if err != nil {
-					return "", err
-				}
-
-				// Set latest height to trust height so that old upgrades are marked as skipped
-				chainNode.Status.LatestHeight = trustHeight
-			}
-		}
-	}
-
-	// Apply peer configuration
-	peerConfig, err := r.getPeerConfiguration(ctx, chainNode)
-	if err != nil {
-		return "", err
-	}
-	configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], peerConfig)
-	if err != nil {
-		return "", err
-	}
-
-	// Encode back to toml
-	cmData := make(map[string]string, len(configs))
-	for filename, data := range configs {
-		cmData[filename], err = utils.TomlEncode(data)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	cm := &corev1.ConfigMap{}
-	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), cm)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("creating configs configmap", "configmap", cm.GetName(), "hash", hash)
-			cm = &corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      chainNode.GetName(),
-					Namespace: chainNode.GetNamespace(),
-					Labels:    WithChainNodeLabels(chainNode),
-					Annotations: map[string]string{
-						annotationConfigHash: hash,
-					},
-				},
-				Data: cmData,
-			}
-			if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
-				return "", err
-			}
-			if err = r.Create(ctx, cm); err != nil {
-				return "", err
-			}
-			r.recorder.Eventf(chainNode,
-				corev1.EventTypeNormal,
-				appsv1.ReasonConfigsCreated,
-				"Configuration files successfully created",
-			)
-			return hash, nil
-		}
-		return "", err
-	}
-
-	var shouldUpdate bool
-	for file, data := range cmData {
-		if oldData, ok := cm.Data[file]; !ok || data != oldData {
-			shouldUpdate = true
-			break
-		}
-	}
-
-	if shouldUpdate {
-		logger.Info("updating configs configmap", "configmap", cm.GetName(), "hash", hash)
-		cm.Annotations[annotationConfigHash] = hash
-		cm.Data = cmData
-		if err := r.Update(ctx, cm); err != nil {
-			return "", err
-		}
-		r.recorder.Eventf(chainNode,
-			corev1.EventTypeNormal,
-			appsv1.ReasonConfigsUpdated,
-			"Configuration files updated",
-		)
-		return hash, nil
-	}
-	return hash, nil
 }
 
-func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
-	logger := log.FromContext(ctx)
-
-	configs, err := r.getConfigsFromCache(chainNode.GetAppImage())
-	if err != nil {
-		return nil, err
-	}
-
-	if configs != nil {
-		logger.Info("loaded configs from cache", "version", chainNode.GetAppVersion())
-		return configs, nil
-	}
-
-	logger.Info("generating new config files", "version", chainNode.GetAppVersion())
-	configFiles, err := app.GenerateConfigFiles(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	decodedConfigs := make(map[string]interface{}, len(configFiles))
-	for name, content := range configFiles {
-		decodedConfigs[name], err = utils.TomlDecode(content)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	r.storeConfigsInCache(chainNode.GetAppImage(), decodedConfigs)
-	return r.getConfigsFromCache(chainNode.GetAppImage())
+type KeyFormatter struct {
+	IsValidator bool
+	UseTmkms    bool
+	UseDashes   bool
 }
 
-func (r *Reconciler) storeConfigsInCache(key string, configs map[string]interface{}) {
-	r.configCache.Set(key, configs, ttlcache.DefaultTTL)
+func (kf *KeyFormatter) FormatKey(key string) string {
+	if kf.UseDashes {
+		return strings.ReplaceAll(key, "_", "-")
+	}
+	return key
 }
 
-func (r *Reconciler) getConfigsFromCache(key string) (map[string]interface{}, error) {
-	data := r.configCache.Get(key)
-	if data == nil {
-		return nil, nil
-	}
-
-	// Make a copy of the configs in cache
-	cfgCopy := make(map[string]interface{}, len(data.Value()))
-	for item, content := range data.Value() {
-		cfgCopy[item] = content
-	}
-	return cfgCopy, nil
-}
-
-func getConfigHash(configs map[string]interface{}) (string, error) {
-	hash, err := hashstructure.Hash(configs, hashstructure.FormatV2, &hashstructure.HashOptions{
-		SlicesAsSets: true,
-		ZeroNil:      true,
-	})
-	return strconv.FormatUint(hash, 10), err
-}
-
-func (r *Reconciler) getPeerConfiguration(ctx context.Context, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
-	peers := make([]string, 0)
-	unconditional := make([]string, 0)
-	private := make([]string, 0)
-
-	var peersList []appsv1.Peer
-	if chainNode.AutoDiscoverPeersEnabled() {
-		chainPeers, _, err := r.getChainPeers(ctx, chainNode)
-		if err != nil {
-			return nil, err
-		}
-		peersList = append(chainPeers, chainNode.Spec.Peers...)
-	} else {
-		peersList = chainNode.Spec.Peers
-	}
-
-	for _, peer := range peersList {
-		peers = append(peers, fmt.Sprintf("%s@%s:%d", peer.ID, peer.Address, peer.GetPort()))
-		if peer.IsUnconditional() {
-			unconditional = append(unconditional, peer.ID)
-		}
-		if peer.IsPrivate() {
-			private = append(private, peer.ID)
-		}
-	}
-
-	return map[string]interface{}{
-		"p2p": map[string]interface{}{
-			"persistent_peers":       strings.Join(peers, ","),
-			"unconditional_peer_ids": strings.Join(unconditional, ","),
-			"private_peer_ids":       strings.Join(private, ","),
+func (kf *KeyFormatter) GetBaseConfigToml() map[string]interface{} {
+	cfg := map[string]interface{}{
+		kf.RPC(): map[string]interface{}{
+			kf.Laddr():              "tcp://0.0.0.0:26657",
+			kf.CorsAllowedOrigins(): []string{"*"},
 		},
-	}, nil
+		kf.P2P(): map[string]interface{}{
+			kf.AddrBookStrict():   false,
+			kf.AllowDuplicateIP(): true,
+		},
+		kf.Instrumentation(): map[string]interface{}{
+			kf.Prometheus(): true,
+		},
+		kf.LogFormat(): "json",
+	}
+
+	if kf.IsValidator {
+		cfg[kf.P2P()].(map[string]interface{})[kf.Pex()] = false
+
+		if kf.UseTmkms {
+			cfg[kf.PrivValidatorLaddr()] = "tcp://0.0.0.0:5555"
+		}
+	}
+
+	return cfg
 }
 
-func (r *Reconciler) getChainPeers(ctx context.Context, chainNode *appsv1.ChainNode, getAnnotations ...string) ([]appsv1.Peer, []map[string]string, error) {
-	// List all services with the same chain ID label
-	listOption := client.MatchingLabels{LabelChainID: chainNode.Status.ChainID}
-	svcList := &corev1.ServiceList{}
-	if err := r.List(ctx, svcList, listOption); err != nil {
-		return nil, nil, err
+func (kf *KeyFormatter) GetBaseAppToml() map[string]interface{} {
+	cfg := map[string]interface{}{
+		kf.API(): map[string]interface{}{
+			kf.Enable():  true,
+			kf.Address(): "tcp://0.0.0.0:1317",
+		},
+		kf.FormatKey("grpc"): map[string]interface{}{
+			kf.Enable():  true,
+			kf.Address(): "0.0.0.0:9090",
+		},
+		// For EVM
+		kf.FormatKey("json-rpc"): map[string]interface{}{
+			kf.Enable():    true,
+			kf.Address():   "0.0.0.0:8545",
+			kf.WsAddress(): "0.0.0.0:8546",
+		},
 	}
-
-	peers := make([]appsv1.Peer, 0)
-	annotationsList := make([]map[string]string, 0)
-
-	for _, svc := range svcList.Items {
-		if svc.Labels[LabelNodeID] == chainNode.Status.NodeID {
-			continue
-		}
-
-		peer := appsv1.Peer{
-			ID:            svc.Labels[LabelNodeID],
-			Address:       svc.Name,
-			Port:          pointer.Int(chainutils.P2pPort),
-			Unconditional: pointer.Bool(true),
-		}
-
-		if svc.Labels[LabelValidator] == StringValueTrue {
-			peer.Private = pointer.Bool(true)
-		}
-
-		peers = append(peers, peer)
-		annotations := make(map[string]string)
-		for _, annotation := range getAnnotations {
-			annotations[annotation] = svc.Annotations[annotation]
-		}
-		annotationsList = append(annotationsList, annotations)
-	}
-
-	sort.Slice(annotationsList, func(i, j int) bool {
-		return peers[i].ID < peers[j].ID
-	})
-
-	sort.Slice(peers, func(i, j int) bool {
-		return peers[i].ID < peers[j].ID
-	})
-
-	return peers, annotationsList, nil
+	return cfg
 }
 
-func getMostRecentHeightFromServicesAnnotations(annotationsList []map[string]string) (int64, string) {
-	var trustHeight int64
-	var trustHash string
-
-	for _, annotations := range annotationsList {
-		heightStr, ok := annotations[AnnotationStateSyncTrustHeight]
-		if !ok {
-			continue
-		}
-
-		height, err := strconv.ParseInt(heightStr, 10, 64)
-		if err == nil && height > trustHeight {
-			trustHeight = height
-			trustHash = annotations[AnnotationStateSyncTrustHash]
-		}
-	}
-
-	return trustHeight, trustHash
+func (kf *KeyFormatter) RPC() string {
+	return kf.FormatKey("rpc")
 }
 
-func getExternalAddress(chainNode *appsv1.ChainNode) (string, bool) {
-	if chainNode.Status.PublicAddress != "" {
-		parts := strings.Split(chainNode.Status.PublicAddress, "@")
-		if len(parts) == 2 {
-			return parts[1], true
-		}
-	}
-	return "", false
+func (kf *KeyFormatter) Laddr() string {
+	return kf.FormatKey("laddr")
+}
+
+func (kf *KeyFormatter) CorsAllowedOrigins() string {
+	return kf.FormatKey("cors_allowed_origins")
+}
+
+func (kf *KeyFormatter) P2P() string {
+	return kf.FormatKey("p2p")
+}
+
+func (kf *KeyFormatter) AddrBookStrict() string {
+	return kf.FormatKey("addr_book_strict")
+}
+
+func (kf *KeyFormatter) AllowDuplicateIP() string {
+	return kf.FormatKey("allow_duplicate_ip")
+}
+
+func (kf *KeyFormatter) Instrumentation() string {
+	return kf.FormatKey("instrumentation")
+}
+
+func (kf *KeyFormatter) Prometheus() string {
+	return kf.FormatKey("prometheus")
+}
+
+func (kf *KeyFormatter) LogFormat() string {
+	return kf.FormatKey("log_format")
+}
+
+func (kf *KeyFormatter) Pex() string {
+	return kf.FormatKey("pex")
+}
+
+func (kf *KeyFormatter) PrivValidatorLaddr() string {
+	return kf.FormatKey("priv_validator_laddr")
+}
+
+func (kf *KeyFormatter) API() string {
+	return kf.FormatKey("api")
+}
+
+func (kf *KeyFormatter) Enable() string {
+	return kf.FormatKey("enable")
+}
+
+func (kf *KeyFormatter) Address() string {
+	return kf.FormatKey("address")
+}
+
+func (kf *KeyFormatter) GRPC() string {
+	return kf.FormatKey("grpc")
+}
+
+func (kf *KeyFormatter) JsonRPC() string {
+	return kf.FormatKey("json-rpc")
+}
+
+func (kf *KeyFormatter) WsAddress() string {
+	return kf.FormatKey("ws-address")
+}
+
+func (kf *KeyFormatter) Moniker() string {
+	return kf.FormatKey("moniker")
+}
+
+func (kf *KeyFormatter) AddrBookFile() string {
+	return kf.FormatKey("addr_book_file")
+}
+
+func (kf *KeyFormatter) ExternalAddress() string {
+	return kf.FormatKey("external_address")
+}
+
+func (kf *KeyFormatter) StateSync() string {
+	return kf.FormatKey("statesync")
+}
+
+func (kf *KeyFormatter) SnapshotInterval() string {
+	return kf.FormatKey("snapshot-interval")
+}
+
+func (kf *KeyFormatter) SnapshotKeepRecent() string {
+	return kf.FormatKey("snapshot-keep-recent")
+}
+
+func (kf *KeyFormatter) SeedMode() string {
+	return kf.FormatKey("seed_mode")
+}
+
+func (kf *KeyFormatter) GenesisFile() string {
+	return kf.FormatKey("genesis_file")
+}
+
+func (kf *KeyFormatter) StateDashSync() string {
+	return kf.FormatKey("state-sync")
+}
+
+func (kf *KeyFormatter) RPCServers() string {
+	return kf.FormatKey("rpc_servers")
+}
+
+func (kf *KeyFormatter) TrustHeight() string {
+	return kf.FormatKey("trust_height")
+}
+
+func (kf *KeyFormatter) TrustHash() string {
+	return kf.FormatKey("trust_hash")
+}
+
+func (kf *KeyFormatter) TrustPeriod() string {
+	return kf.FormatKey("trust_period")
+}
+
+func (kf *KeyFormatter) PersistentPeers() string {
+	return kf.FormatKey("persistent_peers")
+}
+
+func (kf *KeyFormatter) UnconditionalPeerIDs() string {
+	return kf.FormatKey("unconditional_peer_ids")
+}
+
+func (kf *KeyFormatter) PrivatePeerIDs() string {
+	return kf.FormatKey("private_peer_ids")
 }

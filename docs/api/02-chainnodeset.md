@@ -261,6 +261,7 @@ Config allows setting specific configurations for a node, including overriding c
 | evmEnabled | Whether EVM is enabled on this node. Will add evm-rpc port to services. Defaults to `false`. | *bool | false |
 | runFlags | List of flags to be appended to app container when starting the node. | []string | false |
 | volumes | Additional volumes to be created and mounted on this node. | [][VolumeSpec](#volumespec) | false |
+| dashedConfigToml | Whether field naming in config.toml should use dashes instead of underscores. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -221,6 +221,10 @@ type Config struct {
 	// Additional volumes to be created and mounted on this node.
 	// +optional
 	Volumes []VolumeSpec `json:"volumes,omitempty"`
+
+	// Whether field naming in config.toml should use dashes instead of underscores. Defaults to `false`.
+	// +optional
+	DashedConfigToml *bool `json:"dashedConfigToml,omitempty"`
 }
 
 type VolumeSpec struct {
