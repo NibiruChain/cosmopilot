@@ -458,11 +458,6 @@ func (in *Config) DeepCopyInto(out *Config) {
 		*out = new(ServiceMonitorSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Firewall != nil {
-		in, out := &in.Firewall, &out.Firewall
-		*out = new(CosmoGuardConfig)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.CosmoGuard != nil {
 		in, out := &in.CosmoGuard, &out.CosmoGuard
 		*out = new(CosmoGuardConfig)

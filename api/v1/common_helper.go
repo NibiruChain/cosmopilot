@@ -250,18 +250,12 @@ func (cfg *Config) CosmoGuardEnabled() bool {
 	if cfg != nil && cfg.CosmoGuard != nil {
 		return cfg.CosmoGuard.Enable
 	}
-	if cfg != nil && cfg.Firewall != nil {
-		return cfg.Firewall.Enable
-	}
 	return false
 }
 
 func (cfg *Config) GetCosmoGuardConfig() *corev1.ConfigMapKeySelector {
 	if cfg != nil && cfg.CosmoGuard != nil {
 		return cfg.CosmoGuard.Config
-	}
-	if cfg != nil && cfg.Firewall != nil {
-		return cfg.Firewall.Config
 	}
 	return nil
 }
@@ -273,18 +267,12 @@ func (cfg *Config) ShouldRestartPodOnCosmoGuardFailure() bool {
 	if cfg.CosmoGuard != nil && cfg.CosmoGuard.RestartPodOnFailure != nil {
 		return *cfg.CosmoGuard.RestartPodOnFailure
 	}
-	if cfg.Firewall != nil && cfg.Firewall.RestartPodOnFailure != nil {
-		return *cfg.Firewall.RestartPodOnFailure
-	}
 	return false
 }
 
 func (cfg *Config) GetCosmoGuardResources() corev1.ResourceRequirements {
 	if cfg != nil && cfg.CosmoGuard != nil && cfg.CosmoGuard.Resources != nil {
 		return *cfg.CosmoGuard.Resources
-	}
-	if cfg != nil && cfg.Firewall != nil && cfg.Firewall.Resources != nil {
-		return *cfg.Firewall.Resources
 	}
 	return corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{

@@ -177,7 +177,6 @@ Config allows setting specific configurations for a node, including overriding c
 | env | List of environment variables to set in the app container. | []corev1.EnvVar | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 | serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
-| firewall | Deploys CosmoGuard to protect API endpoints of the node. DEPRECATED: please use `.spec.config.cosmoGuard` instead. | *[CosmoGuardConfig](#cosmoguardconfig) | false |
 | cosmoGuard | Deploys CosmoGuard to protect API endpoints of the node. | *[CosmoGuardConfig](#cosmoguardconfig) | false |
 | nodeUtilsLogLevel | Log level for node-utils container. Defaults to `info`. | *string | false |
 | startupTime | The time after which a node will be restarted if it does not start properly. Defaults to `1h`. | *string | false |

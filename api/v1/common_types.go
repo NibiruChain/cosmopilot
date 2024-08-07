@@ -178,11 +178,6 @@ type Config struct {
 	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
 
 	// Deploys CosmoGuard to protect API endpoints of the node.
-	// DEPRECATED: please use `.spec.config.cosmoGuard` instead.
-	// +optional
-	Firewall *CosmoGuardConfig `json:"firewall,omitempty"`
-
-	// Deploys CosmoGuard to protect API endpoints of the node.
 	// +optional
 	CosmoGuard *CosmoGuardConfig `json:"cosmoGuard,omitempty"`
 
