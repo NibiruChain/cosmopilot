@@ -34,9 +34,9 @@ func init() {
 		"nodeutils image to be deployed with nodes.",
 	)
 
-	flag.StringVar(&runOpts.CosmosFirewallImage, "cosmos-firewall-image",
-		environ.GetString("COSMOS_FIREWALL_IMAGE", "ghcr.io/nibiruchain/cosmos-firewall"),
-		"cosmos-firewall image to be deployed with nodes when firewall is enabled.",
+	flag.StringVar(&runOpts.CosmoGuardImage, "cosmoguard-image",
+		environ.GetString("COSMOGUARD_IMAGE", "ghcr.io/nibiruchain/cosmoguard"),
+		"cosmoguard image to be deployed with nodes when enabled.",
 	)
 
 	flag.StringVar(&runOpts.WorkerName, "worker-name",

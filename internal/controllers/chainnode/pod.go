@@ -631,57 +631,57 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		pod.Annotations[annotationSafeEvict] = strconv.FormatBool(*chainNode.Spec.Config.SafeToEvict)
 	}
 
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.CosmoGuardEnabled() {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: firewallVolumeName,
+			Name: cosmoGuardVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: chainNode.Spec.Config.Firewall.Config.LocalObjectReference,
+					LocalObjectReference: chainNode.Spec.Config.GetCosmoGuardConfig().LocalObjectReference,
 				},
 			},
 		})
-		firewallContainer := corev1.Container{
-			Name:            firewallContainerName,
-			Image:           r.opts.CosmosFirewallImage,
+		cosmoGuardContainer := corev1.Container{
+			Name:            cosmoGuardContainerName,
+			Image:           r.opts.CosmoGuardImage,
 			ImagePullPolicy: corev1.PullAlways,
 			RestartPolicy:   &sidecarRestartAlways,
-			Args:            []string{"-config", filepath.Join("/config/", chainNode.Spec.Config.Firewall.Config.Key)},
+			Args:            []string{"-config", filepath.Join("/config/", chainNode.Spec.Config.GetCosmoGuardConfig().Key)},
 			Ports: []corev1.ContainerPort{
 				{
 					Name:          chainutils.RpcPortName,
-					ContainerPort: controllers.FirewallRpcPort,
+					ContainerPort: controllers.CosmoGuardRpcPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
 					Name:          chainutils.LcdPortName,
-					ContainerPort: controllers.FirewallLcdPort,
+					ContainerPort: controllers.CosmoGuardLcdPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
 					Name:          chainutils.GrpcPortName,
-					ContainerPort: controllers.FirewallGrpcPort,
+					ContainerPort: controllers.CosmoGuardGrpcPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
-					Name:          controllers.FirewallMetricsPortName,
-					ContainerPort: controllers.FirewallMetricsPort,
+					Name:          controllers.CosmoGuardMetricsPortName,
+					ContainerPort: controllers.CosmoGuardMetricsPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      firewallVolumeName,
+					Name:      cosmoGuardVolumeName,
 					MountPath: "/config",
 				},
 			},
-			Resources: chainNode.Spec.Config.Firewall.GetResources(),
+			Resources: chainNode.Spec.Config.GetCosmoGuardResources(),
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: "/metrics",
 						Port: intstr.IntOrString{
 							Type:   intstr.Int,
-							IntVal: controllers.FirewallMetricsPort,
+							IntVal: controllers.CosmoGuardMetricsPort,
 						},
 						Scheme: "HTTP",
 					},
@@ -691,18 +691,18 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			},
 		}
 		if chainNode.Spec.Config.IsEvmEnabled() {
-			firewallContainer.Ports = append(firewallContainer.Ports, corev1.ContainerPort{
+			cosmoGuardContainer.Ports = append(cosmoGuardContainer.Ports, corev1.ContainerPort{
 				Name:          controllers.EvmRpcPortName,
-				ContainerPort: controllers.FirewallEvmRpcPort,
+				ContainerPort: controllers.CosmoGuardEvmRpcPort,
 				Protocol:      corev1.ProtocolTCP,
 			})
-			firewallContainer.Ports = append(firewallContainer.Ports, corev1.ContainerPort{
+			cosmoGuardContainer.Ports = append(cosmoGuardContainer.Ports, corev1.ContainerPort{
 				Name:          controllers.EvmRpcWsPortName,
-				ContainerPort: controllers.FirewallEvmRpcWsPort,
+				ContainerPort: controllers.CosmoGuardEvmRpcWsPort,
 				Protocol:      corev1.ProtocolTCP,
 			})
 		}
-		pod.Spec.InitContainers = append(pod.Spec.InitContainers, firewallContainer)
+		pod.Spec.InitContainers = append(pod.Spec.InitContainers, cosmoGuardContainer)
 	}
 
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
@@ -933,8 +933,8 @@ func podInFailedState(chainNode *appsv1.ChainNode, pod *corev1.Pod) bool {
 
 	for _, c := range pod.Status.InitContainerStatuses {
 		if !c.Ready && c.State.Terminated != nil && c.State.Terminated.ExitCode != 0 {
-			if c.Name == firewallContainerName {
-				if chainNode.Spec.Config.Firewall.ShouldRestartPodOnFailure() {
+			if c.Name == cosmoGuardContainerName {
+				if chainNode.Spec.Config.ShouldRestartPodOnCosmoGuardFailure() {
 					return true
 				}
 			}

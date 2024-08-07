@@ -221,13 +221,13 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 		})
 	}
 
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
-		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.FirewallRpcPort)
-		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.FirewallLcdPort)
-		svc.Spec.Ports[3].TargetPort = intstr.FromInt32(controllers.FirewallGrpcPort)
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.CosmoGuardEnabled() {
+		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.CosmoGuardRpcPort)
+		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.CosmoGuardLcdPort)
+		svc.Spec.Ports[3].TargetPort = intstr.FromInt32(controllers.CosmoGuardGrpcPort)
 		if chainNode.Spec.Config.IsEvmEnabled() {
-			svc.Spec.Ports[5].TargetPort = intstr.FromInt32(controllers.FirewallEvmRpcPort)
-			svc.Spec.Ports[6].TargetPort = intstr.FromInt32(controllers.FirewallEvmRpcWsPort)
+			svc.Spec.Ports[5].TargetPort = intstr.FromInt32(controllers.CosmoGuardEvmRpcPort)
+			svc.Spec.Ports[6].TargetPort = intstr.FromInt32(controllers.CosmoGuardEvmRpcWsPort)
 		}
 	}
 
@@ -307,12 +307,12 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 		})
 	}
 
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Firewall.Enabled() {
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.CosmoGuardEnabled() {
 		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Name:       controllers.FirewallMetricsPortName,
+			Name:       controllers.CosmoGuardMetricsPortName,
 			Protocol:   corev1.ProtocolTCP,
-			Port:       controllers.FirewallMetricsPort,
-			TargetPort: intstr.FromInt32(controllers.FirewallMetricsPort),
+			Port:       controllers.CosmoGuardMetricsPort,
+			TargetPort: intstr.FromInt32(controllers.CosmoGuardMetricsPort),
 		})
 	}
 

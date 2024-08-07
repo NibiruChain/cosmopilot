@@ -186,11 +186,11 @@ func (gi *GlobalIngressConfig) GetTlsSecretName(owner client.Object) string {
 	return fmt.Sprintf("%s-tls", gi.GetName(owner))
 }
 
-func (gi *GlobalIngressConfig) ShouldUseFirewallPorts(nodeSet *ChainNodeSet) bool {
+func (gi *GlobalIngressConfig) ShouldUseCosmoGuardPorts(nodeSet *ChainNodeSet) bool {
 	for _, groupName := range gi.Groups {
 		for _, group := range nodeSet.Spec.Nodes {
 			if group.Name == groupName {
-				if group.Config != nil && group.Config.Firewall.Enabled() {
+				if group.Config != nil && group.Config.CosmoGuardEnabled() {
 					return true
 				}
 			}

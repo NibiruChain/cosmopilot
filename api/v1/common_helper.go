@@ -34,8 +34,8 @@ const (
 	DefaultMinimumSelfDelegation   = "1"
 	DefaultNodeUtilsCPU            = "300m"
 	DefaultNodeUtilsMemory         = "100Mi"
-	DefaultFirewallCPU             = "200m"
-	DefaultFirewallMemory          = "250Mi"
+	DefaultCosmoGuardCPU           = "200m"
+	DefaultCosmoGuardMemory        = "250Mi"
 )
 
 var (
@@ -246,6 +246,58 @@ func (cfg *Config) GetTerminationGracePeriodSeconds() *int64 {
 	return nil
 }
 
+func (cfg *Config) CosmoGuardEnabled() bool {
+	if cfg != nil && cfg.CosmoGuard != nil {
+		return cfg.CosmoGuard.Enable
+	}
+	if cfg != nil && cfg.Firewall != nil {
+		return cfg.Firewall.Enable
+	}
+	return false
+}
+
+func (cfg *Config) GetCosmoGuardConfig() *corev1.ConfigMapKeySelector {
+	if cfg != nil && cfg.CosmoGuard != nil {
+		return cfg.CosmoGuard.Config
+	}
+	if cfg != nil && cfg.Firewall != nil {
+		return cfg.Firewall.Config
+	}
+	return nil
+}
+
+func (cfg *Config) ShouldRestartPodOnCosmoGuardFailure() bool {
+	if cfg == nil {
+		return false
+	}
+	if cfg.CosmoGuard != nil && cfg.CosmoGuard.RestartPodOnFailure != nil {
+		return *cfg.CosmoGuard.RestartPodOnFailure
+	}
+	if cfg.Firewall != nil && cfg.Firewall.RestartPodOnFailure != nil {
+		return *cfg.Firewall.RestartPodOnFailure
+	}
+	return false
+}
+
+func (cfg *Config) GetCosmoGuardResources() corev1.ResourceRequirements {
+	if cfg != nil && cfg.CosmoGuard != nil && cfg.CosmoGuard.Resources != nil {
+		return *cfg.CosmoGuard.Resources
+	}
+	if cfg != nil && cfg.Firewall != nil && cfg.Firewall.Resources != nil {
+		return *cfg.Firewall.Resources
+	}
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse(DefaultCosmoGuardCPU),
+			corev1.ResourceMemory: resource.MustParse(DefaultCosmoGuardMemory),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse(DefaultCosmoGuardCPU),
+			corev1.ResourceMemory: resource.MustParse(DefaultCosmoGuardMemory),
+		},
+	}
+}
+
 func (exp *ExposeConfig) Enabled() bool {
 	if exp != nil && exp.P2P != nil {
 		return *exp.P2P
@@ -397,35 +449,6 @@ func (u *Upgrade) GetVersion() string {
 		return parts[1]
 	}
 	return DefaultImageVersion
-}
-
-// Firewall Methods
-
-func (f *FirewallConfig) Enabled() bool {
-	return f != nil && f.Enable
-}
-
-func (f *FirewallConfig) ShouldRestartPodOnFailure() bool {
-	if f != nil && f.RestartPodOnFailure != nil {
-		return *f.RestartPodOnFailure
-	}
-	return false
-}
-
-func (f *FirewallConfig) GetResources() corev1.ResourceRequirements {
-	if f != nil && f.Resources != nil {
-		return *f.Resources
-	}
-	return corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse(DefaultFirewallCPU),
-			corev1.ResourceMemory: resource.MustParse(DefaultFirewallMemory),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse(DefaultFirewallCPU),
-			corev1.ResourceMemory: resource.MustParse(DefaultFirewallMemory),
-		},
-	}
 }
 
 // Sidecar helper methods

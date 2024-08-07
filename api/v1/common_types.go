@@ -177,9 +177,14 @@ type Config struct {
 	// +optional
 	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
 
-	// Deploys cosmos-firewall to protect API endpoints to the node.
+	// Deploys CosmoGuard to protect API endpoints of the node.
+	// DEPRECATED: please use `.spec.config.cosmoGuard` instead.
 	// +optional
-	Firewall *FirewallConfig `json:"firewall,omitempty"`
+	Firewall *CosmoGuardConfig `json:"firewall,omitempty"`
+
+	// Deploys CosmoGuard to protect API endpoints of the node.
+	// +optional
+	CosmoGuard *CosmoGuardConfig `json:"cosmoGuard,omitempty"`
 
 	// Log level for node-utils container. Defaults to `info`.
 	// +optional
@@ -246,19 +251,19 @@ type VolumeSpec struct {
 	DeleteWithNode *bool `json:"deleteWithNode,omitempty"`
 }
 
-// FirewallConfig allows configuring cosmos-firewall rules.
-type FirewallConfig struct {
-	// Whether to enable cosmos-firewall on this node.
+// CosmoGuardConfig allows configuring CosmoGuard rules.
+type CosmoGuardConfig struct {
+	// Whether to enable CosmoGuard on this node.
 	Enable bool `json:"enable"`
 
-	// ConfigMap which cosmos-firewall configuration for this node.
+	// ConfigMap which CosmoGuard configuration for this node.
 	Config *corev1.ConfigMapKeySelector `json:"config"`
 
-	// Whether the node's pod should be restarted when firewall fails.
+	// Whether the node's pod should be restarted when CosmoGuard fails.
 	// +optional
 	RestartPodOnFailure *bool `json:"restartPodOnFailure,omitempty"`
 
-	// Compute Resources for firewall container.
+	// Compute Resources for CosmoGuard container.
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }

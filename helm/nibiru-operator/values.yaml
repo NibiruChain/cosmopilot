@@ -1,6 +1,6 @@
 image: ghcr.io/nibiruchain/nibiru-operator
 nodeUtilsImage: ghcr.io/nibiruchain/node-utils
-cosmosFirewallImage: ghcr.io/nibiruchain/cosmos-firewall
+cosmoGuardImage: ghcr.io/nibiruchain/cosmoguard
 replicas: 1
 serviceMonitorEnabled: true
 imagePullSecrets: []

@@ -60,8 +60,8 @@ const (
 	snapshotCheckPeriod   = 15 * time.Second
 	pvcDeletionWaitPeriod = 15 * time.Second
 
-	firewallContainerName = "firewall"
-	firewallVolumeName    = "firewall-config"
+	cosmoGuardContainerName = "cosmoguard"
+	cosmoGuardVolumeName    = "cosmoguard-config"
 
 	initContainerCPU    = "100m"
 	initContainerMemory = "250Mi"

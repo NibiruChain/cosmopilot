@@ -1,13 +1,13 @@
 package controllers
 
 const (
-	FirewallRpcPort         = 16657
-	FirewallLcdPort         = 11317
-	FirewallGrpcPort        = 19090
-	FirewallMetricsPortName = "fw-metrics"
-	FirewallMetricsPort     = 9001
-	FirewallEvmRpcPort      = 18545
-	FirewallEvmRpcWsPort    = 18546
+	CosmoGuardRpcPort         = 16657
+	CosmoGuardLcdPort         = 11317
+	CosmoGuardGrpcPort        = 19090
+	CosmoGuardMetricsPortName = "fw-metrics"
+	CosmoGuardMetricsPort     = 9001
+	CosmoGuardEvmRpcPort      = 18545
+	CosmoGuardEvmRpcWsPort    = 18546
 
 	EvmRpcPortName   = "evm-rpc"
 	EvmRpcPort       = 8545

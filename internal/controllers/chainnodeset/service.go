@@ -178,13 +178,13 @@ func (r *Reconciler) getServiceSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 		})
 	}
 
-	if group.Config != nil && group.Config.Firewall.Enabled() {
-		svc.Spec.Ports[0].TargetPort = intstr.FromInt32(controllers.FirewallRpcPort)
-		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.FirewallLcdPort)
-		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.FirewallGrpcPort)
+	if group.Config != nil && group.Config.CosmoGuardEnabled() {
+		svc.Spec.Ports[0].TargetPort = intstr.FromInt32(controllers.CosmoGuardRpcPort)
+		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.CosmoGuardLcdPort)
+		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.CosmoGuardGrpcPort)
 		if group.Config.IsEvmEnabled() {
-			svc.Spec.Ports[3].TargetPort = intstr.FromInt32(controllers.FirewallEvmRpcPort)
-			svc.Spec.Ports[4].TargetPort = intstr.FromInt32(controllers.FirewallEvmRpcWsPort)
+			svc.Spec.Ports[3].TargetPort = intstr.FromInt32(controllers.CosmoGuardEvmRpcPort)
+			svc.Spec.Ports[4].TargetPort = intstr.FromInt32(controllers.CosmoGuardEvmRpcWsPort)
 		}
 	}
 
@@ -299,12 +299,12 @@ func (r *Reconciler) getGlobalServiceSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 		},
 	}
 
-	if globalIngress.ShouldUseFirewallPorts(nodeSet) {
-		svc.Spec.Ports[0].TargetPort = intstr.FromInt32(controllers.FirewallRpcPort)
-		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.FirewallLcdPort)
-		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.FirewallGrpcPort)
-		svc.Spec.Ports[3].TargetPort = intstr.FromInt32(controllers.FirewallEvmRpcPort)
-		svc.Spec.Ports[4].TargetPort = intstr.FromInt32(controllers.FirewallEvmRpcWsPort)
+	if globalIngress.ShouldUseCosmoGuardPorts(nodeSet) {
+		svc.Spec.Ports[0].TargetPort = intstr.FromInt32(controllers.CosmoGuardRpcPort)
+		svc.Spec.Ports[1].TargetPort = intstr.FromInt32(controllers.CosmoGuardLcdPort)
+		svc.Spec.Ports[2].TargetPort = intstr.FromInt32(controllers.CosmoGuardGrpcPort)
+		svc.Spec.Ports[3].TargetPort = intstr.FromInt32(controllers.CosmoGuardEvmRpcPort)
+		svc.Spec.Ports[4].TargetPort = intstr.FromInt32(controllers.CosmoGuardEvmRpcWsPort)
 	}
 
 	return svc, controllerutil.SetControllerReference(nodeSet, svc, r.Scheme)

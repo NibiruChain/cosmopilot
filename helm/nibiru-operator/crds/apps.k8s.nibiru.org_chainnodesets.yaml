@@ -31,6 +31,9 @@ spec:
     - jsonPath: .status.instances
       name: Instances
       type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1
     schema:
       openAPIV3Schema:
@@ -1273,6 +1276,93 @@ spec:
                             node unhealthy. Defaults to `15s`.
                           format: duration
                           type: string
+                        cosmoGuard:
+                          description: Deploys CosmoGuard to protect API endpoints
+                            of the node.
+                          properties:
+                            config:
+                              description: ConfigMap which CosmoGuard configuration
+                                for this node.
+                              properties:
+                                key:
+                                  description: The key to select.
+                                  type: string
+                                name:
+                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    TODO: Add other useful fields. apiVersion, kind,
+                                    uid?'
+                                  type: string
+                                optional:
+                                  description: Specify whether the ConfigMap or its
+                                    key must be defined
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            enable:
+                              description: Whether to enable CosmoGuard on this node.
+                              type: boolean
+                            resources:
+                              description: Compute Resources for CosmoGuard container.
+                              properties:
+                                claims:
+                                  description: "Claims lists the names of resources,
+                                    defined in spec.resourceClaims, that are used
+                                    by this container. \n This is an alpha field and
+                                    requires enabling the DynamicResourceAllocation
+                                    feature gate. \n This field is immutable. It can
+                                    only be set for containers."
+                                  items:
+                                    description: ResourceClaim references one entry
+                                      in PodSpec.ResourceClaims.
+                                    properties:
+                                      name:
+                                        description: Name must match the name of one
+                                          entry in pod.spec.resourceClaims of the
+                                          Pod where this field is used. It makes that
+                                          resource available inside a container.
+                                        type: string
+                                    required:
+                                    - name
+                                    type: object
+                                  type: array
+                                  x-kubernetes-list-map-keys:
+                                  - name
+                                  x-kubernetes-list-type: map
+                                limits:
+                                  additionalProperties:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                    x-kubernetes-int-or-string: true
+                                  description: 'Limits describes the maximum amount
+                                    of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                  type: object
+                                requests:
+                                  additionalProperties:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                    x-kubernetes-int-or-string: true
+                                  description: 'Requests describes the minimum amount
+                                    of compute resources required. If Requests is
+                                    omitted for a container, it defaults to Limits
+                                    if that is explicitly specified, otherwise to
+                                    an implementation-defined value. Requests cannot
+                                    exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                  type: object
+                              type: object
+                            restartPodOnFailure:
+                              description: Whether the node's pod should be restarted
+                                when CosmoGuard fails.
+                              type: boolean
+                          required:
+                          - config
+                          - enable
+                          type: object
                         dashedConfigToml:
                           description: Whether field naming in config.toml should
                             use dashes instead of underscores. Defaults to `false`.
@@ -1402,11 +1492,12 @@ spec:
                             evm-rpc port to services. Defaults to `false`.
                           type: boolean
                         firewall:
-                          description: Deploys cosmos-firewall to protect API endpoints
-                            to the node.
+                          description: 'Deploys CosmoGuard to protect API endpoints
+                            of the node. DEPRECATED: please use `.spec.config.cosmoGuard`
+                            instead.'
                           properties:
                             config:
-                              description: ConfigMap which cosmos-firewall configuration
+                              description: ConfigMap which CosmoGuard configuration
                                 for this node.
                               properties:
                                 key:
@@ -1426,11 +1517,10 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             enable:
-                              description: Whether to enable cosmos-firewall on this
-                                node.
+                              description: Whether to enable CosmoGuard on this node.
                               type: boolean
                             resources:
-                              description: Compute Resources for firewall container.
+                              description: Compute Resources for CosmoGuard container.
                               properties:
                                 claims:
                                   description: "Claims lists the names of resources,
@@ -1483,7 +1573,7 @@ spec:
                               type: object
                             restartPodOnFailure:
                               description: Whether the node's pod should be restarted
-                                when firewall fails.
+                                when CosmoGuard fails.
                               type: boolean
                           required:
                           - config
@@ -3460,6 +3550,93 @@ spec:
                           node unhealthy. Defaults to `15s`.
                         format: duration
                         type: string
+                      cosmoGuard:
+                        description: Deploys CosmoGuard to protect API endpoints of
+                          the node.
+                        properties:
+                          config:
+                            description: ConfigMap which CosmoGuard configuration
+                              for this node.
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind,
+                                  uid?'
+                                type: string
+                              optional:
+                                description: Specify whether the ConfigMap or its
+                                  key must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          enable:
+                            description: Whether to enable CosmoGuard on this node.
+                            type: boolean
+                          resources:
+                            description: Compute Resources for CosmoGuard container.
+                            properties:
+                              claims:
+                                description: "Claims lists the names of resources,
+                                  defined in spec.resourceClaims, that are used by
+                                  this container. \n This is an alpha field and requires
+                                  enabling the DynamicResourceAllocation feature gate.
+                                  \n This field is immutable. It can only be set for
+                                  containers."
+                                items:
+                                  description: ResourceClaim references one entry
+                                    in PodSpec.ResourceClaims.
+                                  properties:
+                                    name:
+                                      description: Name must match the name of one
+                                        entry in pod.spec.resourceClaims of the Pod
+                                        where this field is used. It makes that resource
+                                        available inside a container.
+                                      type: string
+                                  required:
+                                  - name
+                                  type: object
+                                type: array
+                                x-kubernetes-list-map-keys:
+                                - name
+                                x-kubernetes-list-type: map
+                              limits:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Limits describes the maximum amount
+                                  of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                type: object
+                              requests:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Requests describes the minimum amount
+                                  of compute resources required. If Requests is omitted
+                                  for a container, it defaults to Limits if that is
+                                  explicitly specified, otherwise to an implementation-defined
+                                  value. Requests cannot exceed Limits. More info:
+                                  https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                type: object
+                            type: object
+                          restartPodOnFailure:
+                            description: Whether the node's pod should be restarted
+                              when CosmoGuard fails.
+                            type: boolean
+                        required:
+                        - config
+                        - enable
+                        type: object
                       dashedConfigToml:
                         description: Whether field naming in config.toml should use
                           dashes instead of underscores. Defaults to `false`.
@@ -3588,11 +3765,12 @@ spec:
                           evm-rpc port to services. Defaults to `false`.
                         type: boolean
                       firewall:
-                        description: Deploys cosmos-firewall to protect API endpoints
-                          to the node.
+                        description: 'Deploys CosmoGuard to protect API endpoints
+                          of the node. DEPRECATED: please use `.spec.config.cosmoGuard`
+                          instead.'
                         properties:
                           config:
-                            description: ConfigMap which cosmos-firewall configuration
+                            description: ConfigMap which CosmoGuard configuration
                               for this node.
                             properties:
                               key:
@@ -3612,11 +3790,10 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           enable:
-                            description: Whether to enable cosmos-firewall on this
-                              node.
+                            description: Whether to enable CosmoGuard on this node.
                             type: boolean
                           resources:
-                            description: Compute Resources for firewall container.
+                            description: Compute Resources for CosmoGuard container.
                             properties:
                               claims:
                                 description: "Claims lists the names of resources,
@@ -3669,7 +3846,7 @@ spec:
                             type: object
                           restartPodOnFailure:
                             description: Whether the node's pod should be restarted
-                              when firewall fails.
+                              when CosmoGuard fails.
                             type: boolean
                         required:
                         - config

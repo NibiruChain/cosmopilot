@@ -17,10 +17,10 @@
 * [AppSpec](#appspec)
 * [ChainNodeAssets](#chainnodeassets)
 * [Config](#config)
+* [CosmoGuardConfig](#cosmoguardconfig)
 * [CreateValidatorConfig](#createvalidatorconfig)
 * [ExportTarballConfig](#exporttarballconfig)
 * [ExposeConfig](#exposeconfig)
-* [FirewallConfig](#firewallconfig)
 * [FromNodeRPCConfig](#fromnoderpcconfig)
 * [GcsExportConfig](#gcsexportconfig)
 * [GenesisConfig](#genesisconfig)
@@ -251,7 +251,8 @@ Config allows setting specific configurations for a node, including overriding c
 | env | List of environment variables to set in the app container. | []corev1.EnvVar | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 | serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
-| firewall | Deploys cosmos-firewall to protect API endpoints to the node. | *[FirewallConfig](#firewallconfig) | false |
+| firewall | Deploys CosmoGuard to protect API endpoints of the node. DEPRECATED: please use `.spec.config.cosmoGuard` instead. | *[CosmoGuardConfig](#cosmoguardconfig) | false |
+| cosmoGuard | Deploys CosmoGuard to protect API endpoints of the node. | *[CosmoGuardConfig](#cosmoguardconfig) | false |
 | nodeUtilsLogLevel | Log level for node-utils container. Defaults to `info`. | *string | false |
 | startupTime | The time after which a node will be restarted if it does not start properly. Defaults to `1h`. | *string | false |
 | ignoreSyncing | Marks the node as ready even when it is catching up. This is useful when a chain is halted, but you still need the node to be ready for querying existing data. Defaults to `false`. | *bool | false |
@@ -262,6 +263,19 @@ Config allows setting specific configurations for a node, including overriding c
 | runFlags | List of flags to be appended to app container when starting the node. | []string | false |
 | volumes | Additional volumes to be created and mounted on this node. | [][VolumeSpec](#volumespec) | false |
 | dashedConfigToml | Whether field naming in config.toml should use dashes instead of underscores. Defaults to `false`. | *bool | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### CosmoGuardConfig
+
+CosmoGuardConfig allows configuring CosmoGuard rules.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| enable | Whether to enable CosmoGuard on this node. | bool | true |
+| config | ConfigMap which CosmoGuard configuration for this node. | *corev1.ConfigMapKeySelector | true |
+| restartPodOnFailure | Whether the node's pod should be restarted when CosmoGuard fails. | *bool | false |
+| resources | Compute Resources for CosmoGuard container. | *corev1.ResourceRequirements | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -305,19 +319,6 @@ ExposeConfig allows configuring how P2P endpoint is exposed to public.
 | p2p | Whether to expose p2p endpoint for this node. Defaults to `false`. | *bool | false |
 | p2pServiceType | P2pServiceType indicates how P2P port will be exposed. Valid values are: - `LoadBalancer` - `NodePort` (default) | *corev1.ServiceType | false |
 | annotations | Annotations to be appended to the p2p service. | map[string]string | false |
-
-[Back to Custom Resources](#custom-resources)
-
-#### FirewallConfig
-
-FirewallConfig allows configuring cosmos-firewall rules.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| enable | Whether to enable cosmos-firewall on this node. | bool | true |
-| config | ConfigMap which cosmos-firewall configuration for this node. | *corev1.ConfigMapKeySelector | true |
-| restartPodOnFailure | Whether the node's pod should be restarted when firewall fails. | *bool | false |
-| resources | Compute Resources for firewall container. | *corev1.ResourceRequirements | false |
 
 [Back to Custom Resources](#custom-resources)
 

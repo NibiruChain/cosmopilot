@@ -34,6 +34,7 @@ type ChainNodeSetList struct {
 //+kubebuilder:printcolumn:name="ChainID",type=string,JSONPath=`.status.chainID`
 //+kubebuilder:printcolumn:name="LatestHeight",type=integer,JSONPath=`.status.latestHeight`
 //+kubebuilder:printcolumn:name="Instances",type=integer,JSONPath=`.status.instances`
+//+kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // ChainNodeSet is the Schema for the chainnodesets API.
 type ChainNodeSet struct {
