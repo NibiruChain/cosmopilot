@@ -101,3 +101,57 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path string) error
 
 	return nil
 }
+
+func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path string) error {
+	cmd := fmt.Sprintf("wget -O %s %s", filepath.Join("/pvc", path), url)
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-download-genesis", h.pvc.GetName()),
+			Namespace: h.pvc.GetNamespace(),
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			TerminationGracePeriodSeconds: pointer.Int64(0),
+			Volumes: []corev1.Volume{
+				{
+					Name: "pvc",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: h.pvc.GetName(),
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{
+				{
+					Name:    "downloader",
+					Image:   "apteno/alpine-jq",
+					Command: []string{"/bin/sh"},
+					Args:    []string{"-c", cmd},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "pvc",
+							MountPath: "/pvc",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ph := NewPodHelper(h.client, h.restConfig, pod)
+
+	// Delete the pod if it already exists
+	_ = ph.Delete(ctx)
+
+	// Delete the pod independently of the result
+	defer ph.Delete(ctx)
+
+	// Create the pod
+	if err := ph.Create(ctx); err != nil {
+		return err
+	}
+
+	return ph.WaitForPodSucceeded(ctx, time.Hour)
+}

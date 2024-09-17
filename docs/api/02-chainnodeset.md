@@ -354,7 +354,8 @@ GenesisConfig specifies how genesis will be retrieved.
 | fromNodeRPC | Get the genesis from an existing node using its RPC endpoint. | *[FromNodeRPCConfig](#fromnoderpcconfig) | false |
 | genesisSHA | SHA256 to validate the genesis. | *string | false |
 | configMap | ConfigMap specifies a configmap to load the genesis from. It can also be used to specify the name of the configmap to store the genesis when retrieving genesis using other methods. | *string | false |
-| useDataVolume | UseDataVolume indicates that the operator should save the genesis in the same volume as node data instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB. | *bool | false |
+| useDataVolume | UseDataVolume indicates that the operator should save the genesis in the same volume as node data instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB. Ignored when genesis source is a ConfigMap. Defaults to `false`. | *bool | false |
+| chainID | The chain-id of the network. This is only used when useDataVolume is true. If not set, operator will download the genesis and extract chain-id from it. If set, operator will not download it and use a container to download the genesis directly into the volume instead. This is useful for huge genesis that might kill operator container for using too much memory. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 

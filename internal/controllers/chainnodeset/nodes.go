@@ -225,6 +225,15 @@ func (r *Reconciler) removeNode(ctx context.Context, nodeSet *appsv1.ChainNodeSe
 }
 
 func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec, index int) (*appsv1.ChainNode, error) {
+	var genesisConfig *appsv1.GenesisConfig
+	if nodeSet.Spec.Genesis.ShouldDownloadUsingContainer() {
+		genesisConfig = nodeSet.Spec.Genesis
+	} else {
+		genesisConfig = &appsv1.GenesisConfig{
+			ConfigMap: pointer.String(fmt.Sprintf("%s-genesis", nodeSet.Status.ChainID)),
+		}
+	}
+
 	node := &appsv1.ChainNode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, index),
@@ -235,9 +244,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			}),
 		},
 		Spec: appsv1.ChainNodeSpec{
-			Genesis: &appsv1.GenesisConfig{
-				ConfigMap: pointer.String(fmt.Sprintf("%s-genesis", nodeSet.Status.ChainID)),
-			},
+			Genesis:          genesisConfig,
 			App:              nodeSet.GetAppSpecWithUpgrades(),
 			Config:           group.Config,
 			Persistence:      group.Persistence,

@@ -48,8 +48,25 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 
 	switch {
 	case chainNode.Spec.Genesis.Url != nil:
-		logger.Info("retrieving genesis from url", "url", *chainNode.Spec.Genesis.Url)
+		if chainNode.Spec.Genesis.ShouldDownloadUsingContainer() {
+			pvc := &corev1.PersistentVolumeClaim{}
+			if err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
+				return err
+			}
+			logger.Info("downloading genesis to data volume using container",
+				"url", *chainNode.Spec.Genesis.Url,
+				"pvc", pvc.GetName(),
+			)
+			if err = k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).
+				DownloadGenesis(ctx, *chainNode.Spec.Genesis.Url, chainutils.GenesisFilename); err != nil {
+				return err
+			}
 
+			chainNode.Status.ChainID = *chainNode.Spec.Genesis.ChainID
+			return r.Status().Update(ctx, chainNode)
+		}
+
+		logger.Info("retrieving genesis from url", "url", *chainNode.Spec.Genesis.Url)
 		genesis, err = chainutils.RetrieveGenesisFromURL(*chainNode.Spec.Genesis.Url, chainNode.Spec.Genesis.GenesisSHA)
 		if err != nil {
 			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())

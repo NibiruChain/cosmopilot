@@ -91,6 +91,13 @@ func (g *GenesisConfig) ShouldUseDataVolume() bool {
 	return false
 }
 
+func (g *GenesisConfig) ShouldDownloadUsingContainer() bool {
+	if g != nil && g.ChainID != nil {
+		return g.ShouldUseDataVolume()
+	}
+	return false
+}
+
 func (g *GenesisConfig) GetConfigMapName(chainID string) string {
 	if g != nil && g.ConfigMap != nil {
 		return *g.ConfigMap

@@ -23,6 +23,10 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, nod
 	// by ChainNode controller for validator node, which now owns the configmap containing the genesis.
 	// Here, we will move that ownership to the ChainNodeSet instead.
 	if nodeSet.Status.ChainID != "" {
+		if nodeSet.Spec.Genesis.ShouldUseDataVolume() {
+			return nil
+		}
+
 		cm := &corev1.ConfigMap{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name:      nodeSet.Spec.Genesis.GetConfigMapName(nodeSet.Status.ChainID),
@@ -52,6 +56,12 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, nod
 			return err
 		}
 		return r.Update(ctx, cm)
+	}
+
+	if nodeSet.Spec.Genesis.ShouldDownloadUsingContainer() {
+		// Operator will download the genesis for each ChainNode directly into their volumes
+		nodeSet.Status.ChainID = *nodeSet.Spec.Genesis.ChainID
+		return r.Status().Update(ctx, nodeSet)
 	}
 
 	return r.getGenesis(ctx, app, nodeSet)
