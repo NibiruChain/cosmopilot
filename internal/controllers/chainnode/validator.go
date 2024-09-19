@@ -10,9 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
-	"github.com/NibiruChain/nibiru-operator/internal/cometbft"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/cometbft"
 )
 
 func (r *Reconciler) createValidator(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {

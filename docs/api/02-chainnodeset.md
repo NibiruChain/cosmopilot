@@ -94,7 +94,7 @@ ChainNodeSetSpec defines the desired state of ChainNode.
 | validator | Indicates this node set will run a validator and allows configuring it. | *[NodeSetValidatorConfig](#nodesetvalidatorconfig) | false |
 | nodes | List of groups of ChainNodes to be run. | [][NodeGroupSpec](#nodegroupspec) | true |
 | serviceMonitor | Allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet. ServiceMonitor config on ChainNode overrides this one. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
-| rollingUpdates | Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. The operator will wait for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`. | *bool | false |
+| rollingUpdates | Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. Cosmopilot will wait for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`. | *bool | false |
 | ingresses | List of ingresses to create for this ChainNodeSet. This allows to create ingresses targeting multiple groups of nodes. | [][GlobalIngressConfig](#globalingressconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
@@ -113,8 +113,8 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet.
 | validatorAddress | Validator address of the validator in this ChainNodeSet if one is available. Omitted when no validator is present in the ChainNodeSet. | string | false |
 | validatorStatus | Current status of validator if this ChainNodeSet has one. | ValidatorStatus | false |
 | pubKey | Public key of the validator if this ChainNodeSet has one. | string | false |
-| upgrades | All scheduled/completed upgrades performed by the operator on ChainNodes of this CHainNodeSet. | [][Upgrade](#upgrade) | false |
-| latestHeight | Last height read on the nodes by the operator. | int64 | false |
+| upgrades | All scheduled/completed upgrades performed by cosmopilot on ChainNodes of this CHainNodeSet. | [][Upgrade](#upgrade) | false |
+| latestHeight | Last height read on the nodes by cosmopilot. | int64 | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -193,7 +193,7 @@ NodeSetValidatorConfig contains validator configurations.
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
 | tmKMS | TmKMS configuration for signing commits for this validator. When configured, .spec.validator.privateKeySecret will not be mounted on the validator node. | *[TmKMS](#tmkms) | false |
 | stateSyncRestore | Configures this node to find a state-sync snapshot on the network and restore from it. This is disabled by default. | *bool | false |
-| createValidator | Indicates that operator should run create-validator tx to make this node a validator. | *[CreateValidatorConfig](#createvalidatorconfig) | false |
+| createValidator | Indicates cosmopilot should run create-validator tx to make this node a validator. | *[CreateValidatorConfig](#createvalidatorconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -215,11 +215,11 @@ AppSpec specifies the source image, version and binary name of the app to run. A
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | image | Container image to be used. | string | true |
-| version | Image tag to be used. Once there are completed or skipped upgrades this will be ignored. For a new node that will be state-synced, this will be the version used during state-sync. Only after that, the operator will switch to the version of last upgrade. Defaults to `latest`. | *string | false |
+| version | Image tag to be used. Once there are completed or skipped upgrades this will be ignored. For a new node that will be state-synced, this will be the version used during state-sync. Only after that, the cosmopilot will switch to the version of last upgrade. Defaults to `latest`. | *string | false |
 | imagePullPolicy | Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
 | app | Binary name of the application to be run. | string | true |
 | sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Valid options are: - \"v0.47\" (default) - \"v0.45\" | *SdkVersion | false |
-| checkGovUpgrades | Whether the operator should query gov proposals to find and schedule upgrades. Defaults to `true`. | *bool | false |
+| checkGovUpgrades | Whether cosmopilot should query gov proposals to find and schedule upgrades. Defaults to `true`. | *bool | false |
 | upgrades | List of upgrades to schedule for this node. | [][UpgradeSpec](#upgradespec) | false |
 
 [Back to Custom Resources](#custom-resources)
@@ -280,7 +280,7 @@ CosmoGuardConfig allows configuring CosmoGuard rules.
 
 #### CreateValidatorConfig
 
-CreateValidatorConfig holds configuration for the operator to submit a create-validator transaction.
+CreateValidatorConfig holds configuration for cosmopilot to submit a create-validator transaction.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -354,8 +354,8 @@ GenesisConfig specifies how genesis will be retrieved.
 | fromNodeRPC | Get the genesis from an existing node using its RPC endpoint. | *[FromNodeRPCConfig](#fromnoderpcconfig) | false |
 | genesisSHA | SHA256 to validate the genesis. | *string | false |
 | configMap | ConfigMap specifies a configmap to load the genesis from. It can also be used to specify the name of the configmap to store the genesis when retrieving genesis using other methods. | *string | false |
-| useDataVolume | UseDataVolume indicates that the operator should save the genesis in the same volume as node data instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB. Ignored when genesis source is a ConfigMap. Defaults to `false`. | *bool | false |
-| chainID | The chain-id of the network. This is only used when useDataVolume is true. If not set, operator will download the genesis and extract chain-id from it. If set, operator will not download it and use a container to download the genesis directly into the volume instead. This is useful for huge genesis that might kill operator container for using too much memory. | *string | false |
+| useDataVolume | UseDataVolume indicates that cosmopilot should save the genesis in the same volume as node data instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB. Ignored when genesis source is a ConfigMap. Defaults to `false`. | *bool | false |
+| chainID | The chain-id of the network. This is only used when useDataVolume is true. If not set, cosmopilot will download the genesis and extract chain-id from it. If set, cosmopilot will not download it and use a container to download the genesis directly into the volume instead. This is useful for huge genesis that might kill cosmopilot container for using too much memory. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -373,11 +373,11 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | commissionMaxChangeRate | Maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
 | commissionMaxRate | Maximum commission rate percentage. Defaults to `0.1`. | *string | false |
 | commissionRate | Initial commission rate percentage. Defaults to `0.1`. | *string | false |
-| minSelfDelegation | Minimum self delegation required on the validator. Defaults to `1`. NOTE: In most chains this is a required flag. However, in a few other chains (Cosmos Hub for example), this flag does not even exist anymore. In those cases, set it to an empty string and operator will skip it. | *string | false |
+| minSelfDelegation | Minimum self delegation required on the validator. Defaults to `1`. NOTE: In most chains this is a required flag. However, in a few other chains (Cosmos Hub for example), this flag does not even exist anymore. In those cases, set it to an empty string and cosmopilot will skip it. | *string | false |
 | assets | Assets is the list of tokens and their amounts to be assigned to this validators account. | []string | true |
 | stakeAmount | Amount to be staked by this validator. | string | true |
 | accounts | Accounts specify additional accounts and respective assets to be added to this chain. | [][AccountAssets](#accountassets) | false |
-| chainNodeAccounts | List of ChainNodes whose accounts should be included in genesis. NOTE: Operator will wait for there ChainNodes to exist and have accounts before proceeding. | [][ChainNodeAssets](#chainnodeassets) | false |
+| chainNodeAccounts | List of ChainNodes whose accounts should be included in genesis. NOTE: Cosmopilot will wait for the ChainNodes to exist and have accounts before proceeding. | [][ChainNodeAssets](#chainnodeassets) | false |
 | unbondingTime | Time required to totally unbond delegations. Defaults to `1814400s` (21 days). | *string | false |
 | votingPeriod | Voting period for this chain. Defaults to `120h`. | *string | false |
 | additionalInitCommands | Additional commands to run on genesis initialization. Note: App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
@@ -423,7 +423,7 @@ Persistence configuration for a node.
 | autoResizeIncrement | Increment size on each auto-resize event. Defaults to `50Gi`. | *string | false |
 | autoResizeMaxSize | Size at which auto-resize will stop incrementing PVC size. Defaults to `2Ti`. | *string | false |
 | additionalInitCommands | Additional commands to run on data initialization. Useful for downloading and extracting snapshots. App home is at `/home/app` and data dir is at `/home/app/data`. There is also `/temp`, a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
-| snapshots | Whether the operator should create volume snapshots according to this config. | *[VolumeSnapshotsConfig](#volumesnapshotsconfig) | false |
+| snapshots | Whether cosmopilot should create volume snapshots according to this config. | *[VolumeSnapshotsConfig](#volumesnapshotsconfig) | false |
 | restoreFromSnapshot | Restore from the specified snapshot when creating the PVC for this node. | *[PvcSnapshot](#pvcsnapshot) | false |
 | initTimeout | Time to wait for data initialization pod to be successful. Defaults to `5m`. | *string | false |
 
@@ -533,14 +533,14 @@ TmKmsProvider allows configuring providers for tmKMS. Note that only one should 
 
 #### Upgrade
 
-Upgrade represents an upgrade processed by the operator and added to status.
+Upgrade represents an upgrade processed by cosmopilot and added to status.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | height | Height at which the upgrade should occur. | int64 | true |
 | image | Container image replacement to be used in the upgrade. | string | true |
 | status | Upgrade status. | UpgradePhase | true |
-| source | Where the operator got this upgrade from. | UpgradeSource | true |
+| source | Where cosmopilot got this upgrade from. | UpgradeSource | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -580,7 +580,7 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 | snapshotClass | Name of the volume snapshot class to be used. Uses the default class if not specified. | *string | false |
 | stopNode | Whether the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
 | exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
-| verify | Whether the operator should verify the snapshot for corruption after it is ready. Defaults to `false`. | *bool | false |
+| verify | Whether cosmopilot should verify the snapshot for corruption after it is ready. Defaults to `false`. | *bool | false |
 | disableWhileSyncing | Whether to disable snapshots while the node is syncing | *bool | false |
 
 [Back to Custom Resources](#custom-resources)

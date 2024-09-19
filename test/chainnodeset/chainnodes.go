@@ -6,8 +6,8 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/test/framework"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/test/framework"
 )
 
 func testCreateChainNodes(tf *framework.TestFramework, ns *corev1.Namespace, app appsv1.AppSpec) {

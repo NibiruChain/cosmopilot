@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	_ "go.uber.org/automaxprocs"
 
-	"github.com/NibiruChain/nibiru-operator/pkg/nodeutils"
+	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
 
 var (

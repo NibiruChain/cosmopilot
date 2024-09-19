@@ -169,7 +169,7 @@ type ChainNodeStatus struct {
 	// +optional
 	AppVersion string `json:"appVersion,omitempty"`
 
-	// Last height read on the node by the operator.
+	// Last height read on the node by cosmopilot.
 	// +optional
 	LatestHeight int64 `json:"latestHeight,omitempty"`
 
@@ -177,7 +177,7 @@ type ChainNodeStatus struct {
 	// +optional
 	SeedMode bool `json:"seedMode,omitempty"`
 
-	// All scheduled/completed upgrades performed by the operator on this ChainNode.
+	// All scheduled/completed upgrades performed by cosmopilot on this ChainNode.
 	// +optional
 	Upgrades []Upgrade `json:"upgrades,omitempty"`
 
@@ -210,7 +210,7 @@ type ValidatorConfig struct {
 	// +optional
 	TmKMS *TmKMS `json:"tmKMS,omitempty"`
 
-	// Indicates that operator should run create-validator tx to make this node a validator.
+	// Indicates that cosmopilot should run create-validator tx to make this node a validator.
 	// +optional
 	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
 }

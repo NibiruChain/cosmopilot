@@ -7,8 +7,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkcmd"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
 )
 
 type App struct {

@@ -8,10 +8,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
-	"github.com/NibiruChain/nibiru-operator/internal/cometbft"
-	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/cometbft"
+	"github.com/NibiruChain/cosmopilot/internal/tmkms"
 )
 
 func (r *Reconciler) ensureTmKMSConfig(ctx context.Context, chainNode *appsv1.ChainNode) error {

@@ -4,7 +4,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
+	"github.com/NibiruChain/cosmopilot/internal/tmkms"
 )
 
 // Reasons for events
@@ -91,7 +91,7 @@ type AppSpec struct {
 
 	// Image tag to be used. Once there are completed or skipped upgrades this will be ignored.
 	// For a new node that will be state-synced, this will be the version used during state-sync. Only after
-	// that, the operator will switch to the version of last upgrade.
+	// that, the cosmopilot will switch to the version of last upgrade.
 	// Defaults to `latest`.
 	// +optional
 	// +default=latest
@@ -114,7 +114,7 @@ type AppSpec struct {
 	// +default=v0.47
 	SdkVersion *SdkVersion `json:"sdkVersion,omitempty"`
 
-	// Whether the operator should query gov proposals to find and schedule upgrades.
+	// Whether cosmopilot should query gov proposals to find and schedule upgrades.
 	// Defaults to `true`.
 	// +optional
 	// +default=true
@@ -379,7 +379,7 @@ type GenesisInitConfig struct {
 
 	// Minimum self delegation required on the validator. Defaults to `1`.
 	// NOTE: In most chains this is a required flag. However, in a few other chains (Cosmos Hub for example),
-	// this flag does not even exist anymore. In those cases, set it to an empty string and operator will skip it.
+	// this flag does not even exist anymore. In those cases, set it to an empty string and cosmopilot will skip it.
 	// +optional
 	// +default="1"
 	MinSelfDelegation *string `json:"minSelfDelegation,omitempty"`
@@ -395,7 +395,7 @@ type GenesisInitConfig struct {
 	Accounts []AccountAssets `json:"accounts,omitempty"`
 
 	// List of ChainNodes whose accounts should be included in genesis.
-	// NOTE: Operator will wait for there ChainNodes to exist and have accounts before proceeding.
+	// NOTE: Cosmopilot will wait for the ChainNodes to exist and have accounts before proceeding.
 	ChainNodeAccounts []ChainNodeAssets `json:"chainNodeAccounts,omitempty"`
 
 	// Time required to totally unbond delegations. Defaults to `1814400s` (21 days).
@@ -468,15 +468,15 @@ type GenesisConfig struct {
 	// +optional
 	ConfigMap *string `json:"configMap,omitempty"`
 
-	// UseDataVolume indicates that the operator should save the genesis in the same volume as node data
+	// UseDataVolume indicates that cosmopilot should save the genesis in the same volume as node data
 	// instead of a ConfigMap. This is useful for genesis whose size is bigger than ConfigMap limit of 1MiB.
 	// Ignored when genesis source is a ConfigMap. Defaults to `false`.
 	// +optional
 	UseDataVolume *bool `json:"useDataVolume,omitempty"`
 
-	// The chain-id of the network. This is only used when useDataVolume is true. If not set, operator will download
-	// the genesis and extract chain-id from it. If set, operator will not download it and use a container to download
-	// the genesis directly into the volume instead. This is useful for huge genesis that might kill operator container
+	// The chain-id of the network. This is only used when useDataVolume is true. If not set, cosmopilot will download
+	// the genesis and extract chain-id from it. If set, cosmopilot will not download it and use a container to download
+	// the genesis directly into the volume instead. This is useful for huge genesis that might kill cosmopilot container
 	// for using too much memory.
 	// +optional
 	ChainID *string `json:"chainID,omitempty"`
@@ -671,7 +671,7 @@ type Persistence struct {
 	// +optional
 	AdditionalInitCommands []InitCommand `json:"additionalInitCommands,omitempty"`
 
-	// Whether the operator should create volume snapshots according to this config.
+	// Whether cosmopilot should create volume snapshots according to this config.
 	// +optional
 	Snapshots *VolumeSnapshotsConfig `json:"snapshots,omitempty"`
 
@@ -708,7 +708,7 @@ type VolumeSnapshotsConfig struct {
 	// +optional
 	ExportTarball *ExportTarballConfig `json:"exportTarball,omitempty"`
 
-	// Whether the operator should verify the snapshot for corruption after it is ready. Defaults to `false`.
+	// Whether cosmopilot should verify the snapshot for corruption after it is ready. Defaults to `false`.
 	// +optional
 	// +default=false
 	Verify *bool `json:"verify,omitempty"`
@@ -757,7 +757,7 @@ const (
 	UpgradeImageMissing UpgradePhase = "image-missing"
 
 	// UpgradeScheduled indicates that the upgrade is scheduled and will be
-	// performed by the operator.
+	// performed by cosmopilot.
 	UpgradeScheduled UpgradePhase = "scheduled"
 
 	// UpgradeOnGoing indicates that the upgrade is on going.
@@ -768,7 +768,7 @@ const (
 	// new image. Application issues after the upgrade won't be detected.
 	UpgradeCompleted UpgradePhase = "completed"
 
-	// UpgradeSkipped indicates that the operator will not perform the upgrade
+	// UpgradeSkipped indicates that cosmopilot will not perform the upgrade
 	// because it is in the past.
 	UpgradeSkipped UpgradePhase = "skipped"
 )
@@ -799,7 +799,7 @@ type UpgradeSpec struct {
 	ForceOnChain *bool `json:"forceOnChain,omitempty"`
 }
 
-// Upgrade represents an upgrade processed by the operator and added to status.
+// Upgrade represents an upgrade processed by cosmopilot and added to status.
 type Upgrade struct {
 	// Height at which the upgrade should occur.
 	Height int64 `json:"height"`
@@ -810,11 +810,11 @@ type Upgrade struct {
 	// Upgrade status.
 	Status UpgradePhase `json:"status"`
 
-	// Where the operator got this upgrade from.
+	// Where cosmopilot got this upgrade from.
 	Source UpgradeSource `json:"source"`
 }
 
-// CreateValidatorConfig holds configuration for the operator to submit a create-validator transaction.
+// CreateValidatorConfig holds configuration for cosmopilot to submit a create-validator transaction.
 type CreateValidatorConfig struct {
 	// Name of the secret containing the mnemonic of the account to be used by
 	// this validator. Defaults to `<chainnode>-account`. Will be created if it does not exist.

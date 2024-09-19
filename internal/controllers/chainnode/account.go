@@ -9,8 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils"
 )
 
 func (r *Reconciler) ensureAccount(ctx context.Context, chainNode *appsv1.ChainNode) error {

@@ -1,9 +1,9 @@
 package chainnode
 
 import (
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/controllers"
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
+	"github.com/NibiruChain/cosmopilot/internal/utils"
 )
 
 func WithChainNodeLabels(chainNode *appsv1.ChainNode, additional ...map[string]string) map[string]string {

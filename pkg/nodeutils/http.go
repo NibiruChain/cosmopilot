@@ -8,7 +8,7 @@ import (
 	"github.com/cometbft/cometbft/libs/json"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
+	"github.com/NibiruChain/cosmopilot/internal/utils"
 )
 
 func (s *NodeUtils) registerRoutes() {

@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cosmopilot.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "cosmopilot.labels" . | indent 6 }}
+  replicas: {{ .Values.replicas }}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+        rollme: {{ randAlphaNum 5 | quote }}
+      labels:
+        {{- include "cosmopilot.labels" . | indent 8 }}
+    spec:
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+      {{- end }}
+    {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      {{- if .Values.webHooksEnabled }}
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: {{ .Release.Name }}-cert
+      {{- end }}
+      nodeSelector:
+      {{ toYaml .Values.nodeSelector | indent 8 }}
+      containers:
+        - name: manager
+          image: {{ .Values.image }}:{{- if .Values.imageTag }}{{ .Values.imageTag }}{{- else }}{{ .Chart.AppVersion }}{{ end }}
+          {{- if .Values.webHooksEnabled }}
+          ports:
+            - name: webhook-server
+              containerPort: 9443
+              protocol: TCP
+          {{- end }}
+          volumeMounts:
+          {{- if .Values.webHooksEnabled }}
+            - name: cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+          {{- end }}
+          env:
+            - name: NODE_UTILS_IMAGE
+              value: {{ .Values.nodeUtilsImage }}
+            - name: COSMOGUARD_IMAGE
+              value: {{ .Values.cosmoGuardImage }}
+            - name: WORKER_NAME
+              value: {{ .Values.workerName }}
+            - name: WORKER_COUNT
+              value: "{{ .Values.workerCount }}"
+            - name: DISABLE_WEBHOOKS
+              value: "{{ .Values.webHooksEnabled | ternary "false" "true" }}"
+            - name: DEBUG_MODE
+              value: "{{ .Values.debugMode }}"
+            - name: ENABLE_LEADER_ELECTION
+              value: "true"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          {{- if .Values.probesEnabled }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {{- end }}
+          resources:
+            limits:
+              cpu: 250m
+              memory: 300Mi
+            requests:
+              cpu: 10m
+              memory: 150Mi
+      serviceAccountName: {{ .Release.Name }}
+      terminationGracePeriodSeconds: 10

@@ -8,9 +8,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
-	"github.com/NibiruChain/nibiru-operator/test/framework"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/test/framework"
 )
 
 func testCreateGenesis(tf *framework.TestFramework, ns *corev1.Namespace, app appsv1.AppSpec) {

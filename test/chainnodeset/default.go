@@ -5,7 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
 
 const (

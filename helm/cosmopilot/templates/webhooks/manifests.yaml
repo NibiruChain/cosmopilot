@@ -1,0 +1,70 @@
+{{- if .Values.webHooksEnabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ .Release.Name }}-validating-webhook-cfg
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cosmopilot.labels" . | indent 4 }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ .Release.Name }}-cert
+webhooks:
+  - clientConfig:
+      service:
+        name: {{ .Release.Name }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-apps-k8s-nibiru-org-v1-chainnode
+    failurePolicy: Fail
+    matchPolicy: Exact
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
+    name: vchainnode.kb.io
+    objectSelector:
+    {{- if .Values.workerName }}
+      matchLabels:
+        worker-name: {{ .Values.workerName }}
+    {{- else }}
+      matchExpressions:
+        - key: worker-name
+          operator: DoesNotExist
+    {{- end }}
+    rules:
+      - apiGroups:
+          - apps.k8s.nibiru.org
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - chainnodes
+  - clientConfig:
+      service:
+        name: {{ .Release.Name }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-apps-k8s-nibiru-org-v1-chainnodeset
+    failurePolicy: Fail
+    matchPolicy: Exact
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
+    name: vchainnodeset.kb.io
+    objectSelector:
+    {{- if .Values.workerName }}
+      matchLabels:
+        worker-name: {{ .Values.workerName }}
+    {{- else }}
+      matchExpressions:
+        - key: worker-name
+          operator: DoesNotExist
+    {{- end }}
+    rules:
+      - apiGroups:
+          - apps.k8s.nibiru.org
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - chainnodesets
+{{- end }}

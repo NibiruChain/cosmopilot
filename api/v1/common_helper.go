@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
 
-	"github.com/NibiruChain/nibiru-operator/internal/tmkms"
+	"github.com/NibiruChain/cosmopilot/internal/tmkms"
 )
 
 const (

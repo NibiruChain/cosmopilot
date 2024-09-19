@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/NibiruChain/nibiru-operator/internal/environ"
+	"github.com/NibiruChain/cosmopilot/internal/environ"
 )
 
 func init() {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
 
 const testMnemonic = "upset promote follow flag you way eagle plunge scorpion oil version afraid churn fog tiger almost noise define license pistol post raise report time"

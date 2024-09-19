@@ -15,10 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
-	"github.com/NibiruChain/nibiru-operator/internal/controllers"
-	"github.com/NibiruChain/nibiru-operator/internal/k8s"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
+	"github.com/NibiruChain/cosmopilot/internal/k8s"
 )
 
 func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.ChainNode) error {

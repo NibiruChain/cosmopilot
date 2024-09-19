@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/rest"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
 
 const (

@@ -1,4 +1,4 @@
-NAME 	?= ghcr.io/nibiruchain/nibiru-operator
+NAME 	?= ghcr.io/nibiruchain/cosmopilot
 VERSION ?= $(shell git describe --tags --exclude 'node-*/*' --exclude 'vault-*/*' --abbrev=0)
 IMG 	?= $(NAME):$(VERSION:v%=%)
 
@@ -50,9 +50,9 @@ docs: crd-to-markdown
 manifests: generate controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	@$(CONTROLLER_GEN) \
 		rbac:roleName=manager-role crd webhook paths="./..." \
-		output:crd:artifacts:config=helm/nibiru-operator/crds \
-		output:rbac:dir=helm/nibiru-operator/templates/rbac
-	@sed $(sedi) 's/name: manager-role/name: {{ .Release.Name }}/g' helm/nibiru-operator/templates/rbac/role.yaml
+		output:crd:artifacts:config=helm/cosmopilot/crds \
+		output:rbac:dir=helm/cosmopilot/templates/rbac
+	@sed $(sedi) 's/name: manager-role/name: {{ .Release.Name }}/g' helm/cosmopilot/templates/rbac/role.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -72,19 +72,19 @@ test.unit: manifests generate fmt vet ## Run unit tests.
 
 .PHONY: test.e2e
 test.e2e: EVENTUALLY_TIMEOUT?=5m
-test.e2e: CERTS_DIR?=/tmp/no-e2e
+test.e2e: CERTS_DIR?=/tmp/cosmopilot-e2e
 test.e2e: FOCUS?=
 test.e2e: SKIP?=
 test.e2e: WORKER_COUNT?=1
 test.e2e: TEST_TIMEOUT?=20m
 test.e2e: manifests generate fmt vet mirrord setup-test-env install ## Run integration tests.
-	@# Create dummy operator service just to have all resources. mirrod will steal its traffic then.
-	@$(HELM) get metadata nibiru-operator -n nibiru-system || $(MAKE) NAME=nginxinc/nginx-unprivileged APP_VERSION=latest PROBES_ENABLED=false deploy
+	@# Create dummy cosmopilot service just to have all resources. mirrod will steal its traffic then.
+	@$(HELM) get metadata cosmopilot -n nibiru-system || $(MAKE) NAME=nginxinc/nginx-unprivileged APP_VERSION=latest PROBES_ENABLED=false deploy
 	@mkdir -p $(CERTS_DIR)
 	@for f in tls.key ca.crt tls.crt; do \
-		$(KUBECTL) -n nibiru-system get secret nibiru-operator-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
+		$(KUBECTL) -n nibiru-system get secret cosmopilot-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
 	done
-	@$(MIRRORD) exec -t deployment/nibiru-operator \
+	@$(MIRRORD) exec -t deployment/cosmopilot \
 		-n nibiru-system \
 		-a nibiru-system \
 		-p --steal \
@@ -95,7 +95,7 @@ test.e2e: manifests generate fmt vet mirrord setup-test-env install ## Run integ
 			--certs-dir=$(CERTS_DIR) \
 			--nodeutils-image=$(NODE_UTILS_IMG) \
 			--eventually-timeout=$(EVENTUALLY_TIMEOUT) \
-			--cert-issuer-name=no-e2e \
+			--cert-issuer-name=cosmopilot-e2e \
 			--worker-count=$(WORKER_COUNT) \
 			--ginkgo.focus=$(FOCUS) \
 			--ginkgo.skip=$(SKIP)
@@ -114,13 +114,13 @@ run: manifests generate ## Run a controller from your host.
 	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)" -worker-count=$(WORKER_COUNT) -debug-mode -disable-webhooks
 
 .PHONY: run.mirrord
-run.mirrord: RELEASE_NAME?=nibiru-operator
+run.mirrord: RELEASE_NAME?=cosmopilot
 run.mirrord: NAMESPACE?=nibiru-system
 run.mirrord: WORKER_NAME?=
 run.mirrord: WORKER_COUNT?=1
 run.mirrord: CERTS_DIR?=/tmp
 run.mirrord: manifests generate mirrord
-	@# Create dummy operator service just to have all resources. mirrod will steal its traffic then.
+	@# Create dummy cosmopilot service just to have all resources. mirrod will steal its traffic then.
 	@$(HELM) get metadata $(RELEASE_NAME) -n $(NAMESPACE) || \
 		$(MAKE) RELEASE_NAME=$(RELEASE_NAME) NAMESPACE=$(NAMESPACE) NAME=nginxinc/nginx-unprivileged VERSION=latest PROBES_ENABLED=false deploy
 	@mkdir -p $(CERTS_DIR)
@@ -140,7 +140,7 @@ run.mirrord: manifests generate mirrord
 			-debug-mode
 
 .PHONY: attach.mirrord
-attach.mirrord: RELEASE_NAME?=nibiru-operator
+attach.mirrord: RELEASE_NAME?=cosmopilot
 attach.mirrord: NAMESPACE?=nibiru-system
 attach.mirrord: WORKER_NAME?=
 attach.mirrord: WORKER_COUNT?=1
@@ -186,14 +186,14 @@ endif
 
 .PHONY: install
 install: manifests kubectl ## Install CRDs into the K8s cluster
-	@$(KUBECTL) apply -f helm/nibiru-operator/crds
+	@$(KUBECTL) apply -f helm/cosmopilot/crds
 
 .PHONY: uninstall
 uninstall: manifests kubectl ## Uninstall CRDs from the K8s cluster
-	@$(KUBECTL) delete -f helm/nibiru-operator/crds
+	@$(KUBECTL) delete -f helm/cosmopilot/crds
 
 .PHONY: deploy
-deploy: RELEASE_NAME?=nibiru-operator
+deploy: RELEASE_NAME?=cosmopilot
 deploy: NAMESPACE?=nibiru-system
 deploy: SERVICE_MONITOR_ENABLED?=false
 deploy: IMAGE_PULL_SECRETS?=
@@ -203,7 +203,7 @@ deploy: DEBUG_MODE?=false
 deploy: PROBES_ENABLED?=true
 deploy: APP_VERSION?=$(VERSION:v%=%)
 deploy: manifests helm ## Deploy controller to the K8s cluster
-	@$(HELM) package helm/nibiru-operator --version $(VERSION:v%=%) --app-version $(VERSION:v%=%) -d testbin/
+	@$(HELM) package helm/cosmopilot --version $(VERSION:v%=%) --app-version $(VERSION:v%=%) -d testbin/
 	@$(HELM) upgrade $(RELEASE_NAME) \
 		--install \
 		--create-namespace \
@@ -218,10 +218,10 @@ deploy: manifests helm ## Deploy controller to the K8s cluster
 		--set serviceMonitorEnabled=$(SERVICE_MONITOR_ENABLED) \
 		--set debugMode=$(DEBUG_MODE) \
 		--wait \
-		./testbin/nibiru-operator-$(VERSION:v%=%).tgz
+		./testbin/cosmopilot-$(VERSION:v%=%).tgz
 
 .PHONY: undeploy
-undeploy: RELEASE_NAME?=nibiru-operator
+undeploy: RELEASE_NAME?=cosmopilot
 undeploy: NAMESPACE?=nibiru-system
 undeploy: helm ## Undeploy controller from the K8s cluster
 	@$(HELM) uninstall --namespace=$(NAMESPACE) $(RELEASE_NAME)
@@ -229,13 +229,13 @@ undeploy: helm ## Undeploy controller from the K8s cluster
 ##@ Test Environment
 
 .PHONY: setup-test-env
-setup-test-env: CLUSTER_NAME?=no-e2e
+setup-test-env: CLUSTER_NAME?=cosmopilot-e2e
 setup-test-env: kind kubectl helm
-	@./contrib/scripts/test-env/env.sh up --cluster-name $(CLUSTER_NAME) --issuer-name no-e2e --kind-bin $(KIND) --kubectl-bin $(KUBECTL) --helm-bin $(HELM)
+	@./contrib/scripts/test-env/env.sh up --cluster-name $(CLUSTER_NAME) --issuer-name cosmopilot-e2e --kind-bin $(KIND) --kubectl-bin $(KUBECTL) --helm-bin $(HELM)
 	@sleep 5 #Wait for cert-manager to be available to respond to webhook requests
 
 .PHONY: teardown-test-env
-teardown-test-env: CLUSTER_NAME?=no-e2e
+teardown-test-env: CLUSTER_NAME?=cosmopilot-e2e
 teardown-test-env: kind
 	@./contrib/scripts/test-env/env.sh down --cluster-name $(CLUSTER_NAME) --kind-bin $(KIND)
 

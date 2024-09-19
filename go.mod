@@ -1,4 +1,4 @@
-module github.com/NibiruChain/nibiru-operator
+module github.com/NibiruChain/cosmopilot
 
 go 1.21
 

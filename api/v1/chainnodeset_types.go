@@ -67,7 +67,7 @@ type ChainNodeSetSpec struct {
 	// +optional
 	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
 
-	// Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. The operator will wait
+	// Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. Cosmopilot will wait
 	// for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this
 	// does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`.
 	// +optional
@@ -114,11 +114,11 @@ type ChainNodeSetStatus struct {
 	// +optional
 	PubKey string `json:"pubKey,omitempty"`
 
-	// All scheduled/completed upgrades performed by the operator on ChainNodes of this CHainNodeSet.
+	// All scheduled/completed upgrades performed by cosmopilot on ChainNodes of this CHainNodeSet.
 	// +optional
 	Upgrades []Upgrade `json:"upgrades,omitempty"`
 
-	// Last height read on the nodes by the operator.
+	// Last height read on the nodes by cosmopilot.
 	// +optional
 	LatestHeight int64 `json:"latestHeight,omitempty"`
 }
@@ -203,7 +203,7 @@ type NodeSetValidatorConfig struct {
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 
-	// Indicates that operator should run create-validator tx to make this node a validator.
+	// Indicates cosmopilot should run create-validator tx to make this node a validator.
 	// +optional
 	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
 }

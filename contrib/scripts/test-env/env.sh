@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CLUSTER_NAME=nibiru-operator
+CLUSTER_NAME=cosmopilot
 ISSUER_NAME=letsencrypt-prod
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 KIND_BIN=$(which kind)
@@ -9,7 +9,7 @@ HELM_BIN=$(which helm)
 
 usage()
 {
-    echo -e "Manage operator local environment\n"
+    echo -e "Manage cosmopilot local environment\n"
     echo -e "Usage: \n  $0 [command]\n"
     echo -e "Available Commands:"
     echo -e "  up \t Setup the environment"
@@ -109,7 +109,7 @@ then
     echo -e "${green}\xE2\x9C\x94${reset} Ensure nginx ingress controller is installed and running"
     $KUBECTL_BIN apply \
       --context kind-$CLUSTER_NAME \
-      -f  https://raw.githubusercontent.com/kubernetes/ingress-nginx/helm-chart-4.8.3/deploy/static/provider/kind/deploy.yaml \
+      -f  https://raw.githubusercontent.com/kubernetes/ingress-nginx/helm-chart-4.11.2/deploy/static/provider/kind/deploy.yaml \
       &> /dev/null
     $KUBECTL_BIN patch \
       --context kind-$CLUSTER_NAME \
@@ -124,7 +124,7 @@ then
       --context kind-$CLUSTER_NAME \
       --force-conflicts=true \
       --server-side \
-      -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.1/cert-manager.yaml  \
+      -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml  \
       &> /dev/null
 
     ### Wait for cert-manager to be up and running

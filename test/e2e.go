@@ -14,9 +14,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/NibiruChain/nibiru-operator/test/chainnode"
-	"github.com/NibiruChain/nibiru-operator/test/chainnodeset"
-	"github.com/NibiruChain/nibiru-operator/test/framework"
+	"github.com/NibiruChain/cosmopilot/test/chainnode"
+	"github.com/NibiruChain/cosmopilot/test/chainnodeset"
+	"github.com/NibiruChain/cosmopilot/test/framework"
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 func RunE2ETests(t *testing.T) {
 	RegisterFailHandler(Fail)
 	SetDefaultEventuallyTimeout(eventuallyTimeout)
-	RunSpecs(t, "nibiru-operator integration tests suite")
+	RunSpecs(t, "cosmopilot integration tests suite")
 }
 
 var _ = BeforeSuite(func() {

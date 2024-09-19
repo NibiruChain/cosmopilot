@@ -22,11 +22,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils"
-	"github.com/NibiruChain/nibiru-operator/internal/controllers"
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
-	"github.com/NibiruChain/nibiru-operator/pkg/informer"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
+	"github.com/NibiruChain/cosmopilot/internal/utils"
+	"github.com/NibiruChain/cosmopilot/pkg/informer"
 )
 
 func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {

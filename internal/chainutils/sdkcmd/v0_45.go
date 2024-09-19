@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
 
 func init() {

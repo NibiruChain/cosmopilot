@@ -19,11 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
-	"github.com/NibiruChain/nibiru-operator/internal/controllers/chainnodeset"
-	"github.com/NibiruChain/nibiru-operator/internal/datasnapshot"
-	"github.com/NibiruChain/nibiru-operator/internal/k8s"
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/controllers/chainnodeset"
+	"github.com/NibiruChain/cosmopilot/internal/datasnapshot"
+	"github.com/NibiruChain/cosmopilot/internal/k8s"
+	"github.com/NibiruChain/cosmopilot/internal/utils"
 )
 
 type SnapshotIntegrityStatus string

@@ -1,4 +1,4 @@
-# nibiru-operator
+# CosmoPilot
 Kubernetes controllers to manage nibiru (and other cosmos nodes) on a Kubernetes cluster.
 
 ## Description

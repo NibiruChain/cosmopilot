@@ -1,0 +1,12 @@
+image: ghcr.io/nibiruchain/cosmopilot
+nodeUtilsImage: ghcr.io/nibiruchain/node-utils
+cosmoGuardImage: ghcr.io/nibiruchain/cosmoguard
+replicas: 1
+serviceMonitorEnabled: true
+imagePullSecrets: []
+workerCount: 1
+workerName: ""
+webHooksEnabled: true
+nodeSelector: {}
+debugMode: false
+probesEnabled: true

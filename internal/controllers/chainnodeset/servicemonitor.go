@@ -1,6 +1,6 @@
 package chainnodeset
 
-import appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+import appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 
 func setChainNodeServiceMonitor(nodeSet *appsv1.ChainNodeSet, chainNode *appsv1.ChainNode) {
 	if nodeSet.Spec.ServiceMonitor == nil {

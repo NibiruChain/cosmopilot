@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
 
 func (r *Reconciler) ensureUpgrades(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {

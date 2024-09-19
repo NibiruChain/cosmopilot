@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/NibiruChain/nibiru-operator/test/framework"
+	"github.com/NibiruChain/cosmopilot/test/framework"
 )
 
 var tf *framework.TestFramework

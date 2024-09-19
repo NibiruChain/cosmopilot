@@ -15,9 +15,9 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/NibiruChain/nibiru-operator/internal/chainutils/sdkcmd"
-	"github.com/NibiruChain/nibiru-operator/internal/k8s"
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
+	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
+	"github.com/NibiruChain/cosmopilot/internal/k8s"
+	"github.com/NibiruChain/cosmopilot/internal/utils"
 )
 
 func ExtractChainIdFromGenesis(genesis string) (string, error) {

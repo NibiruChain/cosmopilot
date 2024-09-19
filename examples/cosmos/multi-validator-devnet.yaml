@@ -1,0 +1,194 @@
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNodeSet
+metadata:
+  name: cosmos-devnet
+spec:
+  app:
+    image: ghcr.io/akash-network/cosmos-omnibus
+    version: v0.4.20-cosmoshub-v17.3.0
+    app: gaiad
+
+  validator:
+    info:
+      moniker: nibiru-0
+      website: https://nibiru.fi
+
+    config:
+      volumes:
+        - name: wasm
+          size: 1Gi
+          path: /home/app/wasm
+          deleteWithNode: true
+      override:
+        app.toml:
+          minimum-gas-prices: 0.025uatom
+          mempool:
+            max-txs: 100000
+        config.toml:
+          mempool:
+            size: 100000
+            cache_size: 200000
+
+    init:
+      chainID: cosmos-devnet-0
+      assets: ["1000000000000000000uatom"]
+      stakeAmount: 100000000uatom
+      minSelfDelegation: ""
+      accountPrefix: cosmos
+      valPrefix: cosmosvaloper
+      unbondingTime: 60s
+      votingPeriod: 60s
+      chainNodeAccounts:
+        - chainNode: cosmos-devnet-validator-1
+          assets: ["1000000000000000000uatom"]
+        - chainNode: cosmos-devnet-validator-2
+          assets: [ "1000000000000000000uatom" ]
+        - chainNode: cosmos-devnet-validator-3
+          assets: [ "1000000000000000000uatom" ]
+      additionalInitCommands:
+        # Use uATOM as default denom
+        - image: busybox
+          command: [ "sh", "-c" ]
+          args:
+            - > 
+              sed -i 's/stake/uatom/g' /home/app/config/genesis.json;
+              sed -i 's/uatomrs/stakers/g' /home/app/config/genesis.json;
+              sed -i 's/uatomd/staked/g' /home/app/config/genesis.json;
+
+  nodes:
+    - name: fullnodes
+      instances: 1
+
+      config:
+        override:
+          app.toml:
+            minimum-gas-prices: 0.025uatom
+            pruning: custom
+            pruning-keep-recent: "100"
+            pruning-interval: "10"
+---
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNode
+metadata:
+  name: cosmos-devnet-validator-1
+spec:
+  app:
+    image: ghcr.io/akash-network/cosmos-omnibus
+    version: v0.4.20-cosmoshub-v17.3.0
+    app: gaiad
+
+  genesis:
+    fromNodeRPC:
+      hostname: cosmos-devnet-validator.default.svc.cluster.local
+
+  validator:
+    info:
+      moniker: nibiru-1
+      website: https://nibiru.fi
+
+    createValidator:
+      stakeAmount: 100000000uatom
+      gasPrices: 0.025uatom
+      accountPrefix: cosmos
+      valPrefix: cosmosvaloper
+      minSelfDelegation: ""
+
+  config:
+    volumes:
+      - name: wasm
+        size: 1Gi
+        path: /home/app/wasm
+        deleteWithNode: true
+    override:
+      app.toml:
+        minimum-gas-prices: 0.025uatom
+        mempool:
+          max-txs: 100000
+      config.toml:
+        mempool:
+          size: 100000
+          cache_size: 200000
+---
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNode
+metadata:
+  name: cosmos-devnet-validator-2
+spec:
+  app:
+    image: ghcr.io/akash-network/cosmos-omnibus
+    version: v0.4.20-cosmoshub-v17.3.0
+    app: gaiad
+
+  genesis:
+    fromNodeRPC:
+      hostname: cosmos-devnet-validator.default.svc.cluster.local
+
+  validator:
+    info:
+      moniker: nibiru-2
+      website: https://nibiru.fi
+
+    createValidator:
+      stakeAmount: 100000000uatom
+      gasPrices: 0.025uatom
+      accountPrefix: cosmos
+      valPrefix: cosmosvaloper
+      minSelfDelegation: ""
+
+  config:
+    volumes:
+      - name: wasm
+        size: 1Gi
+        path: /home/app/wasm
+        deleteWithNode: true
+    override:
+      app.toml:
+        minimum-gas-prices: 0.025uatom
+        mempool:
+          max-txs: 100000
+      config.toml:
+        mempool:
+          size: 100000
+          cache_size: 200000
+---
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNode
+metadata:
+  name: cosmos-devnet-validator-3
+spec:
+  app:
+    image: ghcr.io/akash-network/cosmos-omnibus
+    version: v0.4.20-cosmoshub-v17.3.0
+    app: gaiad
+
+  genesis:
+    fromNodeRPC:
+      hostname: cosmos-devnet-validator.default.svc.cluster.local
+
+  validator:
+    info:
+      moniker: nibiru-3
+      website: https://nibiru.fi
+
+    createValidator:
+      stakeAmount: 100000000uatom
+      gasPrices: 0.025uatom
+      accountPrefix: cosmos
+      valPrefix: cosmosvaloper
+      minSelfDelegation: ""
+
+  config:
+    volumes:
+      - name: wasm
+        size: 1Gi
+        path: /home/app/wasm
+        deleteWithNode: true
+    override:
+      app.toml:
+        minimum-gas-prices: 0.025uatom
+        mempool:
+          max-txs: 100000
+      config.toml:
+        mempool:
+          size: 100000
+          cache_size: 200000

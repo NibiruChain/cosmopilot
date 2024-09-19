@@ -9,7 +9,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/NibiruChain/nibiru-operator/internal/utils"
+	"github.com/NibiruChain/cosmopilot/internal/utils"
 )
 
 const (

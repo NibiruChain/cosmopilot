@@ -3,7 +3,7 @@ package sdkcmd
 import (
 	"fmt"
 
-	appsv1 "github.com/NibiruChain/nibiru-operator/api/v1"
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
 
 type sdkCreator func(globalOptions ...Option) SDK
