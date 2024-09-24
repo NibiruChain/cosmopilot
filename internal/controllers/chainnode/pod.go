@@ -545,7 +545,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		})
 	} else {
 		//TODO: This is a workaround. Remove this when issue with genesis_file field not being used is fixed
-		pod.Spec.InitContainers = []corev1.Container{
+		pod.Spec.InitContainers = append([]corev1.Container{
 			{
 				Name:    "link-genesis",
 				Image:   "busybox",
@@ -575,7 +575,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					},
 				},
 			},
-		}
+		}, pod.Spec.InitContainers...)
 	}
 
 	if chainNode.Spec.Config != nil {
