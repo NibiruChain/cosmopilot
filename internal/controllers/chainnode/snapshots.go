@@ -569,6 +569,8 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 		i++
 	}
 
+	var sidecarRestartAlways = corev1.ContainerRestartPolicyAlways
+
 	// Create job to verify data integrity
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -626,14 +628,13 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 								},
 							},
 						},
-					},
-					Containers: []corev1.Container{
 						{
 							Name:            chainNode.Spec.App.App,
 							Image:           chainNode.GetAppImage(),
 							ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
+							RestartPolicy:   &sidecarRestartAlways,
 							Command:         []string{chainNode.Spec.App.App},
-							Args:            []string{"rollback", "--home", "/home/app"},
+							Args:            []string{"start", "--grpc-only", "--home", "/home/app"},
 							VolumeMounts: append([]corev1.VolumeMount{
 								{
 									Name:      "data",
@@ -644,6 +645,15 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 									MountPath: "/home/app/config",
 								},
 							}, configFilesMounts...),
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:            "start-checker",
+							Image:           "busybox",
+							ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
+							Command:         []string{"sh"},
+							Args:            []string{"-c", "while ! nc -z localhost 9090; do sleep 2; done && echo 'Data is ok'"},
 						},
 					},
 				},
