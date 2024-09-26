@@ -63,4 +63,9 @@ func init() {
 		environ.GetString("CERTS_DIR", ""),
 		"directory where manager should look for certificates for serving webhooks",
 	)
+
+	flag.StringVar(&runOpts.ReleaseName, "release-name",
+		environ.GetString("RELEASE_NAME", "cosmopilot"),
+		"the release-name passed in helm (used to get PriorityClass names to assign to pods)",
+	)
 }

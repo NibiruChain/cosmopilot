@@ -37,7 +37,8 @@ func (a *App) CreateValidator(
 			Namespace: a.owner.GetNamespace(),
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			PriorityClassName: a.priorityClassName,
 			Volumes: []corev1.Volume{
 				{
 					Name: dataVolumeMount.Name,

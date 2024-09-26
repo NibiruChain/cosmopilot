@@ -49,9 +49,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	leaderElectionID := "cosmopilot.k8s.nibiru.org"
+	leaderElectionID := fmt.Sprintf("%s.cosmopilot.k8s.nibiru.org", runOpts.ReleaseName)
 	if runOpts.WorkerName != "" {
-		leaderElectionID = fmt.Sprintf("%s.cosmopilot.k8s.nibiru.org", runOpts.WorkerName)
+		leaderElectionID = fmt.Sprintf("%s.%s.cosmopilot.k8s.nibiru.org", runOpts.WorkerName, runOpts.ReleaseName)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{

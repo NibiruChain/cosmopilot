@@ -1,0 +1,32 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Release.Name }}-default
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cosmopilot.labels" . | indent 4 }}
+value: {{ .Values.defaultPriority }}
+globalDefault: false
+description: "CosmoPilot default priority class for background jobs and normal workloads"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Release.Name }}-nodes
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cosmopilot.labels" . | indent 4 }}
+value: {{ .Values.nodesPodPriority }}
+globalDefault: false
+description: "CosmoPilot priority class for nodes"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Release.Name }}-validators
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cosmopilot.labels" . | indent 4 }}
+value: {{ .Values.validatorPodPriority }}
+globalDefault: false
+description: "CosmoPilot priority class for validator nodes"

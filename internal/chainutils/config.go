@@ -33,7 +33,8 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 			Namespace: a.owner.GetNamespace(),
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			PriorityClassName: a.priorityClassName,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:  pointer.Int64(nonRootId),
 				RunAsGroup: pointer.Int64(nonRootId),

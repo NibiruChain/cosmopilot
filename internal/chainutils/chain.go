@@ -17,11 +17,12 @@ type App struct {
 	restConfig *rest.Config
 	cmd        sdkcmd.SDK
 
-	owner      metav1.Object
-	binary     string
-	image      string
-	pullPolicy corev1.PullPolicy
-	sdkVersion appsv1.SdkVersion
+	owner             metav1.Object
+	binary            string
+	image             string
+	pullPolicy        corev1.PullPolicy
+	sdkVersion        appsv1.SdkVersion
+	priorityClassName string
 }
 
 type Params struct {
@@ -56,18 +57,19 @@ type InitCommand struct {
 	Args    []string
 }
 
-func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config, owner metav1.Object, sdkVersion appsv1.SdkVersion, options ...Option) (*App, error) {
+func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config, owner metav1.Object, sdkVersion appsv1.SdkVersion, priorityClass string, options ...Option) (*App, error) {
 	cmd, err := sdkcmd.GetSDK(sdkVersion, sdkcmd.WithGlobalArg(sdkcmd.Home, defaultHome))
 	if err != nil {
 		return nil, err
 	}
 	app := &App{
-		client:     client,
-		owner:      owner,
-		scheme:     scheme,
-		restConfig: cfg,
-		cmd:        cmd,
-		sdkVersion: sdkVersion,
+		client:            client,
+		owner:             owner,
+		scheme:            scheme,
+		restConfig:        cfg,
+		cmd:               cmd,
+		sdkVersion:        sdkVersion,
+		priorityClassName: priorityClass,
 	}
 	applyOptions(app, options)
 	return app, nil

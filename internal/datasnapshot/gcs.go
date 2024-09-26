@@ -22,20 +22,22 @@ const (
 )
 
 type GCS struct {
-	Client      *kubernetes.Clientset
-	Scheme      *runtime.Scheme
-	Bucket      string
-	Credentials *corev1.SecretKeySelector
-	Owner       metav1.Object
+	Client        *kubernetes.Clientset
+	Scheme        *runtime.Scheme
+	Bucket        string
+	Credentials   *corev1.SecretKeySelector
+	Owner         metav1.Object
+	priorityClass string
 }
 
-func NewGcsSnapshotProvider(client *kubernetes.Clientset, scheme *runtime.Scheme, owner metav1.Object, bucket string, creds *corev1.SecretKeySelector) SnapshotProvider {
+func NewGcsSnapshotProvider(client *kubernetes.Clientset, scheme *runtime.Scheme, owner metav1.Object, bucket string, creds *corev1.SecretKeySelector, priorityClass string) SnapshotProvider {
 	return &GCS{
-		Client:      client,
-		Bucket:      bucket,
-		Credentials: creds,
-		Owner:       owner,
-		Scheme:      scheme,
+		Client:        client,
+		Bucket:        bucket,
+		Credentials:   creds,
+		Owner:         owner,
+		Scheme:        scheme,
+		priorityClass: priorityClass,
 	}
 }
 
@@ -65,7 +67,8 @@ func (gcs *GCS) CreateSnapshot(ctx context.Context, name string, vs *snapshotv1.
 			BackoffLimit:            pointer.Int32(0),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:     corev1.RestartPolicyNever,
+					PriorityClassName: gcs.priorityClass,
 					Volumes: []corev1.Volume{
 						{
 							Name: "data",
@@ -229,7 +232,8 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 			BackoffLimit:            pointer.Int32(5),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:     corev1.RestartPolicyNever,
+					PriorityClassName: gcs.priorityClass,
 					Volumes: []corev1.Volume{
 						{
 							Name: "credentials",

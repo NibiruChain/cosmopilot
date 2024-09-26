@@ -479,6 +479,7 @@ func (r *Reconciler) getTarballExportProvider(chainNode *appsv1.ChainNode) (data
 			chainNode,
 			chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS.Bucket,
 			chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS.CredentialsSecret,
+			r.opts.GetDefaultPriorityClassName(),
 		), nil
 
 	default:
@@ -585,7 +586,8 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 			BackoffLimit:            pointer.Int32(0),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:     corev1.RestartPolicyNever,
+					PriorityClassName: r.opts.GetDefaultPriorityClassName(),
 					Volumes: []corev1.Volume{
 						{
 							Name: "data",

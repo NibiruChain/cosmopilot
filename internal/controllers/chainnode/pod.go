@@ -115,6 +115,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		// Force update config files, to prevent restarting again because of config changes
 		app, err = chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
 			chainNode.Spec.App.GetSdkVersion(),
+			r.opts.GetDefaultPriorityClassName(),
 			chainutils.WithImage(chainNode.GetAppImage()),
 			chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
 			chainutils.WithBinary(chainNode.Spec.App.App),
@@ -243,9 +244,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			}),
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      chainNode.Spec.Affinity,
-			NodeSelector:  chainNode.Spec.NodeSelector,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			PriorityClassName: r.opts.GetNodesPriorityClassName(),
+			Affinity:          chainNode.Spec.Affinity,
+			NodeSelector:      chainNode.Spec.NodeSelector,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:  pointer.Int64(nonRootId),
 				RunAsGroup: pointer.Int64(nonRootId),
@@ -583,6 +585,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	}
 
 	if chainNode.IsValidator() {
+		pod.Spec.PriorityClassName = r.opts.GetValidatorsPriorityClassName()
 		if chainNode.UsesTmKms() {
 			_, kms, err := r.getTmkms(chainNode)
 			if err != nil {
