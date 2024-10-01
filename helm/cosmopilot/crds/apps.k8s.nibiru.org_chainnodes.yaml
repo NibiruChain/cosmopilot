@@ -1655,6 +1655,11 @@ spec:
                           description: Whether the pod of this node should be restarted
                             when this sidecar container fails
                           type: boolean
+                        runBeforeNode:
+                          description: When enabled, this container turns into an
+                            init container instead of a sidecar as it will have to
+                            finish before the node container starts.
+                          type: boolean
                         securityContext:
                           description: Security options the container should be run
                             with.

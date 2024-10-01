@@ -315,6 +315,11 @@ type SidecarSpec struct {
 	// Whether the pod of this node should be restarted when this sidecar container fails
 	// +optional
 	RestartPodOnFailure *bool `json:"restartPodOnFailure,omitempty"`
+
+	// When enabled, this container turns into an init container instead of a sidecar
+	// as it will have to finish before the node container starts.
+	// +optional
+	RunBeforeNode *bool `json:"runBeforeNode,omitempty"`
 }
 
 // ValidatorInfo contains information about this validator.

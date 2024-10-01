@@ -455,6 +455,13 @@ func (s *SidecarSpec) ShouldRestartPodOnFailure() bool {
 	return false
 }
 
+func (s *SidecarSpec) ShouldRunBeforeNode() bool {
+	if s.RunBeforeNode != nil {
+		return *s.RunBeforeNode
+	}
+	return false
+}
+
 // VolumeSpec methods
 
 func (v *VolumeSpec) ShouldDeleteWithNode() bool {

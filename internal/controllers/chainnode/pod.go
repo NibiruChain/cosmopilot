@@ -617,12 +617,15 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				Name:            c.Name,
 				Image:           c.Image,
 				ImagePullPolicy: chainNode.Spec.Config.GetSidecarImagePullPolicy(c.Name),
-				RestartPolicy:   &sidecarRestartAlways,
 				Command:         c.Command,
 				Args:            c.Args,
 				Env:             c.Env,
 				SecurityContext: c.SecurityContext,
 				Resources:       c.Resources,
+			}
+
+			if !c.ShouldRunBeforeNode() {
+				container.RestartPolicy = &sidecarRestartAlways
 			}
 
 			if c.MountDataVolume != nil {
