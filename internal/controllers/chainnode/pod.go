@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -633,12 +634,33 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 					{
 						Name:      "data",
 						MountPath: *c.MountDataVolume,
-						ReadOnly:  true,
 					},
 				}
 			}
 
-			pod.Spec.InitContainers = append(pod.Spec.InitContainers, container)
+			if c.MountConfig != nil {
+				configMounts := []corev1.VolumeMount{
+					{
+						Name:      "config-empty-dir",
+						MountPath: *c.MountConfig,
+					},
+					{
+						Name:      "node-key",
+						MountPath: path.Join(*c.MountConfig, nodeKeyFilename),
+						SubPath:   nodeKeyFilename,
+					},
+				}
+				for k := range config.Data {
+					configMounts = append(configMounts, corev1.VolumeMount{
+						Name:      "config",
+						MountPath: path.Join(*c.MountConfig, k),
+						SubPath:   k,
+					})
+				}
+				container.VolumeMounts = append(container.VolumeMounts, configMounts...)
+			}
+
+			pod.Spec.InitContainers = append([]corev1.Container{container}, pod.Spec.InitContainers...)
 		}
 	}
 

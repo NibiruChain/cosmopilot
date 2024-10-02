@@ -1219,6 +1219,11 @@ func (in *SidecarSpec) DeepCopyInto(out *SidecarSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.MountConfig != nil {
+		in, out := &in.MountConfig, &out.MountConfig
+		*out = new(string)
+		**out = **in
+	}
 	if in.Command != nil {
 		in, out := &in.Command, &out.Command
 		*out = make([]string, len(*in))

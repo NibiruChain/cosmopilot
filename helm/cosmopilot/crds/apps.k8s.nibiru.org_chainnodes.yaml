@@ -1593,6 +1593,11 @@ spec:
                             nodes. Defaults to `Always` if `version` is `latest` and
                             `IfNotPresent` otherwise.
                           type: string
+                        mountConfig:
+                          description: Directory where config files from ConfigMap
+                            will be mounted on this container. They are not mounted
+                            if not specified.
+                          type: string
                         mountDataVolume:
                           description: Where data volume will be mounted on this container.
                             It is not mounted if not specified.

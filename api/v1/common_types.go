@@ -292,6 +292,10 @@ type SidecarSpec struct {
 	// +optional
 	MountDataVolume *string `json:"mountDataVolume,omitempty"`
 
+	// Directory where config files from ConfigMap will be mounted on this container. They are not mounted if not specified.
+	// +optional
+	MountConfig *string `json:"mountConfig,omitempty"`
+
 	// Command to be run by this container. Defaults to entrypoint defined in image.
 	// +optional
 	Command []string `json:"command,omitempty"`
