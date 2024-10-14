@@ -75,6 +75,7 @@ func (r *Reconciler) getTmkms(chainNode *appsv1.ChainNode) (tmkms.Provider, *tmk
 	}
 
 	var tmkmsOptions []tmkms.Option
+	tmkmsOptions = append(tmkmsOptions, tmkms.WithResources(chainNode.Spec.Validator.TmKMS.GetResources()))
 
 	var provider tmkms.Provider
 	switch providerCfg := chainNode.Spec.Validator.TmKMS.Provider; {

@@ -341,6 +341,22 @@ func (kms *TmKMS) ShouldPersistState() bool {
 	return true
 }
 
+func (kms *TmKMS) GetResources() corev1.ResourceRequirements {
+	if kms != nil && kms.Resources != nil {
+		return *kms.Resources
+	}
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse(tmkms.DefaultTmkmsCpu),
+			corev1.ResourceMemory: resource.MustParse(tmkms.DefaultTmkmsMemory),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse(tmkms.DefaultTmkmsCpu),
+			corev1.ResourceMemory: resource.MustParse(tmkms.DefaultTmkmsMemory),
+		},
+	}
+}
+
 // StateSync methods
 
 func (ss *StateSyncConfig) Enabled() bool {

@@ -557,6 +557,10 @@ type TmKMS struct {
 	// Whether to persist "priv_validator_state.json" file on a PVC. Defaults to `true`.
 	// +optional
 	PersistState *bool `json:"persistState,omitempty"`
+
+	// Compute Resources for tmkms container.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // TmKmsKeyFormat represents key format for tmKMS.

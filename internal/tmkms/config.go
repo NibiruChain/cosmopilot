@@ -2,13 +2,17 @@ package tmkms
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
-	DefaultTmKmsImage = "ghcr.io/iqlusioninc/tmkms"
-	configFileName    = "config.toml"
-	tmkmsAppName      = "tmkms"
-	identityKeyName   = "kms-identity.key"
+	DefaultTmKmsImage  = "ghcr.io/iqlusioninc/tmkms"
+	configFileName     = "config.toml"
+	tmkmsAppName       = "tmkms"
+	identityKeyName    = "kms-identity.key"
+	DefaultTmkmsCpu    = "100m"
+	DefaultTmkmsMemory = "64Mi"
+	tmkmsPvcSize       = "1Gi"
 )
 
 func defaultConfig() *Config {
@@ -18,15 +22,26 @@ func defaultConfig() *Config {
 		Validators:   make([]*ValidatorConfig, 0),
 		Providers:    make(map[string][]Provider),
 		PersistState: true,
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(DefaultTmkmsCpu),
+				corev1.ResourceMemory: resource.MustParse(DefaultTmkmsMemory),
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(DefaultTmkmsCpu),
+				corev1.ResourceMemory: resource.MustParse(DefaultTmkmsMemory),
+			},
+		},
 	}
 }
 
 type Config struct {
-	Image        string                `toml:"-"`
-	Chains       []*ChainConfig        `toml:"chain"`
-	Validators   []*ValidatorConfig    `toml:"validator"`
-	Providers    map[string][]Provider `toml:"providers"`
-	PersistState bool                  `toml:"-"`
+	Image        string                      `toml:"-"`
+	Chains       []*ChainConfig              `toml:"chain"`
+	Validators   []*ValidatorConfig          `toml:"validator"`
+	Providers    map[string][]Provider       `toml:"providers"`
+	PersistState bool                        `toml:"-"`
+	Resources    corev1.ResourceRequirements `toml:"-"`
 }
 
 type Option func(*Config)
@@ -55,5 +70,11 @@ func WithProvider(p Provider) Option {
 			cfg.Providers[hashicorpProviderName] = make([]Provider, 0)
 		}
 		cfg.Providers[hashicorpProviderName] = append(cfg.Providers[hashicorpProviderName], p)
+	}
+}
+
+func WithResources(res corev1.ResourceRequirements) Option {
+	return func(cfg *Config) {
+		cfg.Resources = res
 	}
 }

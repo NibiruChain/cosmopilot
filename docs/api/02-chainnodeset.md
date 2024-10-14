@@ -492,6 +492,7 @@ TmKMS allows configuring tmkms for signing for this validator node instead of us
 | keyFormat | Format and type of key for chain. Defaults to `{\"type\": \"bech32\", \"account_key_prefix\": \"nibipub\", \"consensus_key_prefix\": \"nibivalconspub\"}`. | *[TmKmsKeyFormat](#tmkmskeyformat) | false |
 | validatorProtocol | Tendermint's protocol version to be used. Valid options are: - `v0.34` (default) - `v0.33` - `legacy` | *tmkms.ProtocolVersion | false |
 | persistState | Whether to persist \"priv_validator_state.json\" file on a PVC. Defaults to `true`. | *bool | false |
+| resources | Compute Resources for tmkms container. | *corev1.ResourceRequirements | false |
 
 [Back to Custom Resources](#custom-resources)
 

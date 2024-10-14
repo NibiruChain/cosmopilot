@@ -20,17 +20,6 @@ import (
 	"github.com/NibiruChain/cosmopilot/internal/utils"
 )
 
-const (
-	tmkmsCpu     = "100m"
-	tmkmsMemory  = "64Mi"
-	tmkmsPvcSize = "1Gi"
-)
-
-var (
-	tmkmsCpuResources    = resource.MustParse(tmkmsCpu)
-	tmkmsMemoryResources = resource.MustParse(tmkmsMemory)
-)
-
 type KMS struct {
 	Name   string
 	Owner  metav1.Object
@@ -338,16 +327,7 @@ func (kms *KMS) GetContainersSpec() []corev1.Container {
 					Value: kms.getConfigHash(),
 				},
 			},
-			Resources: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    tmkmsCpuResources,
-					corev1.ResourceMemory: tmkmsMemoryResources,
-				},
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    tmkmsCpuResources,
-					corev1.ResourceMemory: tmkmsMemoryResources,
-				},
-			},
+			Resources: kms.Config.Resources,
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
