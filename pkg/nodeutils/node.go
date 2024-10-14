@@ -25,7 +25,7 @@ type NodeUtils struct {
 	latestBlockHeight atomic.Int64
 	upgradeChecker    *UpgradeChecker
 	requiresUpgrade   bool
-	tmkmsActive       bool
+	tmkmsActive       atomic.Bool
 	tmkmsProxy        *proxy.TCP
 }
 
@@ -78,11 +78,15 @@ func (s *NodeUtils) Start() error {
 	}()
 
 	if s.tmkmsProxy != nil {
-		s.tmkmsActive = true
 		go func() {
-			err := s.tmkmsProxy.Start()
-			log.Errorf("tmkms connection finished with error: %v", err)
-			s.tmkmsActive = false
+			for {
+				s.tmkmsActive.Store(true)
+				err := s.tmkmsProxy.Start()
+				log.Errorf("tmkms connection finished with error: %v", err)
+				s.tmkmsActive.Store(false)
+				// Wait one second before restarting
+				time.Sleep(time.Second)
+			}
 		}()
 	}
 

@@ -115,13 +115,13 @@ func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) tmkmsConnectionActive(w http.ResponseWriter, r *http.Request) {
-	log.WithField("tmkms-active", s.tmkmsActive).Info("checked if tmkms is active")
-	if s.tmkmsActive {
+	log.WithField("tmkms-active", s.tmkmsActive.Load()).Info("checked if tmkms is active")
+	if s.tmkmsActive.Load() {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusNotAcceptable)
 	}
-	w.Write([]byte(strconv.FormatBool(s.tmkmsActive)))
+	w.Write([]byte(strconv.FormatBool(s.tmkmsActive.Load())))
 }
 
 func (s *NodeUtils) shutdownServer(w http.ResponseWriter, r *http.Request) {
