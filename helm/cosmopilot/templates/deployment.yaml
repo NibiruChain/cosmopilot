@@ -67,6 +67,8 @@ spec:
               value: "{{ .Values.debugMode }}"
             - name: ENABLE_LEADER_ELECTION
               value: "true"
+            - name: DISRUPTION_CHECKS_ENABLED
+              value:  "{{ .Values.disruptionChecksEnabled }}"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

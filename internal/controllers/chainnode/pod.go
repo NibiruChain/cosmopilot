@@ -80,7 +80,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 				logger.Info("app error: " + strings.Join(logLines, "/n"))
 			}
 		}
-		return r.recreatePod(ctx, chainNode, pod)
+		return r.recreatePod(ctx, chainNode, pod, false)
 	}
 
 	if err = r.updateLatestHeight(ctx, chainNode); err != nil {
@@ -178,19 +178,19 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 				logger.Info("app error: " + strings.Join(logLines, "/n"))
 			}
 		}
-		return r.recreatePod(ctx, chainNode, pod)
+		return r.recreatePod(ctx, chainNode, pod, false)
 	}
 
 	// Re-create pod if spec changes
-	if podSpecChanged(currentPod, pod) {
+	if podSpecChanged(ctx, currentPod, pod) {
 		logger.Info("pod spec changed", "pod", pod.GetName())
-		return r.recreatePod(ctx, chainNode, pod)
+		return r.recreatePod(ctx, chainNode, pod, r.opts.DisruptionCheckEnabled)
 	}
 
 	// Re-create pod if config changed
 	if currentPod.Annotations[annotationConfigHash] != configHash {
 		logger.Info("config changed", "pod", pod.GetName())
-		return r.recreatePod(ctx, chainNode, pod)
+		return r.recreatePod(ctx, chainNode, pod, r.opts.DisruptionCheckEnabled)
 	}
 
 	// Patch pod without restart when labels change
@@ -745,8 +745,33 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
 }
 
-func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
+func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod, preventDisruption bool) error {
 	logger := log.FromContext(ctx)
+
+	if preventDisruption {
+		// In case there are other validators for the same chain in this namespace, we will ignore nodeset and groups.
+		// This way we make sure validators are taken down one by one even if they belong to different nodesets.
+		var disruptionLabels map[string]string
+		if chainNode.IsValidator() {
+			disruptionLabels = map[string]string{
+				LabelChainID:   chainNode.Status.ChainID,
+				LabelValidator: strconv.FormatBool(true),
+			}
+		} else {
+			disruptionLabels = WithChainNodeLabels(chainNode, map[string]string{
+				LabelChainID: chainNode.Status.ChainID,
+			})
+		}
+
+		lock := getLockForLabels(disruptionLabels)
+		lock.Lock()
+		defer lock.Unlock()
+
+		if err := r.checkDisruptionAllowance(ctx, disruptionLabels); err != nil {
+			logger.Info("delaying pod recreation due to disruption limits", "pod", pod.GetName(), "reason", err.Error())
+			return nil
+		}
+	}
 
 	logger.Info("recreating pod", "pod", pod.GetName())
 	phase := appsv1.PhaseChainNodeRestarting
@@ -862,7 +887,9 @@ func (r *Reconciler) PatchPod(ctx context.Context, cur, mod *corev1.Pod) (*corev
 		Patch(ctx, cur.GetName(), types.StrategicMergePatchType, pa, metav1.PatchOptions{})
 }
 
-func podSpecChanged(existing, new *corev1.Pod) bool {
+func podSpecChanged(ctx context.Context, existing, new *corev1.Pod) bool {
+	logger := log.FromContext(ctx)
+
 	// make copies
 	existingCopy := existing.DeepCopy()
 	newCopy := new.DeepCopy()
@@ -878,10 +905,12 @@ func podSpecChanged(existing, new *corev1.Pod) bool {
 	orderVolumeMounts(newCopy)
 
 	if len(existingCopy.Spec.Containers) != len(new.Spec.Containers) {
+		logger.V(1).Info("containers number mismatch", "pod", new.GetName())
 		return true
 	}
 
 	if len(existingCopy.Spec.InitContainers) != len(new.Spec.InitContainers) {
+		logger.V(1).Info("init containers number mismatch", "pod", new.GetName())
 		return true
 	}
 
@@ -892,11 +921,20 @@ func podSpecChanged(existing, new *corev1.Pod) bool {
 	if err != nil {
 		return false
 	}
-	return !patchResult.IsEmpty()
+	if patchResult.IsEmpty() {
+		return false
+	}
+	logger.V(1).Info("spec has differences", "pod", new.GetName())
+	return true
 }
 
 func orderVolumeMounts(pod *corev1.Pod) {
 	for _, c := range pod.Spec.Containers {
+		sort.Slice(c.VolumeMounts, func(i, j int) bool {
+			return c.VolumeMounts[i].MountPath < c.VolumeMounts[j].MountPath
+		})
+	}
+	for _, c := range pod.Spec.InitContainers {
 		sort.Slice(c.VolumeMounts, func(i, j int) bool {
 			return c.VolumeMounts[i].MountPath < c.VolumeMounts[j].MountPath
 		})
@@ -906,7 +944,7 @@ func orderVolumeMounts(pod *corev1.Pod) {
 func removeFieldsForComparison(pod *corev1.Pod) {
 	// remove service account volume mount
 	for i, c := range pod.Spec.Containers {
-		volumeMounts := c.VolumeMounts[:0]
+		volumeMounts := make([]corev1.VolumeMount, 0)
 		j := 0
 		for _, m := range c.VolumeMounts {
 			if m.MountPath != "/var/run/secrets/kubernetes.io/serviceaccount" {
@@ -915,6 +953,17 @@ func removeFieldsForComparison(pod *corev1.Pod) {
 			}
 		}
 		pod.Spec.Containers[i].VolumeMounts = volumeMounts
+	}
+	for i, c := range pod.Spec.InitContainers {
+		volumeMounts := make([]corev1.VolumeMount, 0)
+		j := 0
+		for _, m := range c.VolumeMounts {
+			if m.MountPath != "/var/run/secrets/kubernetes.io/serviceaccount" {
+				volumeMounts = append(volumeMounts, m)
+				j++
+			}
+		}
+		pod.Spec.InitContainers[i].VolumeMounts = volumeMounts
 	}
 }
 

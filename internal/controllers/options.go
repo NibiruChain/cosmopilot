@@ -7,12 +7,14 @@ const (
 )
 
 type ControllerRunOptions struct {
-	WorkerCount     int
-	WorkerName      string
-	NodeUtilsImage  string
-	DisableWebhooks bool
-	CosmoGuardImage string
-	ReleaseName     string
+	WorkerCount              int
+	WorkerName               string
+	NodeUtilsImage           string
+	DisableWebhooks          bool
+	CosmoGuardImage          string
+	ReleaseName              string
+	DisruptionCheckEnabled   bool
+	DisruptionMaxUnavailable int
 }
 
 func (opts *ControllerRunOptions) GetDefaultPriorityClassName() string {

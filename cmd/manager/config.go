@@ -68,4 +68,14 @@ func init() {
 		environ.GetString("RELEASE_NAME", "cosmopilot"),
 		"the release-name passed in helm (used to get PriorityClass names to assign to pods)",
 	)
+
+	flag.BoolVar(&runOpts.DisruptionCheckEnabled, "disruption-checks-enabled",
+		environ.GetBool("DISRUPTION_CHECKS_ENABLED", true),
+		"whether to enable pod disruption checks.",
+	)
+
+	flag.IntVar(&runOpts.DisruptionMaxUnavailable, "disruption-max-unavailable",
+		environ.GetInt("DISRUPTION_MAX_UNAVAILABLE", 1),
+		"maximum number of unavailable pods with same labels.",
+	)
 }

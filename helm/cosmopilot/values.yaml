@@ -10,6 +10,7 @@ webHooksEnabled: true
 nodeSelector: {}
 debugMode: false
 probesEnabled: true
+disruptionChecksEnabled: true
 
 nodesPodPriority: 950
 validatorPodPriority: 1050
