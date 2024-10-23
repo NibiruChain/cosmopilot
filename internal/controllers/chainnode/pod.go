@@ -245,10 +245,11 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			}),
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy:     corev1.RestartPolicyNever,
-			PriorityClassName: r.opts.GetNodesPriorityClassName(),
-			Affinity:          chainNode.Spec.Affinity,
-			NodeSelector:      chainNode.Spec.NodeSelector,
+			ShareProcessNamespace: pointer.Bool(true),
+			RestartPolicy:         corev1.RestartPolicyNever,
+			PriorityClassName:     r.opts.GetNodesPriorityClassName(),
+			Affinity:              chainNode.Spec.Affinity,
+			NodeSelector:          chainNode.Spec.NodeSelector,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:  pointer.Int64(nonRootId),
 				RunAsGroup: pointer.Int64(nonRootId),
@@ -359,6 +360,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						{
 							Name:  "TRACE_STORE",
 							Value: "/trace/trace.fifo",
+						},
+						{
+							Name:  "NODE_BINARY_NAME",
+							Value: chainNode.Spec.App.App,
 						},
 					},
 					Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
@@ -779,12 +784,6 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 		return err
 	}
 
-	// Attempt to terminate node-utils container without waiting for grace-period. If there is an error
-	// we will just wait for the grace-period
-	if err := r.stopNodeUtilsContainer(chainNode); err != nil {
-		logger.Info("failed to stop node utils container", "pod", pod.GetName(), "error", err.Error())
-	}
-
 	deletePod := pod.DeepCopy()
 	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, deletePod)
 	if err := ph.Delete(ctx); err != nil {
@@ -1046,7 +1045,7 @@ func nodeUtilsIsInFailedState(pod *corev1.Pod) bool {
 	}
 
 	for _, c := range pod.Status.InitContainerStatuses {
-		if c.Name == nodeUtilsContainerName && !c.Ready && c.State.Terminated != nil {
+		if c.Name == nodeUtilsContainerName && (!c.Ready && c.State.Terminated != nil) {
 			return true
 		}
 	}

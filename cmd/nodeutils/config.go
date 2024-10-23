@@ -51,4 +51,9 @@ func init() {
 		environ.GetBool("TMKMS_PROXY", false),
 		"enable tmkms proxy",
 	)
+
+	flag.StringVar(&nodeBinaryName, "node-binary-name",
+		environ.GetString("NODE_BINARY_NAME", ""),
+		"node application binary name.",
+	)
 }

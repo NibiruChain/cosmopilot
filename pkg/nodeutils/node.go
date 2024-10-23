@@ -27,9 +27,10 @@ type NodeUtils struct {
 	requiresUpgrade   atomic.Bool
 	tmkmsActive       atomic.Bool
 	tmkmsProxy        *proxy.TCP
+	nodeBinaryName    string
 }
 
-func New(opts ...Option) (*NodeUtils, error) {
+func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
 	options := defaultOptions()
 	for _, opt := range opts {
 		opt(options)
@@ -56,6 +57,7 @@ func New(opts ...Option) (*NodeUtils, error) {
 		client:         client,
 		tracer:         t,
 		upgradeChecker: uc,
+		nodeBinaryName: nodeBinaryName,
 	}
 
 	if options.TmkmsProxy {
@@ -123,13 +125,13 @@ func (s *NodeUtils) Start() error {
 						s.requiresUpgrade.Store(true)
 
 					} else if heightUpdated {
-						log.WithField("height", height).Warn("stopping tracer to force application stop for upgrade")
+						log.WithField("height", height).Warn("stopping node for upgrade")
 						s.requiresUpgrade.Store(true)
 						err := s.StopNode()
 						if err == nil {
 							return
 						}
-						log.Errorf("failed to stop tracer: %v", err)
+						log.Errorf("failed to stop node: %v", err)
 					}
 				}
 			}
@@ -164,22 +166,29 @@ func (s *NodeUtils) Stop(force bool) error {
 
 	// Stop tmkms proxy if it is still alive
 	if s.tmkmsProxy != nil {
+		log.Debug("stopping tmkms proxy")
 		if err := s.tmkmsProxy.Stop(); err != nil {
 			log.Errorf("failed to stop tmkms proxy: %v", err)
 		}
 	}
 
-	// Ensure tracer is stopped too (at this point it should be stopped already, but just in case)
-	if err := s.tracer.Stop(); err != nil {
-		log.Errorf("failed to stop tracer: %v", err)
+	// Ensure node is stopped too
+	log.Debug("stopping node")
+	if err := s.StopNode(); err != nil {
+		log.Errorf("failed to stop node: %v", err)
 	}
 
 	// Shutdown main server
+	log.Debug("shutting down http server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return s.server.Shutdown(ctx)
 }
 
 func (s *NodeUtils) StopNode() error {
-	return s.tracer.Stop()
+	nodeProcess, err := findProcessByName(s.nodeBinaryName)
+	if err != nil {
+		return err
+	}
+	return nodeProcess.Terminate()
 }

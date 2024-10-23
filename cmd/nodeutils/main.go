@@ -23,6 +23,7 @@ var (
 	logLevel         string
 	createFifo       bool
 	enableTmkmsProxy bool
+	nodeBinaryName   string
 )
 
 func main() {
@@ -36,6 +37,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	nodeUtilsServer, err := nodeutils.New(
+		nodeBinaryName,
 		nodeutils.WithHost(host),
 		nodeutils.WithPort(port),
 		nodeutils.WithBlockThreshold(blockThreshold),
