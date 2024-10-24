@@ -18,7 +18,7 @@ import (
 	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
 
-func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.ChainNode) error {
+func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.ChainNode, nodePodRunning bool) error {
 	logger := log.FromContext(ctx)
 
 	if chainNode.Status.Upgrades == nil {
@@ -27,7 +27,7 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 
 	statusCopy := chainNode.Status.DeepCopy()
 
-	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && chainNode.Spec.App.ShouldQueryGovUpgrades() {
+	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && nodePodRunning && chainNode.Spec.App.ShouldQueryGovUpgrades() {
 		// Get gov upgrades
 		govUpgrades, err := r.getGovUpgrades(ctx, chainNode)
 		if err != nil {

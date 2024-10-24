@@ -30,6 +30,31 @@ import (
 	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
 
+func (r *Reconciler) isChainNodePodRunning(ctx context.Context, chainNode *appsv1.ChainNode) (bool, error) {
+	pod := &corev1.Pod{}
+	err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pod)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Check if the pod is terminating or in a failed state
+	if isPodTerminating(pod) || nodeUtilsIsInFailedState(pod) || podInFailedState(chainNode, pod) {
+		return false, nil
+	}
+
+	// Check if the pod is ready
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, configHash string) error {
 	logger := log.FromContext(ctx)
 
@@ -44,26 +69,17 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), currentPod)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("creating pod", "pod", pod.GetName())
-			if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeStarting); err != nil {
-				return err
-			}
-
-			ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
-			if err := ph.Create(ctx); err != nil {
-				return err
-			}
-			if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, chainNode.Spec.App.App); err != nil {
-				return err
-			}
-			r.recorder.Eventf(chainNode,
-				corev1.EventTypeNormal,
-				appsv1.ReasonNodeStarted,
-				"Node successfully started",
-			)
-			return r.setNodePhase(ctx, chainNode)
+			return r.createPod(ctx, chainNode, pod)
 		}
 		return err
+	}
+
+	if isPodTerminating(currentPod) {
+		logger.Info("wait for pod to finish terminating")
+		if err = r.waitForPodTermination(ctx, currentPod); err != nil {
+			return err
+		}
+		return r.createPod(ctx, chainNode, pod)
 	}
 
 	if nodeUtilsIsInFailedState(currentPod) {
@@ -83,11 +99,13 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		return r.recreatePod(ctx, chainNode, pod, false)
 	}
 
+	logger.V(1).Info("updating latest height")
 	if err = r.updateLatestHeight(ctx, chainNode); err != nil {
 		return err
 	}
 
 	// Check if the node is waiting for an upgrade
+	logger.V(1).Info("checking if an upgrade is required")
 	requiresUpgrade, err := r.requiresUpgrade(chainNode)
 	if err != nil {
 		return err
@@ -96,6 +114,8 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 	if requiresUpgrade {
 		// Get upgrade from scheduled upgrades list
 		upgrade := r.getUpgrade(chainNode, chainNode.Status.LatestHeight)
+
+		logger.V(1).Info("upgrade is required", "upgrade", upgrade)
 
 		// If we don't have upgrade info for this upgrade, or it is incomplete (no image), lets through an error
 		if upgrade == nil || upgrade.Status == appsv1.UpgradeImageMissing {
@@ -202,6 +222,29 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		return err
 	}
 
+	return r.setNodePhase(ctx, chainNode)
+}
+
+func (r *Reconciler) createPod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
+	logger := log.FromContext(ctx)
+
+	logger.Info("creating pod", "pod", pod.GetName())
+	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeStarting); err != nil {
+		return err
+	}
+
+	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
+	if err := ph.Create(ctx); err != nil {
+		return err
+	}
+	if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, chainNode.Spec.App.App); err != nil {
+		return err
+	}
+	r.recorder.Eventf(chainNode,
+		corev1.EventTypeNormal,
+		appsv1.ReasonNodeStarted,
+		"Node successfully started",
+	)
 	return r.setNodePhase(ctx, chainNode)
 }
 
@@ -864,6 +907,11 @@ func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode
 	return true, r.setNodePhase(ctx, chainNode)
 }
 
+func (r *Reconciler) waitForPodTermination(ctx context.Context, pod *corev1.Pod) error {
+	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
+	return ph.WaitForPodDeleted(ctx, timeoutPodDeleted)
+}
+
 func (r *Reconciler) PatchPod(ctx context.Context, cur, mod *corev1.Pod) (*corev1.Pod, error) {
 	curJson, err := json.Marshal(cur)
 	if err != nil {
@@ -967,6 +1015,8 @@ func removeFieldsForComparison(pod *corev1.Pod) {
 }
 
 func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	logger := log.FromContext(ctx)
+
 	if volumeSnapshotInProgress(chainNode) {
 		if chainNode.Status.Phase != appsv1.PhaseChainNodeSnapshotting {
 			return r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeSnapshotting)
@@ -978,10 +1028,12 @@ func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNo
 		return err
 	}
 
+	logger.V(1).Info("check if node is syncing")
 	syncing, err := c.IsNodeSyncing(ctx)
 	if err != nil {
 		return err
 	}
+	logger.V(1).Info("node syncing status", "syncing", syncing)
 
 	if syncing {
 		if chainNode.Status.Phase != appsv1.PhaseChainNodeSyncing {
@@ -1055,4 +1107,8 @@ func nodeUtilsIsInFailedState(pod *corev1.Pod) bool {
 
 func (r *Reconciler) stopNodeUtilsContainer(chainNode *appsv1.ChainNode) error {
 	return nodeutils.NewClient(chainNode.GetNodeFQDN()).ShutdownNodeUtilsServer()
+}
+
+func isPodTerminating(pod *corev1.Pod) bool {
+	return pod.DeletionTimestamp != nil
 }

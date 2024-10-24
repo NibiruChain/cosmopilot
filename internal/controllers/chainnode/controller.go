@@ -107,12 +107,20 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Clearly log beginning and end of reconcile cycle
 	logger.Info("starting reconcile")
-	defer logger.Info("finishing reconcile")
 
 	// Eventually update seed mode in .status
 	chainNode.Status.SeedMode = chainNode.Spec.Config.SeedModeEnabled()
 
+	// Let's check if pod for this node is alive or not so that we can use this information
+	// on methods before pod reconciliation
+	nodePodRunning, err := r.isChainNodePodRunning(ctx, chainNode)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	logger.Info("pre-checking pod status", "pod-running", nodePodRunning)
+
 	// Create/update secret with node key for this node.
+	logger.V(1).Info("ensure node key exists")
 	if err := r.ensureNodeKey(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -129,22 +137,26 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if chainNode.RequiresPrivKey() {
+		logger.V(1).Info("ensure validator signing key exists")
 		if err = r.ensureSigningKey(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	if chainNode.RequiresAccount() {
+		logger.V(1).Info("ensure account exists")
 		if err = r.ensureAccount(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
+	logger.V(1).Info("ensure data volume")
 	pvc, err := r.ensureDataVolume(ctx, app, chainNode)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	logger.V(1).Info("ensure additional volumes")
 	if err = r.ensureAdditionalVolumes(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -155,6 +167,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Ensure snapshots are taken if enabled and check if they are ready
+	logger.V(1).Info("ensure volume snapshots if applicable")
 	if err = r.ensureVolumeSnapshots(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -166,46 +179,55 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Get or initialize a genesis
+	logger.V(1).Info("ensure genesis")
 	if err = r.ensureGenesis(ctx, app, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create/update services for this node
+	logger.V(1).Info("ensure services")
 	if err = r.ensureServices(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create/update service monitors for this node
+	logger.V(1).Info("ensure service monitors if applicable")
 	if err = r.ensureServiceMonitors(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create/update configmap with config files
+	logger.V(1).Info("ensure config")
 	configHash, err := r.ensureConfigMap(ctx, app, chainNode)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Create/update upgrades config
-	if err = r.ensureUpgrades(ctx, chainNode); err != nil {
+	logger.V(1).Info("ensure upgrades")
+	if err = r.ensureUpgrades(ctx, chainNode, nodePodRunning); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Deploy TMKMS configs if configured
+	logger.V(1).Info("ensure tmkms config if applicable")
 	if err = r.ensureTmKMSConfig(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Ensure pod is running
+	logger.V(1).Info("ensure pod")
 	if err = r.ensurePod(ctx, app, chainNode, configHash); err != nil {
 		return ctrl.Result{}, err
 	}
 
+	logger.V(1).Info("ensure pvc updates")
 	if err = r.ensurePvcUpdates(ctx, chainNode, pvc); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if chainNode.ShouldCreateValidator() && chainNode.Status.ValidatorStatus == "" {
+		logger.V(1).Info("creating validator tx")
 		if err = r.createValidator(ctx, app, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -213,11 +235,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Update jailed status
 	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && chainNode.IsValidator() {
+		logger.V(1).Info("checking jailed status")
 		if err = r.updateJailedStatus(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
+	logger.Info("finishing reconcile")
 	return ctrl.Result{RequeueAfter: chainNode.GetReconcilePeriod()}, nil
 }
 
