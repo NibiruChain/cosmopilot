@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/mitchellh/hashstructure/v2"
@@ -22,6 +23,24 @@ import (
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
 	"github.com/NibiruChain/cosmopilot/internal/utils"
 )
+
+var (
+	configGenerationLocks      = make(map[string]*sync.Mutex)
+	configGenerationLocksMutex sync.Mutex
+)
+
+func getConfigsLockForAppVersion(version string) *sync.Mutex {
+	locksMutex.Lock()
+	defer locksMutex.Unlock()
+
+	if lock, exists := locks[version]; exists {
+		return lock
+	}
+
+	newLock := &sync.Mutex{}
+	locks[version] = newLock
+	return newLock
+}
 
 func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (string, error) {
 	logger := log.FromContext(ctx)
@@ -274,6 +293,10 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, c
 
 func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
 	logger := log.FromContext(ctx)
+
+	lock := getConfigsLockForAppVersion(chainNode.GetAppImage())
+	lock.Lock()
+	defer lock.Unlock()
 
 	configs, err := r.getConfigsFromCache(chainNode.GetAppImage())
 	if err != nil {
