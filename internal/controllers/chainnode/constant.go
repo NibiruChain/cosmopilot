@@ -70,6 +70,9 @@ const (
 
 	VolumeSnapshotDataSourceKind     = "VolumeSnapshot"
 	VolumeSnapshotDataSourceApiGroup = "snapshot.storage.k8s.io"
+
+	ReasonImagePullBackOff = "ImagePullBackOff"
+	ReasonErrImagePull     = "ErrImagePull"
 )
 
 var (

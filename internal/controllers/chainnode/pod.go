@@ -1070,6 +1070,9 @@ func podInFailedState(chainNode *appsv1.ChainNode, pod *corev1.Pod) bool {
 		if !c.Ready && c.State.Terminated != nil {
 			return true
 		}
+		if isImagePullFailure(c.State.Waiting) {
+			return true
+		}
 	}
 
 	for _, c := range pod.Status.InitContainerStatuses {
@@ -1087,8 +1090,15 @@ func podInFailedState(chainNode *appsv1.ChainNode, pod *corev1.Pod) bool {
 				}
 			}
 		}
+		if isImagePullFailure(c.State.Waiting) {
+			return true
+		}
 	}
 	return false
+}
+
+func isImagePullFailure(state *corev1.ContainerStateWaiting) bool {
+	return state != nil && (state.Reason == ReasonImagePullBackOff || state.Reason == ReasonErrImagePull)
 }
 
 func nodeUtilsIsInFailedState(pod *corev1.Pod) bool {
