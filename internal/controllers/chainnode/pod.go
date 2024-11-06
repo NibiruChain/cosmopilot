@@ -144,7 +144,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		if err != nil {
 			return err
 		}
-		configHash, err = r.ensureConfigMap(ctx, app, chainNode)
+		configHash, err = r.ensureConfigMap(ctx, app, chainNode, true)
 		if err != nil {
 			return err
 		}

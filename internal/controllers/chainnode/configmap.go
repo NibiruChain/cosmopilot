@@ -42,7 +42,7 @@ func getConfigsLockForAppVersion(version string) *sync.Mutex {
 	return newLock
 }
 
-func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (string, error) {
+func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, nodePodRunning bool) (string, error) {
 	logger := log.FromContext(ctx)
 
 	configs, err := r.getGeneratedConfigs(ctx, app, chainNode)
@@ -151,8 +151,8 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, c
 		return "", err
 	}
 
-	// Apply state-sync restore config if enabled and node hasn't started yet
-	if chainNode.StateSyncRestoreEnabled() && chainNode.Status.LatestHeight == 0 {
+	// Apply state-sync restore config if enabled and node is not running
+	if chainNode.StateSyncRestoreEnabled() && !nodePodRunning {
 		peers, stateSyncAnnotations, err := r.getChainPeers(ctx, chainNode, AnnotationStateSyncTrustHeight, AnnotationStateSyncTrustHash)
 		if err != nil {
 			return "", err
