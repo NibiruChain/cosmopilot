@@ -39,6 +39,8 @@ func (a *App) InitPvcData(ctx context.Context, pvc *corev1.PersistentVolumeClaim
 		Spec: corev1.PodSpec{
 			RestartPolicy:     corev1.RestartPolicyNever,
 			PriorityClassName: a.priorityClassName,
+			Affinity:          a.Affinity,
+			NodeSelector:      a.NodeSelector,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:  pointer.Int64(nonRootId),
 				RunAsGroup: pointer.Int64(nonRootId),

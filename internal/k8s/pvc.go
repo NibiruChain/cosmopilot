@@ -28,7 +28,7 @@ func NewPvcHelper(client *kubernetes.Clientset, cfg *rest.Config, pvc *corev1.Pe
 	}
 }
 
-func (h *PvcHelper) WriteToFile(ctx context.Context, content, path string) error {
+func (h *PvcHelper) WriteToFile(ctx context.Context, content, path, pc string, af *corev1.Affinity, ns map[string]string) error {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-write-file", h.pvc.GetName()),
@@ -37,6 +37,9 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path string) error
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
 			TerminationGracePeriodSeconds: pointer.Int64(0),
+			PriorityClassName:             pc,
+			Affinity:                      af,
+			NodeSelector:                  ns,
 			Volumes: []corev1.Volume{
 				{
 					Name: "pvc",
@@ -102,7 +105,7 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path string) error
 	return nil
 }
 
-func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path string) error {
+func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path, pc string, af *corev1.Affinity, ns map[string]string) error {
 	cmd := fmt.Sprintf("wget -O %s %s", filepath.Join("/pvc", path), url)
 
 	pod := &corev1.Pod{
@@ -113,6 +116,9 @@ func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path string) error
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
 			TerminationGracePeriodSeconds: pointer.Int64(0),
+			PriorityClassName:             pc,
+			Affinity:                      af,
+			NodeSelector:                  ns,
 			Volumes: []corev1.Volume{
 				{
 					Name: "pvc",

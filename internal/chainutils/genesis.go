@@ -62,6 +62,8 @@ func (a *App) NewGenesis(ctx context.Context,
 		Spec: corev1.PodSpec{
 			RestartPolicy:     corev1.RestartPolicyNever,
 			PriorityClassName: a.priorityClassName,
+			Affinity:          a.Affinity,
+			NodeSelector:      a.NodeSelector,
 			Volumes: []corev1.Volume{
 				{
 					Name: dataVolumeMount.Name,

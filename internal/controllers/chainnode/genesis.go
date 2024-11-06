@@ -58,7 +58,12 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 				"pvc", pvc.GetName(),
 			)
 			if err = k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).
-				DownloadGenesis(ctx, *chainNode.Spec.Genesis.Url, chainutils.GenesisFilename); err != nil {
+				DownloadGenesis(
+					ctx, *chainNode.Spec.Genesis.Url,
+					chainutils.GenesisFilename,
+					r.opts.GetDefaultPriorityClassName(),
+					chainNode.Spec.Affinity,
+					chainNode.Spec.NodeSelector); err != nil {
 				return err
 			}
 
@@ -135,7 +140,10 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		}
 		logger.Info("writing genesis to data volume", "pvc", pvc.GetName())
 		if err = k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).
-			WriteToFile(ctx, genesis, chainutils.GenesisFilename); err != nil {
+			WriteToFile(ctx, genesis, chainutils.GenesisFilename,
+				r.opts.GetDefaultPriorityClassName(),
+				chainNode.Spec.Affinity,
+				chainNode.Spec.NodeSelector); err != nil {
 			return err
 		}
 

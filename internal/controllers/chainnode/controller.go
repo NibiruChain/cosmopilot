@@ -125,12 +125,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
-		chainNode.Spec.App.GetSdkVersion(),
-		r.opts.GetDefaultPriorityClassName(),
+	app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode, chainNode.Spec.App.GetSdkVersion(),
 		chainutils.WithImage(chainNode.GetAppImage()),
 		chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
 		chainutils.WithBinary(chainNode.Spec.App.App),
+		chainutils.WithPriorityClass(r.opts.GetDefaultPriorityClassName()),
+		chainutils.WithAffinityConfig(chainNode.Spec.Affinity),
+		chainutils.WithNodeSelector(chainNode.Spec.NodeSelector),
 	)
 	if err != nil {
 		return ctrl.Result{}, err

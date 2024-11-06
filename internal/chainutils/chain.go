@@ -16,13 +16,15 @@ type App struct {
 	scheme     *runtime.Scheme
 	restConfig *rest.Config
 	cmd        sdkcmd.SDK
+	owner      metav1.Object
+	sdkVersion appsv1.SdkVersion
 
-	owner             metav1.Object
 	binary            string
 	image             string
 	pullPolicy        corev1.PullPolicy
-	sdkVersion        appsv1.SdkVersion
 	priorityClassName string
+	NodeSelector      map[string]string
+	Affinity          *corev1.Affinity
 }
 
 type Params struct {
@@ -57,19 +59,19 @@ type InitCommand struct {
 	Args    []string
 }
 
-func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config, owner metav1.Object, sdkVersion appsv1.SdkVersion, priorityClass string, options ...Option) (*App, error) {
+func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config,
+	owner metav1.Object, sdkVersion appsv1.SdkVersion, options ...Option) (*App, error) {
 	cmd, err := sdkcmd.GetSDK(sdkVersion, sdkcmd.WithGlobalArg(sdkcmd.Home, defaultHome))
 	if err != nil {
 		return nil, err
 	}
 	app := &App{
-		client:            client,
-		owner:             owner,
-		scheme:            scheme,
-		restConfig:        cfg,
-		cmd:               cmd,
-		sdkVersion:        sdkVersion,
-		priorityClassName: priorityClass,
+		client:     client,
+		owner:      owner,
+		scheme:     scheme,
+		restConfig: cfg,
+		cmd:        cmd,
+		sdkVersion: sdkVersion,
 	}
 	applyOptions(app, options)
 	return app, nil
@@ -98,5 +100,23 @@ func WithImage(image string) Option {
 func WithImagePullPolicy(p corev1.PullPolicy) Option {
 	return func(c *App) {
 		c.pullPolicy = p
+	}
+}
+
+func WithPriorityClass(name string) Option {
+	return func(c *App) {
+		c.priorityClassName = name
+	}
+}
+
+func WithAffinityConfig(affinity *corev1.Affinity) Option {
+	return func(c *App) {
+		c.Affinity = affinity
+	}
+}
+
+func WithNodeSelector(selector map[string]string) Option {
+	return func(c *App) {
+		c.NodeSelector = selector
 	}
 }
