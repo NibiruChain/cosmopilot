@@ -358,7 +358,7 @@ func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Ser
 func (r *Reconciler) maybeAddStateSyncAnnotations(ctx context.Context, chainNode *appsv1.ChainNode, svc *corev1.Service) error {
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.StateSync.Enabled() &&
 		chainNode.Status.LatestHeight > int64(chainNode.Spec.Config.StateSync.SnapshotInterval*3) {
-		c, err := r.getClient(chainNode)
+		c, err := r.getChainNodeClient(chainNode)
 		if err != nil {
 			return err
 		}

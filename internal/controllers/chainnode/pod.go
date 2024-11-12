@@ -1025,7 +1025,7 @@ func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNo
 		}
 	}
 
-	c, err := r.getClient(chainNode)
+	c, err := r.getChainNodeClient(chainNode)
 	if err != nil {
 		return err
 	}

@@ -264,16 +264,20 @@ func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *Reconciler) getClient(chainNode *appsv1.ChainNode) (*chainutils.Client, error) {
-	data := r.nodeClients.Get(chainNode.GetNodeFQDN())
+func (r *Reconciler) getChainNodeClient(chainNode *appsv1.ChainNode) (*chainutils.Client, error) {
+	return r.getChainNodeClientByHost(chainNode.GetNodeFQDN())
+}
+
+func (r *Reconciler) getChainNodeClientByHost(host string) (*chainutils.Client, error) {
+	data := r.nodeClients.Get(host)
 	if data != nil {
 		return data.Value(), nil
 	}
-	c, err := chainutils.NewClient(chainNode.GetNodeFQDN())
+	c, err := chainutils.NewClient(host)
 	if err != nil {
 		return nil, err
 	}
-	r.nodeClients.Set(chainNode.GetNodeFQDN(), c, ttlcache.DefaultTTL)
+	r.nodeClients.Set(host, c, ttlcache.DefaultTTL)
 	return c, nil
 }
 

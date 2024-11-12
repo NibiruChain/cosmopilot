@@ -80,7 +80,7 @@ func (r *Reconciler) createValidator(ctx context.Context, app *chainutils.App, c
 func (r *Reconciler) updateJailedStatus(ctx context.Context, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
-	client, err := r.getClient(chainNode)
+	client, err := r.getChainNodeClient(chainNode)
 	if err != nil {
 		return err
 	}
