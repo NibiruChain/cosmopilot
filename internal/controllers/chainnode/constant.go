@@ -37,6 +37,7 @@ const (
 	annotationPvcSnapshotReady        = "apps.k8s.nibiru.org/snapshot-ready"
 	annotationExportingTarball        = "apps.k8s.nibiru.org/exporting-tarball"
 	annotationSnapshotIntegrityStatus = "apps.k8s.nibiru.org/snapshot-integrity-status"
+	annotationPodSpecHash             = "apps.k8s.nibiru.org/pod-spec-hash"
 
 	timeoutPodRunning              = 5 * time.Minute
 	timeoutPodDeleted              = 2 * time.Minute

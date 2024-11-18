@@ -2,6 +2,7 @@ package chainnode
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -11,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -792,6 +792,11 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		pod.Spec.InitContainers = append(pod.Spec.InitContainers, cosmoGuardContainer)
 	}
 
+	specHash, err := podSpecHash(pod)
+	if err != nil {
+		return nil, err
+	}
+	pod.Annotations[annotationPodSpecHash] = specHash
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
 }
 
@@ -936,84 +941,47 @@ func (r *Reconciler) PatchPod(ctx context.Context, cur, mod *corev1.Pod) (*corev
 		Patch(ctx, cur.GetName(), types.StrategicMergePatchType, pa, metav1.PatchOptions{})
 }
 
+func podSpecHash(pod *corev1.Pod) (string, error) {
+	specCopy := pod.Spec.DeepCopy()
+
+	// Order volume mounts and volumes
+	orderVolumes(specCopy)
+
+	specBytes, err := specCopy.Marshal()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(specBytes)), nil
+}
+
 func podSpecChanged(ctx context.Context, existing, new *corev1.Pod) bool {
 	logger := log.FromContext(ctx)
 
-	// make copies
-	existingCopy := existing.DeepCopy()
-	newCopy := new.DeepCopy()
-
-	// remove fields populated by kubernetes
-	removeFieldsForComparison(existingCopy)
-
-	// ignore labels because we can patch them without restart
-	existingCopy.Labels = newCopy.Labels
-
-	// order volume mounts
-	orderVolumeMounts(existingCopy)
-	orderVolumeMounts(newCopy)
-
-	if len(existingCopy.Spec.Containers) != len(new.Spec.Containers) {
-		logger.V(1).Info("containers number mismatch", "pod", new.GetName())
+	oldSpecHash, ok := existing.Annotations[annotationPodSpecHash]
+	if !ok {
+		// Annotation should be there, so lets assume the spec changed
 		return true
 	}
+	newSpecHash := new.Annotations[annotationPodSpecHash]
 
-	if len(existingCopy.Spec.InitContainers) != len(new.Spec.InitContainers) {
-		logger.V(1).Info("init containers number mismatch", "pod", new.GetName())
-		return true
-	}
-
-	patchResult, err := patch.DefaultPatchMaker.Calculate(existingCopy, newCopy,
-		patch.IgnoreStatusFields(),
-		patch.IgnoreVolumeClaimTemplateTypeMetaAndStatus(),
-	)
-	if err != nil {
-		return false
-	}
-	if patchResult.IsEmpty() {
-		return false
-	}
-	logger.V(1).Info("spec has differences", "pod", new.GetName())
-	return true
+	logger.V(1).Info("checked pod spec hash", "old-spec", oldSpecHash, "new-spec", newSpecHash)
+	return newSpecHash != oldSpecHash
 }
 
-func orderVolumeMounts(pod *corev1.Pod) {
-	for _, c := range pod.Spec.Containers {
+func orderVolumes(podSpec *corev1.PodSpec) {
+	for _, c := range podSpec.Containers {
 		sort.Slice(c.VolumeMounts, func(i, j int) bool {
 			return c.VolumeMounts[i].MountPath < c.VolumeMounts[j].MountPath
 		})
 	}
-	for _, c := range pod.Spec.InitContainers {
+	for _, c := range podSpec.InitContainers {
 		sort.Slice(c.VolumeMounts, func(i, j int) bool {
 			return c.VolumeMounts[i].MountPath < c.VolumeMounts[j].MountPath
 		})
 	}
-}
-
-func removeFieldsForComparison(pod *corev1.Pod) {
-	// remove service account volume mount
-	for i, c := range pod.Spec.Containers {
-		volumeMounts := make([]corev1.VolumeMount, 0)
-		j := 0
-		for _, m := range c.VolumeMounts {
-			if m.MountPath != "/var/run/secrets/kubernetes.io/serviceaccount" {
-				volumeMounts = append(volumeMounts, m)
-				j++
-			}
-		}
-		pod.Spec.Containers[i].VolumeMounts = volumeMounts
-	}
-	for i, c := range pod.Spec.InitContainers {
-		volumeMounts := make([]corev1.VolumeMount, 0)
-		j := 0
-		for _, m := range c.VolumeMounts {
-			if m.MountPath != "/var/run/secrets/kubernetes.io/serviceaccount" {
-				volumeMounts = append(volumeMounts, m)
-				j++
-			}
-		}
-		pod.Spec.InitContainers[i].VolumeMounts = volumeMounts
-	}
+	sort.Slice(podSpec.Volumes, func(i, j int) bool {
+		return podSpec.Volumes[i].Name < podSpec.Volumes[j].Name
+	})
 }
 
 func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNode) error {
