@@ -93,7 +93,7 @@ func (r *Reconciler) getTmkms(chainNode *appsv1.ChainNode) (tmkms.Provider, *tmk
 		tmkmsOptions = append(tmkmsOptions, tmkms.WithProvider(provider))
 
 		// TODO: remove this when we have official release of tmkms (see https://github.com/iqlusioninc/tmkms/pull/843)
-		tmkmsOptions = append(tmkmsOptions, tmkms.WithImage("ghcr.io/nibiruchain/tmkms:hashicorp-vault"))
+		tmkmsOptions = append(tmkmsOptions, tmkms.WithImage("ghcr.io/nibiruchain/tmkms:0.14.0-vault"))
 
 	default:
 		return nil, nil, fmt.Errorf("no supported provider configured")

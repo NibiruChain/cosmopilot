@@ -39,6 +39,7 @@ type HashicorpProvider struct {
 type HashicorpKey struct {
 	ChainID string         `toml:"chain_id"`
 	Key     string         `toml:"key"`
+	KeyType string         `toml:"key_type,omitempty"`
 	Auth    *HashicorpAuth `toml:"auth"`
 }
 
@@ -48,9 +49,18 @@ type HashicorpAuth struct {
 }
 
 type HashicorpAdapter struct {
-	VaultAddress    string `toml:"vault_addr"`
-	VaultCaCert     string `toml:"vault_cacert,omitempty"`
-	VaultSkipVerify bool   `toml:"vault_skip_verify,omitempty"`
+	VaultAddress    string                    `toml:"vault_addr"`
+	VaultCaCert     string                    `toml:"vault_cacert,omitempty"`
+	VaultSkipVerify bool                      `toml:"vault_skip_verify,omitempty"`
+	CachePublicKey  bool                      `toml:"cache_pk,omitempty"`
+	Endpoints       *HashicorpEndpointsConfig `toml:"endpoints,omitempty"`
+}
+
+type HashicorpEndpointsConfig struct {
+	Keys        string `toml:"keys"`
+	HandShake   string `toml:"hand_shake"`
+	WrappingKey string `toml:"wrapping_key"`
+	Sign        string `toml:"sign"`
 }
 
 func NewHashicorpProvider(chainID, address, key string, token, ca *corev1.SecretKeySelector, autoRenewToken, skipVerify bool) Provider {
@@ -227,6 +237,7 @@ func (v HashicorpProvider) UploadKey(ctx context.Context, kms *KMS, key string) 
 					ImagePullPolicy: corev1.PullAlways,
 					Args: []string{"hashicorp", "upload", hashicorpKey.Key,
 						"--payload", key,
+						"--payload-format", "base64",
 						"-c", "/data/" + configFileName,
 					},
 					VolumeMounts: []corev1.VolumeMount{
