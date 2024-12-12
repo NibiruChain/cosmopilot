@@ -554,22 +554,6 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 		return fmt.Errorf("unsupported api version")
 	}
 
-	config := &corev1.ConfigMap{}
-	err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), config)
-	if err != nil {
-		return err
-	}
-	configFilesMounts := make([]corev1.VolumeMount, len(config.Data))
-	i := 0
-	for k := range config.Data {
-		configFilesMounts[i] = corev1.VolumeMount{
-			Name:      "config",
-			MountPath: "/home/app/config/" + k,
-			SubPath:   k,
-		}
-		i++
-	}
-
 	var sidecarRestartAlways = corev1.ContainerRestartPolicyAlways
 
 	// Create job to verify data integrity
@@ -616,17 +600,26 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 					},
 					InitContainers: []corev1.Container{
 						{
-							Name:    "init-dummy-genesis",
+							Name:    "init-config",
 							Image:   "busybox",
 							Command: []string{"sh"},
 							Args: []string{
 								"-c",
-								fmt.Sprintf("echo '{\"chain_id\":%q}' > /home/app/config/genesis.json", chainNode.Status.ChainID),
+								fmt.Sprintf(
+									"cp -rL /node-config/* /home/app/config/;"+
+										"sed -i 's/iavl-lazy-loading =.*/iavl-lazy-loading = false/g' /home/app/config/app.toml;"+
+										"echo '{\"chain_id\":%q}' > /home/app/config/genesis.json",
+									chainNode.Status.ChainID,
+								),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "config-empty-dir",
 									MountPath: "/home/app/config",
+								},
+								{
+									Name:      "config",
+									MountPath: "/node-config",
 								},
 							},
 						},
@@ -637,7 +630,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 							RestartPolicy:   &sidecarRestartAlways,
 							Command:         []string{chainNode.Spec.App.App},
 							Args:            []string{"start", "--grpc-only", "--home", "/home/app"},
-							VolumeMounts: append([]corev1.VolumeMount{
+							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
 									MountPath: "/home/app/data",
@@ -646,7 +639,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 									Name:      "config-empty-dir",
 									MountPath: "/home/app/config",
 								},
-							}, configFilesMounts...),
+							},
 						},
 					},
 					Containers: []corev1.Container{
@@ -667,7 +660,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 		return err
 	}
 
-	job, err = r.ClientSet.BatchV1().Jobs(chainNode.GetNamespace()).Create(ctx, job, metav1.CreateOptions{})
+	job, err := r.ClientSet.BatchV1().Jobs(chainNode.GetNamespace()).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
