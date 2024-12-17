@@ -77,7 +77,7 @@ func (r *Reconciler) createValidator(ctx context.Context, app *chainutils.App, c
 	return nil
 }
 
-func (r *Reconciler) updateJailedStatus(ctx context.Context, chainNode *appsv1.ChainNode) error {
+func (r *Reconciler) updateValidatorStatus(ctx context.Context, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
 
 	client, err := r.getChainNodeClient(chainNode)
