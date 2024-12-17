@@ -30,6 +30,7 @@ const (
 	annotationSafeEvict               = "cluster-autoscaler.kubernetes.io/safe-to-evict"
 	annotationConfigHash              = "apps.k8s.nibiru.org/config-hash"
 	annotationDataInitialized         = "apps.k8s.nibiru.org/data-initialized"
+	annotationGenesisDownloaded       = "apps.k8s.nibiru.org/genesis-downloaded"
 	annotationVaultKeyUploaded        = "apps.k8s.nibiru.org/vault-key-uploaded"
 	annotationPvcSnapshotInProgress   = "apps.k8s.nibiru.org/snapshotting-pvc"
 	annotationLastPvcSnapshot         = "apps.k8s.nibiru.org/last-pvc-snapshot"
