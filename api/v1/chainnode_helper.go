@@ -141,7 +141,7 @@ func (chainNode *ChainNode) ShouldUploadVaultKey() bool {
 }
 
 func (chainNode *ChainNode) ShouldCreateValidator() bool {
-	return chainNode.Spec.Validator != nil && chainNode.Spec.Validator.CreateValidator != nil
+	return chainNode.Spec.Validator != nil && chainNode.Spec.Validator.CreateValidator != nil && chainNode.Status.ValidatorStatus == ""
 }
 
 func (chainNode *ChainNode) RequiresPrivKey() bool {
