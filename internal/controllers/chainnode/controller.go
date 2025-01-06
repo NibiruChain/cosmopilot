@@ -227,18 +227,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if chainNode.ShouldCreateValidator() && chainNode.Status.ValidatorStatus == "" {
-		logger.V(1).Info("creating validator tx")
-		if err = r.createValidator(ctx, app, chainNode); err != nil {
+	// Update validator status
+	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && chainNode.IsValidator() {
+		logger.V(1).Info("updating validator status")
+		if err = r.updateValidatorStatus(ctx, chainNode); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	// Update jailed status
-	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && chainNode.IsValidator() {
-		logger.V(1).Info("checking jailed status")
-		if err = r.updateJailedStatus(ctx, chainNode); err != nil {
-			return ctrl.Result{}, err
+	if chainNode.Status.Phase == appsv1.PhaseChainNodeRunning && chainNode.ShouldCreateValidator() {
+		logger.V(1).Info("creating validator tx")
+		if err = r.createValidator(ctx, app, chainNode); err != nil {
+			return ctrl.Result{Requeue: true}, err
 		}
 	}
 

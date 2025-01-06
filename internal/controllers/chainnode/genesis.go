@@ -18,8 +18,18 @@ import (
 )
 
 func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
-	// Return if we have a chain ID already
-	if chainNode.Status.ChainID != "" {
+	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
+		pvc, err := r.getPVC(ctx, chainNode)
+		if err != nil {
+			return fmt.Errorf("failed to get pvc: %w", err)
+		}
+		if pvc == nil {
+			return fmt.Errorf("pvc not found")
+		}
+		if v, ok := pvc.Annotations[annotationGenesisDownloaded]; ok && v == StringValueTrue {
+			return nil
+		}
+	} else if chainNode.Status.ChainID != "" {
 		return nil
 	}
 
@@ -144,6 +154,13 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 				r.opts.GetDefaultPriorityClassName(),
 				chainNode.Spec.Affinity,
 				chainNode.Spec.NodeSelector); err != nil {
+			return err
+		}
+		if pvc.Annotations == nil {
+			pvc.Annotations = map[string]string{}
+		}
+		pvc.Annotations[annotationGenesisDownloaded] = StringValueTrue
+		if err = r.Update(ctx, pvc); err != nil {
 			return err
 		}
 
