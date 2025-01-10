@@ -1,110 +1,67 @@
 # CosmoPilot
-Kubernetes controllers to manage nibiru (and other cosmos nodes) on a Kubernetes cluster.
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+[![Test](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml)
+[![Docker Builds](https://github.com/NibiruChain/cosmopilot/actions/workflows/cosmopilot-docker.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/cosmopilot-docker.yaml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/NibiruChain/cosmopilot/blob/main/LICENSE.md)
 
-## Requirements
-* Kubernetes cluster v1.29
+**Cosmopilot** is a Kubernetes operator designed to simplify the deployment and management of Cosmos-based blockchain nodes.
+It automates tasks like node deployment, upgrades, disk-resize, api exposure, backup (with data integrity validation), ensuring a seamless experience for blockchain operators.
 
-## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+---
 
-### Running on the cluster
+## Key Features
 
-Before deploying, you need to have a `ghcr` secret in the `nibiru-system` namespace
+- **Node Deployment**:
+    - Deploy nodes based on CRDs: `ChainNode` (single node) and `ChainNodeSet` (group of nodes).
+    - Automatically peers nodes from the same network if they are on the same namespace.
+    - Automatically generates consensus keys and account private keys when needed, and keeps them in secrets.
 
-```sh
-kubectl create secret docker-registry ghcr --docker-server='ghcr.io' --docker-email='devops@nibiru.org' --docker-username='nibibot' --docker-password='<password>' --namespace='nibiru-system'
-```
+- **Persistent Volume Management**:
+    - Creates (or imports) and manages Persistent Volume Claims (PVCs) for node data.
+    - Automatically increases PVC size when usage exceeds a configurable threshold.
 
-You can obtain the `<password>` from a `ghcr` secret from another cluster. For example,
+- **API Endpoints Exposure**:
+    - Integrates with NGINX and cert-manager to optionally expose API endpoints publicly (RPC, LCD, gRPC and EVM).
+    - Integrates with [cosmoguard](https://github.com/NibiruChain/cosmoguard) for fine-grained control over API access and caching.
 
-```sh
-kubectl get secret ghcr -n nibiru-system -o jsonpath='{.data.\.dockerconfigjson}' | base64 --decode
-```
+- **Backup and Snapshot Management**:
+    - Configurable snapshot frequency and retention policies (with optional node shutdown during snapshot creation).
+    - Export snapshots to Google Cloud Storage (GCS) as tarball files.
+    - Verifies snapshot integrity.
 
-1. Install Instances of Custom Resources:
+- **Genesis Management**:
+    - Retrieve genesis from a URL, ConfigMap, RPC endpoint, or generate a new one (useful for launching testnets).
 
-```sh
-make install
-```
+- **State-Sync Automation**:
+    - Automatically configures state-sync between nodes.
+    - Simplifies restoring nodes from state-sync snapshots.
 
-2. Build and push your image to the location specified by `IMG`:
+- **TMKMS Integration**:
+    - Securely manages private keys using TMKMS.
+    - Supports HashiCorp Vault as the key provider.
 
-```sh
-make docker-build docker-push VERSION=<your-tag>
-```
+- **Governance Upgrade Automation**:
+    - Monitors for governance upgrades with detailed Docker image info.
+    - Automatically upgrades nodes without manual intervention.
+    - Manual upgrades are also schedulable.
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+---
 
-```sh
-make deploy VERSION=<your-tag>
-```
+## Documentation
 
-### Uninstall CRDs
-To delete the CRDs from the cluster:
+Full documentation, including installation guides, configuration examples, and advanced features, is available at:
 
-```sh
-make uninstall
-```
+📖 [Cosmopilot Documentation](https://cosmopilot.nibiru.fi)
 
-### Undeploy controller
-UnDeploy the controller from the cluster:
-
-```sh
-make undeploy
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-### How it works
-This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
-
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
-which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
-
-### Test It Out
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
-
-### Modifying the API definitions
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
-
-```sh
-make manifests
-```
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+---
 
 ## License
 
-Copyright 2023 Nibiru.
+Cosmopilot is open source and available under the [MIT License](LICENSE.md).
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+---
 
-    http://www.apache.org/licenses/LICENSE-2.0
+## Contact
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Have questions or need help? Feel free to open an issue or reach out to us via [dev@nibiru.org](mailto:dev@nibiru.org).
 

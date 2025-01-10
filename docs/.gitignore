@@ -1,0 +1,7 @@
+.DS_Store
+.idea
+.temp
+node_modules
+.vscode
+.vitepress/cache
+.vitepress/dist
