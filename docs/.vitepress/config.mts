@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitepress'
 
-// https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "Cosmopilot",
   description: "Cosmopilot Documentation",
@@ -13,19 +12,19 @@ export default defineConfig({
     ['link', { rel: "manifest", href: "/site.webmanifest" }],
   ],
   themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
     logo: {
-      src: 'logo.png',
+      src: '/logo.png',
       alt: 'Cosmopilot'
     },
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Getting Started', link: '/getting-started/01-prerequisites' }
+      { text: 'Getting Started', link: '/01-getting-started/01-prerequisites' },
+      { text: 'Usage', link: '/02-usage/01-deploy-node' }
     ],
     sidebar: [
       {
         text: 'Getting Started',
-        base: '/getting-started/',
+        base: '/01-getting-started/',
         items: [
           { text: 'Prerequisites', link: '01-prerequisites' },
           { text: 'Installation', link: '02-installation' },
@@ -34,15 +33,28 @@ export default defineConfig({
       },
       {
         text: 'Usage',
-        base: '/usage/',
+        base: '/02-usage/',
         items: [
           { text: 'Deploying a Node', link: '01-deploy-node' },
+          { text: 'Deploying a Node Set', link: '02-deploy-node-set' },
+          { text: 'Genesis Download', link: '03-genesis' },
+          { text: 'Node Configurations', link: '04-node-config' },
+          { text: 'Persistence and Backups', link: '05-persistence-and-backup' },
+          { text: 'Restore from Snapshot', link: '06-restoring-from-snapshot' },
+          { text: 'Exposing Endpoints', link: '07-exposing-endpoints' },
+          { text: 'Upgrades', link: '08-upgrades' },
+          { text: 'Validator', link: '09-validator' },
+          { text: 'Initializing new Network', link: '10-initializing-new-network' },
+          { text: 'Using TmKMS', link: '11-tmkms' },
+          { text: 'Using CosmoGuard', link: '12-cosmoguard' },
+          { text: 'Interpreting Node Status', link: '13-node-status' }
         ]
       },
       {
         text: 'Reference',
+        base: '/03-reference/',
         items: [
-          { text: 'Custom Resource Definitions', link: '/reference/crds/crds' },
+          { text: 'Custom Resource Definitions', link: 'crds/crds' },
         ]
       }
     ],

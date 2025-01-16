@@ -11,10 +11,10 @@ hero:
   actions:
     - theme: brand
       text: Getting Started
-      link: /getting-started/01-prerequisites
+      link: /01-getting-started/01-prerequisites
     - theme: alt
-      text: Deploy Nodes
-      link: /usage/01-deploy-node
+      text: Usage
+      link: /02-usage/01-deploy-node
 
 features:
   - title: Upgrades
