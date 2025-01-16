@@ -22,8 +22,10 @@ spec:
     app: nibid # Binary to be used
     image: ghcr.io/nibiruchain/nibiru # Container image repository of the application
     version: 1.0.0 # Version to be used
+
   genesis:
     url: https://raw.githubusercontent.com/NibiruChain/Networks/refs/heads/main/Mainnet/cataclysm-1/genesis.json
+
   peers:
   - id: 151acb0de556f4a059f9bd40d46190ee91f06422
     address: 34.38.151.176
@@ -104,4 +106,4 @@ You can test the `gRPC` endpoint using grpcurl:
 $ grpcurl --plaintext localhost:9090 list
 ```
 
-For additional methods to access these endpoints, refer to the [Exposing Endpoints](07-exposing-endpoints) page.
+For more ways to access these endpoints, refer to the [Exposing Endpoints](07-exposing-endpoints) page.
