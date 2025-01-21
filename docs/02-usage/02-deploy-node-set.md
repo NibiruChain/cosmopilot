@@ -54,8 +54,21 @@ spec:
 
 ## Managed Resources
 
-> [!WARNING]
-> TODO.
+When you create a [ChainNodeSet](/03-reference/crds/crds#chainnodeset), `Cosmopilot` automatically manages and creates several resources required to deploy and manage groups of nodes. These include:
+
+- **ChainNodes**: The [ChainNodeSet](/03-reference/crds/crds#chainnodeset) primarily creates and manages individual [ChainNode](/03-reference/crds/crds#chainnode) resources for each node in the set. As a result, all resources managed for [ChainNode](/03-reference/crds/crds#chainnode) (e.g., Pods, ConfigMaps, Services, Secrets, and Service Monitors) are implicitly created and managed as well.
+
+- **Group Services**:
+  - A service is created for each group of nodes in the [ChainNodeSet](/03-reference/crds/crds#chainnodeset). These services target all nodes within the corresponding group, simplifying internal and external communication for specific roles (e.g., all full nodes or sentries).
+
+- **Ingresses**:
+  - **Per-Group Ingresses**: Ingresses can be created for individual groups of nodes to expose their endpoints externally.
+  - **Global Ingresses**: A single ingress can be created to target nodes across multiple groups, enabling centralized access to shared APIs.
+
+- **ConfigMaps**:
+  - If the [ChainNodeSet](/03-reference/crds/crds#chainnodeset) controller handles the genesis file, a `ConfigMap` is created to store it. This allows all nodes within the set to share a consistent genesis configuration.
+
+The [ChainNodeSet](/03-reference/crds/crds#chainnodeset) simplifies managing large-scale deployments by automating the creation of multiple [ChainNode](/03-reference/crds/crds#chainnode) resources while providing additional flexibility through group-level services, ingresses, and centralized genesis configuration.
 
 ## Scaling Node Groups
 

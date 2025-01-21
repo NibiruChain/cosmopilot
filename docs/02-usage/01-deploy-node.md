@@ -46,9 +46,9 @@ spec:
 
 This example highlights the three mandatory configuration sections required to deploy a node:
 
-- **app**: Specifies the application to deploy, including the binary name, container image repository, and version.
-- **genesis**: Defines the source of the genesis file required to initialize the node (not required if [Initializing a new Network](10-initializing-new-network)).
-- **peers**: Lists the peer nodes to connect with for network communication.
+- [app](/03-reference/crds/crds#appspec): Specifies the application to deploy, including the binary name, container image repository, and version.
+- [genesis](/03-reference/crds/crds#genesisconfig): Defines the source of the genesis file required to initialize the node (not required if [Initializing a new Network](10-initializing-new-network)).
+- [peers](/03-reference/crds/crds#peer): Lists the peer nodes to connect with for network communication.
 
 To create the node, save the manifest to a file (e.g. `node.yaml`) and apply it to your Kubernetes cluster:
 
