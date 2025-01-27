@@ -153,7 +153,7 @@ persistence:
 2. If the test node starts and syncs correctly, the snapshot is marked as valid.
 3. If the integrity check fails, the snapshot is deleted, and `Cosmopilot` attempts to take a new snapshot.
 
-## Exporting Tarball from Volume Snapshot
+## Exporting Tarball
 
 `Cosmopilot` provides an option to export data from a volume snapshot as a tarball file and upload it to external storage. Currently, this feature supports uploading to Google Cloud Storage (GCS) buckets. 
 
