@@ -1,6 +1,6 @@
 # Exposing Endpoints
 
-This page provides guidance on exposing endpoints for nodes managed by `Cosmopilot`. Exposing `API` endpoints relies on the creation of ingress resources, which are designed to work exclusively with `NGINX` (and `cert-manager` for securing the endpoints). For this reason, `NGINX` and `cert-manager` are included in the requirements listed in the [Prerequisites](01-prerequisites) page.
+This page provides guidance on exposing endpoints for nodes managed by `Cosmopilot`. Exposing `API` endpoints relies on the creation of ingress resources, which are designed to work exclusively with `NGINX` (and `cert-manager` for securing the endpoints). For this reason, `NGINX` and `cert-manager` are included in the requirements listed in the [Prerequisites](/01-getting-started/01-prerequisites) page.
 
 The only exception is the `P2P` port, which can be exposed without `NGINX` and `cert-manager`.
 
