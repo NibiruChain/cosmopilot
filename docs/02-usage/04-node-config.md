@@ -193,3 +193,9 @@ config:
     path: /home/app/ibc_08-wasm
     deleteWithNode: true
 ```
+
+## Sidecar containers
+
+In some networks, additional tools might need to run together with the node and have access to its data volume. On an environment where you have the possibility of having `ReadWriteMany` volumes this is not a problem, but on most cloud providers that is mostly not available, or extremely expensive. For this reason, `Cosmopilot` provides you with a way of appending additional containers to the same `Pod` as the node.
+
+Please refer to [SidecarSpec](/03-reference/crds/crds#sidecarspec) for full specification on all available fields.
