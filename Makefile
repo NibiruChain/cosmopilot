@@ -40,14 +40,14 @@ help: ## Display this help.
 
 .PHONY: docs
 docs: crd-to-markdown
-	@mkdir -p ./docs/reference/crds
+	@mkdir -p ./docs/03-reference/crds
 	@$(CRD_TO_MARKDOWN) \
 		-f ./api/v1/chainnode_types.go \
 		-f ./api/v1/chainnodeset_types.go \
 		-f ./api/v1/common_types.go \
-		--header ./docs/reference/crds/header.md \
+		--header ./docs/03-reference/crds/header.md \
 		-n ChainNode \
-		-n ChainNodeSet > ./docs/reference/crds/crds.md
+		-n ChainNodeSet > ./docs/03-reference/crds/crds.md
 
 ##@ Development
 
