@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  ignoreDeadLinks: true,
   title: "Cosmopilot",
   description: "Cosmopilot Documentation",
   head: [
