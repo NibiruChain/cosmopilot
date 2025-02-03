@@ -1,0 +1,83 @@
+# Sei Devnet Validator + Fullnode
+
+```yaml
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNodeSet
+metadata:
+  name: sei-devnet
+spec:
+  app:
+    image: ghcr.io/akash-network/cosmos-omnibus
+    version: v0.4.25-rc1-seinetwork-v5.7.5
+    app: seid
+    sdkVersion: v0.45
+
+  validator:
+    info:
+      moniker: nibiru-0
+      website: https://nibiru.fi
+
+    config:
+      volumes:
+        - name: wasm
+          size: 1Gi
+          path: /home/app/wasm
+          deleteWithNode: true
+      dashedConfigToml: true
+      override:
+        app.toml:
+          minimum-gas-prices: 0.025usei
+          state-commit:
+            sc-enable: true
+          state-store:
+            ss-enable: true
+          mempool:
+            max-txs: 100000
+        config.toml:
+          mode: validator
+          mempool:
+            size: 100000
+            cache_size: 200000
+        client.toml:
+          chain-id: sei-devnet-0
+
+    init:
+      chainID: sei-devnet-0
+      accountPrefix: sei
+      valPrefix: seivaloper
+      assets: [ "100000000000000000000usei" ]
+      stakeAmount: 100000000usei
+      unbondingTime: 60s
+      votingPeriod: 60s
+
+  nodes:
+    - name: fullnodes
+      instances: 1
+
+      config:
+        volumes:
+          - name: wasm
+            size: 1Gi
+            path: /home/app/wasm
+            deleteWithNode: true
+        dashedConfigToml: true
+        override:
+          app.toml:
+            minimum-gas-prices: 0.025usei
+            pruning: custom
+            pruning-keep-recent: "100"
+            pruning-interval: "10"
+            state-commit:
+              sc-enable: true
+            state-store:
+              ss-enable: true
+            mempool:
+              max-txs: 100000
+          config.toml:
+            mode: validator
+            mempool:
+              size: 100000
+              cache_size: 200000
+          client.toml:
+            chain-id: sei-devnet-0
+```

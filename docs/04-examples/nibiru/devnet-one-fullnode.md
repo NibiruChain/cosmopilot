@@ -1,0 +1,71 @@
+# Nibiru Devnet Validator + Fullnode
+
+```yaml
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNodeSet
+metadata:
+  name: nibiru-devnet
+spec:
+  app:
+    image: ghcr.io/nibiruchain/nibiru
+    version: 1.5.0
+    app: nibid
+
+  validator:
+    info:
+      moniker: nibiru-0
+      website: https://nibiru.fi
+
+    config:
+      override:
+        app.toml:
+          minimum-gas-prices: 0.025unibi
+          mempool:
+            max-txs: 100000
+        config.toml:
+          mempool:
+            size: 100000
+            cache_size: 200000
+
+      sidecars:
+        - name: pricefeeder
+          image: ghcr.io/nibiruchain/pricefeeder:1.0.3
+          env:
+            - name: FEEDER_MNEMONIC
+              valueFrom:
+                secretKeyRef:
+                  name: nibiru-devnet-validator-account
+                  key: mnemonic
+            - name: CHAIN_ID
+              value: nibiru-devnet-0
+            - name: GRPC_ENDPOINT
+              value: localhost:9090
+            - name: WEBSOCKET_ENDPOINT
+              value: ws://localhost:26657/websocket
+
+    init:
+      chainID: nibiru-devnet-0
+      assets: ["100000000000000unibi", "1000000000000000000unusd", "10000000000000000uusdt"]
+      stakeAmount: 100000000unibi
+      unbondingTime: 60s
+      votingPeriod: 60s
+      additionalInitCommands:
+        - command: [ "sh", "-c" ]
+          args:
+            - >
+              nibid genesis add-sudo-root-account \
+                $(nibid keys show account -a --home=/home/app --keyring-backend test) \
+                --home=/home/app
+
+  nodes:
+    - name: fullnodes
+      instances: 1
+
+      config:
+        override:
+          app.toml:
+            minimum-gas-prices: 0.025unibi
+            pruning: custom
+            pruning-keep-recent: "100"
+            pruning-interval: "10"
+```
