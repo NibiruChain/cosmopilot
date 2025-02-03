@@ -160,7 +160,7 @@ validator:
 
 By default, `Cosmpilot` does not persist `TmKMS` state. If you need to enable it, use:
 
-```yaml
+```yaml{3}
 validator:
   tmKMS:
     persistState: true # Default is false.
@@ -172,7 +172,7 @@ validator:
 
 You can configure resource requests and limits for the `TmKMS` container to ensure it runs optimally:
 
-```yaml
+```yaml{3-9}
 validator:
   tmKMS:
     resources:
