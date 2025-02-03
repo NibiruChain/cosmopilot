@@ -47,7 +47,6 @@ export default defineConfig({
           { text: 'Initializing new Network', link: '10-initializing-new-network' },
           { text: 'Using TmKMS', link: '11-tmkms' },
           { text: 'Using CosmoGuard', link: '12-cosmoguard' },
-          { text: 'Interpreting Node Status', link: '13-node-status' }
         ]
       },
       {
