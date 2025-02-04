@@ -250,6 +250,16 @@ func (chainNode *ChainNode) GetAdditionalRunFlags() []string {
 	return []string{}
 }
 
+func (chainNode *ChainNode) GetLastUpgradeHeight() int64 {
+	var h int64 = 0
+	for _, u := range chainNode.Status.Upgrades {
+		if (u.Status == UpgradeCompleted || u.Status == UpgradeSkipped) && u.Height > h {
+			h = u.Height
+		}
+	}
+	return h
+}
+
 // Validator methods
 
 func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {
