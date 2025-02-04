@@ -1,11 +1,15 @@
 package nodeutils
 
 import (
+	"encoding/json"
 	"net/http"
+	"os"
+	"path"
+	"regexp"
+	"sort"
 	"strconv"
 	"time"
 
-	"github.com/cometbft/cometbft/libs/json"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/NibiruChain/cosmopilot/internal/utils"
@@ -18,7 +22,7 @@ func (s *NodeUtils) registerRoutes() {
 	s.router.HandleFunc("/latest_height", s.latestHeight).Methods(http.MethodGet)
 	s.router.HandleFunc("/must_upgrade", s.mustUpgrade).Methods(http.MethodGet)
 	s.router.HandleFunc("/tmkms_active", s.tmkmsConnectionActive).Methods(http.MethodGet)
-
+	s.router.HandleFunc("/snapshots", s.listSnapshots).Methods(http.MethodGet)
 	s.router.HandleFunc("/shutdown", s.shutdownServer).Methods(http.MethodGet, http.MethodPost)
 }
 
@@ -132,4 +136,37 @@ func (s *NodeUtils) shutdownServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *NodeUtils) listSnapshots(w http.ResponseWriter, r *http.Request) {
+	log.Info("retrieving snapshots")
+	files, err := os.ReadDir(path.Join(s.cfg.DataPath, "snapshots"))
+	if err != nil {
+		log.Errorf("error reading directory: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var heights []int64
+	heightRegex := regexp.MustCompile(`^\d+$`) // Match only numbers
+
+	for _, file := range files {
+		if file.IsDir() && heightRegex.MatchString(file.Name()) {
+			// Convert the directory name to int64
+			if height, err := strconv.ParseInt(file.Name(), 10, 64); err == nil {
+				heights = append(heights, height)
+			}
+		}
+	}
+	// Sort heights in ascending order
+	sort.Slice(heights, func(i, j int) bool { return heights[i] < heights[j] })
+
+	b, err := json.Marshal(heights)
+	if err != nil {
+		log.Errorf("error building json response: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
 }

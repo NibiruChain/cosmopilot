@@ -1,6 +1,7 @@
 package nodeutils
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,4 +79,24 @@ func (c *Client) ShutdownNodeUtilsServer() error {
 		return err
 	}
 	return response.Body.Close()
+}
+
+func (c *Client) ListSnapshots() ([]int64, error) {
+	response, err := http.Get(c.url + "/snapshots")
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var snapshots []int64
+	err = json.Unmarshal(body, &snapshots)
+	if err != nil {
+		return nil, err
+	}
+	return snapshots, nil
 }
