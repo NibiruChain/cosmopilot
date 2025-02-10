@@ -316,12 +316,12 @@ type SidecarSpec struct {
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// Whether the pod of this node should be restarted when this sidecar container fails
+	// Whether the pod of this node should be restarted when this sidecar container fails. Defaults to `false`.
 	// +optional
 	RestartPodOnFailure *bool `json:"restartPodOnFailure,omitempty"`
 
 	// When enabled, this container turns into an init container instead of a sidecar
-	// as it will have to finish before the node container starts.
+	// as it will have to finish before the node container starts. Defaults to `false`.
 	// +optional
 	RunBeforeNode *bool `json:"runBeforeNode,omitempty"`
 }
