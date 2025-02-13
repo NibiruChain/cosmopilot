@@ -1,3 +1,14 @@
-FROM alpine
-RUN apk --no-cache add curl jq moreutils
+FROM alpine:3.21
+
+# Install dependencies
+RUN apk --no-cache add \
+    curl jq moreutils coreutils pigz pv bash python3 \
+    && curl https://sdk.cloud.google.com | bash -s -- --install-dir=/usr/local --disable-prompts \
+    && ln -s /usr/local/google-cloud-sdk/bin/gsutil /usr/local/bin/gsutil \
+    && ln -s /usr/local/google-cloud-sdk/bin/gcloud /usr/local/bin/gcloud
+
+COPY contrib/scripts/gcs/upload-to-gcs.sh /usr/local/bin/upload-to-gcs
+COPY contrib/scripts/gcs/delete-from-gcs.sh /usr/local/bin/delete-from-gcs
+RUN chmod +x /usr/local/bin/upload-to-gcs /usr/local/bin/delete-from-gcs
+
 ENTRYPOINT ["sh", "-c"]
