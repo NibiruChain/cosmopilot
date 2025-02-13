@@ -86,46 +86,25 @@ func (gcs *GCS) CreateSnapshot(ctx context.Context, name string, vs *snapshotv1.
 								},
 							},
 						},
-						{
-							Name: "gcloud-config",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					InitContainers: []corev1.Container{
-						{
-							Name:            "gcloud-auth",
-							Image:           "google/cloud-sdk:alpine",
-							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"gcloud"},
-							Args:            []string{"auth", "activate-service-account", fmt.Sprintf("--key-file=/creds/%s", gcs.Credentials.Key)},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "gcloud-config",
-									MountPath: "/root/.config",
-								},
-								{
-									Name:      "credentials",
-									MountPath: "/creds",
-								},
-							},
-						},
 					},
 					Containers: []corev1.Container{
 						{
-							Name:            "gcloud",
-							Image:           "google/cloud-sdk:alpine",
+							Name:            "node-tools",
+							Image:           "ghcr.io/nibiruchain/node-tools:latest",
 							ImagePullPolicy: corev1.PullAlways,
 							Command:         []string{"sh", "-c"},
-							Args: []string{
-								fmt.Sprintf("tar czf - data | gsutil cp - gs://%s/%s.tar.gz", gcs.Bucket, name),
+							Args:            []string{fmt.Sprintf("upload-to-gcs data %s %s", gcs.Bucket, name)},
+							WorkingDir:      "/home/app",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "CREDENTIALS_FILE",
+									Value: fmt.Sprintf("/creds/%s", gcs.Credentials.Key),
+								},
 							},
-							WorkingDir: "/home/app",
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "gcloud-config",
-									MountPath: "/root/.config",
+									Name:      "credentials",
+									MountPath: "/creds",
 								},
 								{
 									Name:      "data",
@@ -243,46 +222,25 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 								},
 							},
 						},
-						{
-							Name: "gcloud-config",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					InitContainers: []corev1.Container{
-						{
-							Name:            "gcloud-auth",
-							Image:           "google/cloud-sdk:alpine",
-							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"gcloud"},
-							Args:            []string{"auth", "activate-service-account", fmt.Sprintf("--key-file=/creds/%s", gcs.Credentials.Key)},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "gcloud-config",
-									MountPath: "/root/.config",
-								},
-								{
-									Name:      "credentials",
-									MountPath: "/creds",
-								},
-							},
-						},
 					},
 					Containers: []corev1.Container{
 						{
-							Name:            "gcloud",
-							Image:           "google/cloud-sdk:alpine",
+							Name:            "node-tools",
+							Image:           "ghcr.io/nibiruchain/node-tools:latest",
 							ImagePullPolicy: corev1.PullAlways,
 							Command:         []string{"sh", "-c"},
-							Args: []string{
-								fmt.Sprintf("gsutil rm gs://%s/%s.tar.gz", gcs.Bucket, name),
+							Args:            []string{fmt.Sprintf("delete-from-gcs %s %s", gcs.Bucket, name)},
+							WorkingDir:      "/home/app",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "CREDENTIALS_FILE",
+									Value: fmt.Sprintf("/creds/%s", gcs.Credentials.Key),
+								},
 							},
-							WorkingDir: "/home/app",
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "gcloud-config",
-									MountPath: "/root/.config",
+									Name:      "credentials",
+									MountPath: "/creds",
 								},
 							},
 						},
