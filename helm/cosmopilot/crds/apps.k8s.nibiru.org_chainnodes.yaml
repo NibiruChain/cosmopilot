@@ -1658,12 +1658,12 @@ spec:
                           type: object
                         restartPodOnFailure:
                           description: Whether the pod of this node should be restarted
-                            when this sidecar container fails
+                            when this sidecar container fails. Defaults to `false`.
                           type: boolean
                         runBeforeNode:
                           description: When enabled, this container turns into an
                             init container instead of a sidecar as it will have to
-                            finish before the node container starts.
+                            finish before the node container starts. Defaults to `false`.
                           type: boolean
                         securityContext:
                           description: Security options the container should be run
