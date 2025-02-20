@@ -2,7 +2,7 @@ package chainnodeset
 
 import (
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/utils"
+	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
 func AddOrUpdateNodeStatus(nodeSet *appsv1.ChainNodeSet, status appsv1.ChainNodeSetNodeStatus) {

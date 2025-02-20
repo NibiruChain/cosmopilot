@@ -14,7 +14,7 @@ import (
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
 	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/utils"
+	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
 func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, nodeSet *appsv1.ChainNodeSet) error {

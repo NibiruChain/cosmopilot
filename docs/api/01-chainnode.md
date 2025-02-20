@@ -267,6 +267,11 @@ GcsExportConfig holds required settings to upload to GCS.
 | ----- | ----------- | ------ | -------- |
 | bucket | Name of the bucket to upload tarballs to. | string | true |
 | credentialsSecret | Secret with the JSON credentials to upload to bucket. | *corev1.SecretKeySelector | true |
+| sizeLimit | Size limit at which the file will be split into multiple parts. Defaults to `5TB`. | *string | false |
+| partSize | Size of each part when size-limit is crossed. Defaults to `500GB`. | *string | false |
+| chunkSize | Size of each chunk uploaded in parallel to GCS. Defaults to `250MB`. | *string | false |
+| bufferSize | Size of the buffer when streaming data to GCS. Defaults to `32MB`. | *string | false |
+| concurrentJobs | Number of concurrent upload or delete jobs. Defaults to `10`. | *int | false |
 
 [Back to Custom Resources](#custom-resources)
 

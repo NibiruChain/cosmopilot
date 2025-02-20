@@ -760,6 +760,21 @@ type GcsExportConfig struct {
 
 	// Secret with the JSON credentials to upload to bucket.
 	CredentialsSecret *corev1.SecretKeySelector `json:"credentialsSecret"`
+
+	// Size limit at which the file will be split into multiple parts. Defaults to `5TB`.
+	SizeLimit *string `json:"sizeLimit,omitempty"`
+
+	// Size of each part when size-limit is crossed. Defaults to `500GB`.
+	PartSize *string `json:"partSize,omitempty"`
+
+	// Size of each chunk uploaded in parallel to GCS. Defaults to `250MB`.
+	ChunkSize *string `json:"chunkSize,omitempty"`
+
+	// Size of the buffer when streaming data to GCS. Defaults to `32MB`.
+	BufferSize *string `json:"bufferSize,omitempty"`
+
+	// Number of concurrent upload or delete jobs. Defaults to `10`.
+	ConcurrentJobs *int `json:"concurrentJobs,omitempty"`
 }
 
 // UpgradePhase indicates the current phase of an upgrade.

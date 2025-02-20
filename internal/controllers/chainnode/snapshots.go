@@ -23,7 +23,7 @@ import (
 	"github.com/NibiruChain/cosmopilot/internal/controllers/chainnodeset"
 	"github.com/NibiruChain/cosmopilot/internal/datasnapshot"
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	"github.com/NibiruChain/cosmopilot/internal/utils"
+	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
 type SnapshotIntegrityStatus string
@@ -477,9 +477,8 @@ func (r *Reconciler) getTarballExportProvider(chainNode *appsv1.ChainNode) (data
 			r.ClientSet,
 			r.Scheme,
 			chainNode,
-			chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS.Bucket,
-			chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS.CredentialsSecret,
 			r.opts.GetDefaultPriorityClassName(),
+			chainNode.Spec.Persistence.Snapshots.ExportTarball.GCS,
 		), nil
 
 	default:

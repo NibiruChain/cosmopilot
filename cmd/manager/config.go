@@ -7,7 +7,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/environ"
+	"github.com/NibiruChain/cosmopilot/pkg/environ"
 )
 
 func init() {

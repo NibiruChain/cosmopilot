@@ -3,6 +3,7 @@ package datasnapshot
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
@@ -15,6 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
 
 const (
@@ -24,17 +27,15 @@ const (
 type GCS struct {
 	Client        *kubernetes.Clientset
 	Scheme        *runtime.Scheme
-	Bucket        string
-	Credentials   *corev1.SecretKeySelector
 	Owner         metav1.Object
 	priorityClass string
+	Config        *appsv1.GcsExportConfig
 }
 
-func NewGcsSnapshotProvider(client *kubernetes.Clientset, scheme *runtime.Scheme, owner metav1.Object, bucket string, creds *corev1.SecretKeySelector, priorityClass string) SnapshotProvider {
+func NewGcsSnapshotProvider(client *kubernetes.Clientset, scheme *runtime.Scheme, owner metav1.Object, priorityClass string, cfg *appsv1.GcsExportConfig) SnapshotProvider {
 	return &GCS{
 		Client:        client,
-		Bucket:        bucket,
-		Credentials:   creds,
+		Config:        cfg,
 		Owner:         owner,
 		Scheme:        scheme,
 		priorityClass: priorityClass,
@@ -82,23 +83,42 @@ func (gcs *GCS) CreateSnapshot(ctx context.Context, name string, vs *snapshotv1.
 							Name: "credentials",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: gcs.Credentials.Name,
+									SecretName: gcs.Config.CredentialsSecret.Name,
 								},
 							},
 						},
 					},
 					Containers: []corev1.Container{
 						{
-							Name:            "node-tools",
-							Image:           "ghcr.io/nibiruchain/node-tools:latest",
+							Name:            "dataexporter",
+							Image:           "ghcr.io/nibiruchain/dataexporter:latest",
 							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"sh", "-c"},
-							Args:            []string{fmt.Sprintf("upload-to-gcs data %s %s", gcs.Bucket, name)},
+							Args:            []string{fmt.Sprintf("gcs upload data %s %s", gcs.Config.Bucket, name)},
 							WorkingDir:      "/home/app",
 							Env: []corev1.EnvVar{
 								{
-									Name:  "CREDENTIALS_FILE",
-									Value: fmt.Sprintf("/creds/%s", gcs.Credentials.Key),
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: fmt.Sprintf("/creds/%s", gcs.Config.CredentialsSecret.Key),
+								},
+								{
+									Name:  "SIZE_LIMIT",
+									Value: gcs.Config.GetSizeLimit(),
+								},
+								{
+									Name:  "PART_SIZE",
+									Value: gcs.Config.GetPartSize(),
+								},
+								{
+									Name:  "CHUNK_SIZE",
+									Value: gcs.Config.GetChunkSize(),
+								},
+								{
+									Name:  "BUFFER_SIZE",
+									Value: gcs.Config.GetBufferSize(),
+								},
+								{
+									Name:  "CONCURRENT_JOBS",
+									Value: strconv.Itoa(gcs.Config.GetConcurrentJobs()),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -218,23 +238,26 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 							Name: "credentials",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: gcs.Credentials.Name,
+									SecretName: gcs.Config.CredentialsSecret.Name,
 								},
 							},
 						},
 					},
 					Containers: []corev1.Container{
 						{
-							Name:            "node-tools",
-							Image:           "ghcr.io/nibiruchain/node-tools:latest",
+							Name:            "dataexporter",
+							Image:           "ghcr.io/nibiruchain/dataexporter:latest",
 							ImagePullPolicy: corev1.PullAlways,
-							Command:         []string{"sh", "-c"},
-							Args:            []string{fmt.Sprintf("delete-from-gcs %s %s", gcs.Bucket, name)},
+							Args:            []string{fmt.Sprintf("gcs delete %s %s", gcs.Config.Bucket, name)},
 							WorkingDir:      "/home/app",
 							Env: []corev1.EnvVar{
 								{
-									Name:  "CREDENTIALS_FILE",
-									Value: fmt.Sprintf("/creds/%s", gcs.Credentials.Key),
+									Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+									Value: fmt.Sprintf("/creds/%s", gcs.Config.CredentialsSecret.Key),
+								},
+								{
+									Name:  "CONCURRENT_JOBS",
+									Value: strconv.Itoa(gcs.Config.GetConcurrentJobs()),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{

@@ -12,7 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/NibiruChain/cosmopilot/internal/utils"
+	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
 func (s *NodeUtils) registerRoutes() {

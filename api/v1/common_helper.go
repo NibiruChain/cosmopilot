@@ -10,6 +10,7 @@ import (
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
 
 	"github.com/NibiruChain/cosmopilot/internal/tmkms"
+	"github.com/NibiruChain/cosmopilot/pkg/dataexporter"
 )
 
 const (
@@ -444,6 +445,43 @@ func (e *ExportTarballConfig) DeleteWhenExpired() bool {
 		return *e.DeleteOnExpire
 	}
 	return false
+}
+
+// GcsExporter helper methods
+
+func (gcs *GcsExportConfig) GetSizeLimit() string {
+	if gcs != nil && gcs.SizeLimit != nil {
+		return *gcs.SizeLimit
+	}
+	return dataexporter.DefaultSizeLimit
+}
+
+func (gcs *GcsExportConfig) GetPartSize() string {
+	if gcs != nil && gcs.PartSize != nil {
+		return *gcs.PartSize
+	}
+	return dataexporter.DefaultPartSize
+}
+
+func (gcs *GcsExportConfig) GetChunkSize() string {
+	if gcs != nil && gcs.ChunkSize != nil {
+		return *gcs.ChunkSize
+	}
+	return dataexporter.DefaultChunkSize
+}
+
+func (gcs *GcsExportConfig) GetBufferSize() string {
+	if gcs != nil && gcs.BufferSize != nil {
+		return *gcs.BufferSize
+	}
+	return dataexporter.DefaultBufferSize
+}
+
+func (gcs *GcsExportConfig) GetConcurrentJobs() int {
+	if gcs != nil && gcs.ConcurrentJobs != nil {
+		return *gcs.ConcurrentJobs
+	}
+	return dataexporter.DefaultConcurrentJobs
 }
 
 // Upgrade helper methods

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NibiruChain/cosmopilot/internal/environ"
+	"github.com/NibiruChain/cosmopilot/pkg/environ"
 )
 
 func init() {

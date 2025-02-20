@@ -10,7 +10,7 @@ COPY api/ api/
 COPY internal/ internal/
 COPY pkg/ pkg/
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o nodeutils ./cmd/nodeutils
+RUN CGO_ENABLED=0 GOOS=linux go build -a -trimpath -o nodeutils ./cmd/nodeutils
 
 FROM gcr.io/distroless/static
 WORKDIR /

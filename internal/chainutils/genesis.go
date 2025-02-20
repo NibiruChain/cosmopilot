@@ -17,7 +17,7 @@ import (
 
 	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	"github.com/NibiruChain/cosmopilot/internal/utils"
+	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
 func ExtractChainIdFromGenesis(genesis string) (string, error) {

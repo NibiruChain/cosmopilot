@@ -2085,6 +2085,18 @@ spec:
                                 description: Name of the bucket to upload tarballs
                                   to.
                                 type: string
+                              bufferSize:
+                                description: Size of the buffer when streaming data
+                                  to GCS. Defaults to `32MB`.
+                                type: string
+                              chunkSize:
+                                description: Size of each chunk uploaded in parallel
+                                  to GCS. Defaults to `250MB`.
+                                type: string
+                              concurrentJobs:
+                                description: Number of concurrent upload or delete
+                                  jobs. Defaults to `10`.
+                                type: integer
                               credentialsSecret:
                                 description: Secret with the JSON credentials to upload
                                   to bucket.
@@ -2107,6 +2119,14 @@ spec:
                                 - key
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              partSize:
+                                description: Size of each part when size-limit is
+                                  crossed. Defaults to `500GB`.
+                                type: string
+                              sizeLimit:
+                                description: Size limit at which the file will be
+                                  split into multiple parts. Defaults to `5TB`.
+                                type: string
                             required:
                             - bucket
                             - credentialsSecret

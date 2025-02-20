@@ -8,7 +8,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/utils"
+	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
 func WithChainNodeLabels(chainNode *appsv1.ChainNode, additional ...map[string]string) map[string]string {

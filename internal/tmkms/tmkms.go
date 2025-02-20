@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	"github.com/NibiruChain/cosmopilot/internal/utils"
+	utils2 "github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
 type KMS struct {
@@ -72,12 +72,12 @@ func (kms *KMS) UndeployConfig(ctx context.Context) error {
 }
 
 func (kms *KMS) getConfigToml() (string, error) {
-	return utils.TomlEncode(kms.Config)
+	return utils2.TomlEncode(kms.Config)
 }
 
 func (kms *KMS) getConfigHash() string {
 	cfg, _ := kms.getConfigToml()
-	return utils.Sha256(cfg)
+	return utils2.Sha256(cfg)
 }
 
 func (kms *KMS) ensureIdentityKey(ctx context.Context) error {
