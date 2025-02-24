@@ -88,8 +88,8 @@ func (gcs *GcsExporter) Upload(dir, bucket, name string, opts ...UploadOption) e
 func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, bucket, objectName string, totalSize datasize.ByteSize, opts *UploadOptions) error {
 	partIndex := 0
 	partNames := []string{}
-	var bytesCompressed int64
-	var bytesUploaded atomic.Int64
+	var bytesCompressed uint64
+	var bytesUploaded atomic.Uint64
 
 	// Progress
 	progressCtx, cancel := context.WithCancel(ctx)
@@ -98,7 +98,7 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 		ticker := time.NewTicker(opts.ReportPeriod)
 		defer ticker.Stop()
 
-		var lastCompressed, lastUploaded int64
+		var lastCompressed, lastUploaded uint64
 
 		for {
 			select {
@@ -109,8 +109,8 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 					log.WithFields(map[string]interface{}{
 						"compressed": datasize.ByteSize(bytesCompressed).HumanReadable(),
 						"uploaded":   datasize.ByteSize(bytesUploaded.Load()).HumanReadable(),
-						"total":      totalSize.HumanReadable(),
-					}).Infof("compressed: %d%% - uploaded: %d%%\n",
+						"dir-size":   totalSize.HumanReadable(),
+					}).Info("compressing and uploading",
 						int(float64(bytesCompressed)/float64(totalSize)*100),
 						int(float64(bytesUploaded.Load())/float64(totalSize)*100),
 					)
@@ -135,7 +135,7 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
 			return fmt.Errorf("error reading chunk: %v", err)
 		}
-		bytesCompressed += int64(n)
+		bytesCompressed += uint64(n)
 		if n == 0 {
 			break // Done reading
 		}
