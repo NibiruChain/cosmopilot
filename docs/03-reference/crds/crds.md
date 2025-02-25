@@ -90,6 +90,7 @@ ChainNodeSpec defines the desired state of ChainNode.
 | resources | Compute Resources required by the app container. | corev1.ResourceRequirements | false |
 | nodeSelector | Selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. | map[string]string | false |
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
+| ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -266,6 +267,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
 | stateSyncRestore | Configures these nodes to find state-sync snapshots on the network and restore from it. This is disabled by default. | *bool | false |
 | inheritValidatorGasPrice | Whether these nodes should inherit gas price from validator (if there is not configured on this ChainNodeSet) Defaults to `true`. | *bool | false |
+| ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

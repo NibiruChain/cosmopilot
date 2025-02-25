@@ -260,6 +260,10 @@ func (chainNode *ChainNode) GetLastUpgradeHeight() int64 {
 	return h
 }
 
+func (chainNode *ChainNode) ShouldIgnoreGroupOnDisruption() bool {
+	return chainNode.Spec.IgnoreGroupOnDisruptionChecks != nil && *chainNode.Spec.IgnoreGroupOnDisruptionChecks
+}
+
 // Validator methods
 
 func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {

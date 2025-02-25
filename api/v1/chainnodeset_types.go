@@ -261,6 +261,12 @@ type NodeGroupSpec struct {
 	// Defaults to `true`.
 	// +optional
 	InheritValidatorGasPrice *bool `json:"inheritValidatorGasPrice,omitempty"`
+
+	// Whether ChainNodeSet group label should be ignored on pod disruption checks.
+	// This is useful to ensure no downtime globally or per global ingress, instead of just per group.
+	// Defaults to `false`.
+	// +optional
+	IgnoreGroupOnDisruptionChecks *bool `json:"ignoreGroupOnDisruptionChecks,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints.

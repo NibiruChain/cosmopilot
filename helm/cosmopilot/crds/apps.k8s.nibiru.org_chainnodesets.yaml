@@ -2119,6 +2119,12 @@ spec:
                             (default)'
                           type: string
                       type: object
+                    ignoreGroupOnDisruptionChecks:
+                      description: Whether ChainNodeSet group label should be ignored
+                        on pod disruption checks. This is useful to ensure no downtime
+                        globally or per global ingress, instead of just per group.
+                        Defaults to `false`.
+                      type: boolean
                     ingress:
                       description: Indicates if an ingress should be created to access
                         API endpoints of these nodes and configures it.

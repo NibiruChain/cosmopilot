@@ -26,6 +26,7 @@ import (
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
 	"github.com/NibiruChain/cosmopilot/internal/controllers"
+	"github.com/NibiruChain/cosmopilot/internal/controllers/chainnodeset"
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
 	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
@@ -816,6 +817,9 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 			disruptionLabels = WithChainNodeLabels(chainNode, map[string]string{
 				LabelChainID: chainNode.Status.ChainID,
 			})
+			if chainNode.ShouldIgnoreGroupOnDisruption() {
+				delete(disruptionLabels, chainnodeset.LabelChainNodeSetGroup)
+			}
 		}
 
 		lock := getLockForLabels(disruptionLabels)

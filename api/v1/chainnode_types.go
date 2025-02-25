@@ -114,6 +114,12 @@ type ChainNodeSpec struct {
 	// If specified, the pod's scheduling constraints.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// Whether ChainNodeSet group label should be ignored on pod disruption checks.
+	// This is useful to ensure no downtime globally or per global ingress, instead of just per group.
+	// Defaults to `false`.
+	// +optional
+	IgnoreGroupOnDisruptionChecks *bool `json:"ignoreGroupOnDisruptionChecks,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode

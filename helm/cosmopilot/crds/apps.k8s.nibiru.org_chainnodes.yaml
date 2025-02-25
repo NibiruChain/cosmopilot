@@ -1963,6 +1963,11 @@ spec:
                       to `false`.
                     type: boolean
                 type: object
+              ignoreGroupOnDisruptionChecks:
+                description: Whether ChainNodeSet group label should be ignored on
+                  pod disruption checks. This is useful to ensure no downtime globally
+                  or per global ingress, instead of just per group. Defaults to `false`.
+                type: boolean
               nodeSelector:
                 additionalProperties:
                   type: string
