@@ -26,3 +26,4 @@ Dockerfile.cross
 *.swo
 *~
 .envrc
+.DS_Store

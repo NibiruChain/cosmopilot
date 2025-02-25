@@ -379,7 +379,7 @@ func shouldSnapshot(chainNode *appsv1.ChainNode) bool {
 }
 
 func isSnapshotReady(snapshot *snapshotv1.VolumeSnapshot) bool {
-	return snapshot.Status.ReadyToUse != nil && *snapshot.Status.ReadyToUse
+	return snapshot != nil && snapshot.Status != nil && snapshot.Status.ReadyToUse != nil && *snapshot.Status.ReadyToUse
 }
 
 func isSnapshotExpired(snapshot *snapshotv1.VolumeSnapshot) (bool, error) {
