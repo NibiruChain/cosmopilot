@@ -71,7 +71,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 		switch chainNode.Spec.Expose.GetServiceType() {
 		case corev1.ServiceTypeNodePort:
 			// Wait for NodePort to be available
-			logger.V(1).Info("waiting for nodePort address to be available", "svc", p2p.GetName())
+			logger.V(1).Info("waiting for nodePort to be available", "svc", p2p.GetName())
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
 				return svc.Spec.Ports[0].NodePort > 0, nil
 			}, timeoutWaitServiceIP); err != nil {
@@ -79,27 +79,61 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 			}
 			port := p2p.Spec.Ports[0].NodePort
 
-			// TODO: maybe get IP address from the node hosting the pod
-			// get a public address from one of the nodes
-			nodes, err := r.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+			var node *corev1.Node
+			pod, err := r.getChainNodePod(ctx, chainNode)
 			if err != nil {
 				return err
 			}
-
-			availableIPs := make([]string, 0)
-			for _, node := range nodes.Items {
-				for _, address := range node.Status.Addresses {
-					if address.Type == corev1.NodeExternalIP {
-						availableIPs = append(availableIPs, address.Address)
+			if pod != nil {
+				if pod.Spec.NodeName != "" {
+					node, err = r.ClientSet.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
+					if err != nil {
+						return err
 					}
 				}
 			}
 
-			if len(availableIPs) > 0 {
-				externalAddress = fmt.Sprintf("%s@%s:%d", chainNode.Status.NodeID, availableIPs[0], port)
-			} else {
-				externalAddress = fmt.Sprintf("%s@<NODE_ADDRESS>:%d", chainNode.Status.NodeID, port)
+			// pick any node if we could not retrieve pod's node
+			if node == nil {
+				nodes, err := r.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+				if err != nil {
+					return err
+				}
+				if len(nodes.Items) > 0 {
+					node = &nodes.Items[0]
+				}
 			}
+
+			if node == nil {
+				return fmt.Errorf("no node found")
+			}
+
+			var address string
+			addressPriority := []corev1.NodeAddressType{
+				corev1.NodeExternalIP,
+				corev1.NodeExternalDNS,
+				corev1.NodeInternalIP,
+				corev1.NodeInternalDNS,
+				corev1.NodeHostName,
+			}
+
+			for _, addrType := range addressPriority {
+				for _, addr := range node.Status.Addresses {
+					if addr.Type == addrType {
+						address = addr.Address
+						break
+					}
+				}
+				if address != "" {
+					break
+				}
+			}
+
+			if address == "" {
+				return fmt.Errorf("no address found for nodeport")
+			}
+
+			externalAddress = fmt.Sprintf("%s@%s:%d", chainNode.Status.NodeID, address, port)
 
 		case corev1.ServiceTypeLoadBalancer:
 			// Wait for LoadBalancer to be available
