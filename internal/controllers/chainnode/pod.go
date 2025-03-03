@@ -32,13 +32,13 @@ import (
 )
 
 func (r *Reconciler) isChainNodePodRunning(ctx context.Context, chainNode *appsv1.ChainNode) (bool, error) {
-	pod := &corev1.Pod{}
-	err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pod)
+	pod, err := r.getChainNodePod(ctx, chainNode)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return false, nil
-		}
 		return false, err
+	}
+
+	if pod == nil {
+		return false, nil
 	}
 
 	// Check if the pod is terminating or in a failed state
@@ -54,6 +54,18 @@ func (r *Reconciler) isChainNodePodRunning(ctx context.Context, chainNode *appsv
 	}
 
 	return false, nil
+}
+
+func (r *Reconciler) getChainNodePod(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.Pod, error) {
+	pod := &corev1.Pod{}
+	err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pod)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return pod, nil
 }
 
 func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, configHash string) error {
@@ -824,9 +836,10 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 
 		lock := getLockForLabels(disruptionLabels)
 		lock.Lock()
-		defer lock.Unlock()
+		err := r.checkDisruptionAllowance(ctx, disruptionLabels)
+		lock.Unlock()
 
-		if err := r.checkDisruptionAllowance(ctx, disruptionLabels); err != nil {
+		if err != nil {
 			logger.Info("delaying pod recreation due to disruption limits", "pod", pod.GetName(), "reason", err.Error())
 			return nil
 		}
