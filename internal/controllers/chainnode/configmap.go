@@ -151,8 +151,9 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, c
 		return "", err
 	}
 
-	// Apply state-sync restore config if enabled and node is not running
-	if chainNode.StateSyncRestoreEnabled() && !nodePodRunning {
+	// Apply state-sync restore config if enabled and node is not running. Also ignore this if this node is restoring
+	// from a volume snapshot.
+	if chainNode.StateSyncRestoreEnabled() && !nodePodRunning && !chainNode.ShouldRestoreFromSnapshot() {
 		peers, stateSyncAnnotations, err := r.getChainPeers(ctx, chainNode, AnnotationStateSyncTrustHeight, AnnotationStateSyncTrustHash)
 		if err != nil {
 			return "", err
