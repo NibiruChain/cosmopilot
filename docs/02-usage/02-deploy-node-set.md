@@ -102,7 +102,6 @@ metadata:
     worker-name: cataclysm-1
 ```    
 
-### Key Benefits:
+### Use Cases:
 - **Resource Control**: Assigning a `worker-name` label ensures that only the designated `Cosmopilot` instance interacts with the specified resource.
-- **Debugging Flexibility**: Temporarily set the `worker-name` label to `none` to prevent any `Cosmopilot` instance from controlling the resource, allowing for safe debugging and configuration changes.
-- **Seamless Management**: Once debugging or manual adjustments are complete, simply remove or update the label to reinstate automated management by the appropriate `Cosmopilot` instance.
+- **Debugging Flexibility**: Temporarily set the `worker-name` label to `none` to prevent any `Cosmopilot` instance from controlling the resource, allowing for safe debugging and configuration changes. Once debugging or manual adjustments are complete, simply remove or update the label to reinstate automated management by the appropriate `Cosmopilot` instance.
