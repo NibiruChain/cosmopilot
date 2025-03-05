@@ -2,6 +2,10 @@
 
 This page explains how to configure a `ChainNode` or `ChainNodeSet` to run a validator. `Cosmopilot` provides multiple options to suit different use cases.
 
+::: tip Important
+Storing mnemonics and private keys in Kubernetes secrets may not be secure and is recommended only for testnets. For production networks, consider using [TmKMS](11-tmkms) for enhanced security.
+:::
+
 ## Existing Consensus Key
 
 If a consensus key is already defined in the genesis file as a validator, you can configure the node as follows:
