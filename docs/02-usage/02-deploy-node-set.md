@@ -66,7 +66,7 @@ When you create a [ChainNodeSet](/03-reference/crds/crds#chainnodeset), `Cosmopi
   - **Global Ingresses**: A single ingress can be created to target nodes across multiple groups, enabling centralized access to shared APIs.
 
 - **ConfigMaps**:
-  - If the [ChainNodeSet](/03-reference/crds/crds#chainnodeset) controller handles the genesis file (This means the genesis is generated automatically instead of utilizing an existing one), a `ConfigMap` is created to store it. This allows all nodes within the set to share a consistent genesis configuration.
+  - If the [ChainNodeSet](/03-reference/crds/crds#chainnodeset) controller handles the genesis file (This means the genesis is[generated automatically](10-initializing-new-network) instead of utilizing an existing one), a `ConfigMap` is created to store it. This allows all nodes within the set to share a consistent genesis configuration.
 
 The [ChainNodeSet](/03-reference/crds/crds#chainnodeset) simplifies managing large-scale deployments by automating the creation of multiple [ChainNode](/03-reference/crds/crds#chainnode) resources while providing additional flexibility through group-level services, ingresses, and centralized genesis configuration.
 
@@ -88,3 +88,21 @@ $ kubectl apply -f nodeset.yaml
 ```
 
 The additional nodes will be created automatically.
+
+## Managing ChainNode And ChainNodeSets With Worker Labels
+
+When operating multiple `Cosmopilot` deployments, it's crucial to manage which instance controls specific resources. This can be achieved by utilizing the `worker-name` label on your `ChainNode` and `ChainNodeSet` resources. By assigning this label, you define which `Cosmopilot` instance is responsible for managing the resource (you should define `worker-name` in `Cosmopilot` [configuration](/01-getting-started/03-configuration#workername)). Below is the label usage example:
+
+```yaml
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNodeSet
+metadata:
+  name: nibiru-cataclysm-1
+  labels:
+    worker-name: cataclysm-1
+```    
+
+### Key Benefits:
+- **Resource Control**: Assigning a `worker-name` label ensures that only the designated `Cosmopilot` instance interacts with the specified resource.
+- **Debugging Flexibility**: Temporarily set the `worker-name` label to `none` to prevent any `Cosmopilot` instance from controlling the resource, allowing for safe debugging and configuration changes.
+- **Seamless Management**: Once debugging or manual adjustments are complete, simply remove or update the label to reinstate automated management by the appropriate `Cosmopilot` instance.
