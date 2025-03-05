@@ -46,6 +46,7 @@ For private networks or custom configurations, you can use a Kubernetes `ConfigM
 ```bash
 $ kubectl create configmap custom-genesis --from-file=genesis.json
 ```
+Make sure the `ConfigMap` is created in the same namespace as your [ChainNode](/03-reference/crds/crds#chainnode) or [ChainNodeSet](/03-reference/crds/crds#chainnodeset).
 
 2. Reference the `ConfigMap` in your [ChainNode](/03-reference/crds/crds#chainnode) or [ChainNodeSet](/03-reference/crds/crds#chainnodeset) manifest:
 

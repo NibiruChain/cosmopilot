@@ -33,7 +33,11 @@ config:
 
 ## Restoring from a Volume Snapshot
 
-You can obtain the list of available volume snapshots by running `kubectl get volumesnapshots`
+You can obtain the list of available volume snapshots by running
+
+```bash
+$ kubectl get volumesnapshots
+```
 
 To restore a node from a previously created volume snapshot, use the following configuration:
 
@@ -61,7 +65,7 @@ persistence:
 
 ::: tip Important
 Make sure to set the [initial PVC size](05-persistence-and-backup#default-pvc-size) large enough to store the extracted data.
-Make sure to set the [initTimeout](/03-reference/crds/crds.html#persistence) long enough to extract the tarball data.
+Make sure to set the [initTimeout](/03-reference/crds/crds.html#persistence) long enough to allow init container have enough time to extract the tarball data.
 :::
 
 ### Notes

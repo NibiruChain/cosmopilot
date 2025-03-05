@@ -87,7 +87,7 @@ When you create a [ChainNode](/03-reference/crds/crds#chainnode), `Cosmopilot` a
     - **Account Mnemonic**: Used with validators for starting a new network or submiting `create-validator` transaction.
 - **Service Monitors**: A `ServiceMonitor` is created to enable Prometheus to scrape metrics from the node.
 
-::: tip Important
+::: warning Important
 Storing mnemonics and private keys in Kubernetes secrets may not be secure and is recommended only for testnets. For production networks, consider using [TmKMS](11-tmkms) for enhanced security.
 :::
 
