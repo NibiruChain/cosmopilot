@@ -66,7 +66,7 @@ When you create a [ChainNodeSet](/03-reference/crds/crds#chainnodeset), `Cosmopi
   - **Global Ingresses**: A single ingress can be created to target nodes across multiple groups, enabling centralized access to shared APIs.
 
 - **ConfigMaps**:
-  - If the [ChainNodeSet](/03-reference/crds/crds#chainnodeset) controller handles the genesis file, a `ConfigMap` is created to store it. This allows all nodes within the set to share a consistent genesis configuration.
+  - If the [ChainNodeSet](/03-reference/crds/crds#chainnodeset) controller handles the genesis file (This means the genesis is generated automatically instead of utilizing an existing one), a `ConfigMap` is created to store it. This allows all nodes within the set to share a consistent genesis configuration.
 
 The [ChainNodeSet](/03-reference/crds/crds#chainnodeset) simplifies managing large-scale deployments by automating the creation of multiple [ChainNode](/03-reference/crds/crds#chainnode) resources while providing additional flexibility through group-level services, ingresses, and centralized genesis configuration.
 
