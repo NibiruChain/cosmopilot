@@ -2,15 +2,20 @@
 
 This page explains how to configure a `ChainNode` or `ChainNodeSet` to run a validator. `Cosmopilot` provides multiple options to suit different use cases.
 
-::: tip Important
+## Existing Consensus Key
+
+::: warning Important
 Storing mnemonics and private keys in Kubernetes secrets may not be secure and is recommended only for testnets. For production networks, consider using [TmKMS](11-tmkms) for enhanced security.
 :::
 
-## Existing Consensus Key
-
 If a consensus key is already defined in the genesis file as a validator, you can configure the node as follows:
 
-1. Create a Kubernetes secret containing the private key.
+1. Create a Kubernetes secret containing the private key:
+```bash
+$ kubectl create secret generic my-validator-key --from-file=my-validator-key.json
+```
+Make sure the secret is created in the same namespace as your `ChainNode` or `ChainNodeSet`.
+
 2. Specify the secret name in `.spec.validator.privateKeySecret`.
 
 Example configuration:
