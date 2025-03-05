@@ -89,7 +89,7 @@ $ kubectl apply -f nodeset.yaml
 
 The additional nodes will be created automatically.
 
-## Managing ChainNode And ChainNodeSets With Worker Labels
+## Worker Labels
 
 When operating multiple `Cosmopilot` deployments, it's crucial to manage which instance controls specific resources. This can be achieved by utilizing the `worker-name` label on your `ChainNode` and `ChainNodeSet` resources. By assigning this label, you define which `Cosmopilot` instance is responsible for managing the resource (you should define `worker-name` in `Cosmopilot` [configuration](/01-getting-started/03-configuration#workername)). Below is the label usage example:
 
