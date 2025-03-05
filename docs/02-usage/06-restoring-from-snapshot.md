@@ -33,6 +33,8 @@ config:
 
 ## Restoring from a Volume Snapshot
 
+You can obtain the list of available volume snapshots by running `kubectl get volumesnapshots`
+
 To restore a node from a previously created volume snapshot, use the following configuration:
 
 ```yaml
