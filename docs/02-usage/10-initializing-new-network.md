@@ -6,7 +6,6 @@
 This feature is intended for testnets. Avoid using it to create production networks.
 :::
 
-
 ## Basic Configuration
 
 Refer to the [GenesisInitConfig](/03-reference/crds/crds#genesisinitconfig) for details on all available fields. Here’s an example of a basic configuration:
@@ -25,6 +24,10 @@ This configuration will create a new network with the ID `my-testnet-1` and a si
 
 
 ## Providing Validator Info
+
+::: warning Important
+Currently, Cosmopilot supports only one validator in a single `ChainNodeSet`. You can provision additional validators by adding extra `ChainNode` resources like in this [example](/04-examples/cosmos/multi-validator-devnet).
+:::
 
 When initializing a new network, you can provide additional validator details using the `.spec.validator.info` field:
 
