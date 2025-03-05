@@ -59,6 +59,11 @@ persistence:
     args: ["-c", "wget -qO- https://remote.tarball.here | tar xvf - -C /home/app/data"]
 ```
 
+::: tip Important
+Make sure to set the [initial PVC size](05-persistence-and-backup#default-pvc-size) large enough to store the extracted data.
+Make sure to set the [initTimeout](/03-reference/crds/crds.html#persistence) long enough to extract the tarball data.
+:::
+
 ### Notes
 - The application’s home directory is located at `/home/app`.
 - The data directory is located at `/home/app/data`.
