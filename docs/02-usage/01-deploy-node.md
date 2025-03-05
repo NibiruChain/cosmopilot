@@ -104,6 +104,8 @@ After setting up port-forwarding:
 - **LCD**: will be available at [localhost:1317](http://localhost:1317).
 - **gRPC**: will be available at `localhost:9090`.
 
+You can test the `gRPC` endpoint using [grpcurl](https://github.com/fullstorydev/grpcurl):
+
 ```bash
 $ grpcurl --plaintext localhost:9090 list
 ```
