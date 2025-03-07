@@ -71,6 +71,14 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, c
 		return "", err
 	}
 
+	// Set halt-height
+	configs[appTomlFilename], err = utils.Merge(configs[appTomlFilename], map[string]interface{}{
+		kf.HaltHeight(): chainNode.Spec.Config.GetHaltHeight(),
+	})
+	if err != nil {
+		return "", err
+	}
+
 	// Persist address book file
 	if chainNode.Spec.Config.ShouldPersistAddressBook() {
 		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{

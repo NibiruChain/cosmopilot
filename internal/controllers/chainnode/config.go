@@ -205,3 +205,7 @@ func (kf *KeyFormatter) UnconditionalPeerIDs() string {
 func (kf *KeyFormatter) PrivatePeerIDs() string {
 	return kf.FormatKey("private_peer_ids")
 }
+
+func (kf *KeyFormatter) HaltHeight() string {
+	return kf.FormatKey("halt-height")
+}

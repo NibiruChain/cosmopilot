@@ -12,6 +12,7 @@ func defaultOptions() *Options {
 		TraceStore:     "/trace/trace.fifo",
 		CreateFifo:     false,
 		TmkmsProxy:     false,
+		HaltHeight:     0,
 	}
 }
 
@@ -24,6 +25,7 @@ type Options struct {
 	TraceStore     string
 	CreateFifo     bool
 	TmkmsProxy     bool
+	HaltHeight     int64
 }
 
 type Option func(*Options)
@@ -73,5 +75,11 @@ func CreateFifo(create bool) Option {
 func WithTmkmsProxy(enable bool) Option {
 	return func(opts *Options) {
 		opts.TmkmsProxy = enable
+	}
+}
+
+func WithHaltHeight(height int64) Option {
+	return func(opts *Options) {
+		opts.HaltHeight = height
 	}
 }

@@ -56,4 +56,9 @@ func init() {
 		environ.GetString("NODE_BINARY_NAME", ""),
 		"node application binary name.",
 	)
+
+	flag.Int64Var(&haltHeight, "halt-height",
+		environ.GetInt64("HALT_HEIGHT", 0),
+		"the height at which this server will be halted",
+	)
 }

@@ -225,6 +225,11 @@ type Config struct {
 	// Whether field naming in config.toml should use dashes instead of underscores. Defaults to `false`.
 	// +optional
 	DashedConfigToml *bool `json:"dashedConfigToml,omitempty"`
+
+	// The block height at which the node should stop.
+	// Cosmopilot will not attempt to restart the node beyond this height.
+	// +optional
+	HaltHeight *int64 `json:"haltHeight,omitempty"`
 }
 
 type VolumeSpec struct {

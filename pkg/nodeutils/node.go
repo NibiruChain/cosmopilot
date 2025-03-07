@@ -155,8 +155,10 @@ func (s *NodeUtils) Stop(force bool) error {
 	// we need to wait for cosmopilot to read /requires_upgrade before shutting down.
 	// When stop is forced (coming from /shutdown endpoint mostly) we ignore the upgrade
 	// requirement.
-	if !force && s.requiresUpgrade.Load() {
-		log.Warn("node requires upgrade. ignoring stop call")
+	// Another case is when respecting halt-height. We want to keep node-utils alive a bit
+	// more so that cosmopilot can retrieve latest height before total shutdown.
+	if !force && (s.requiresUpgrade.Load() || s.cfg.HaltHeight == s.latestBlockHeight.Load()) {
+		log.Warn("node requires upgrade or is set to halt on specific height. ignoring stop call")
 		return nil
 	}
 

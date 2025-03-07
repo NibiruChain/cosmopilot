@@ -301,6 +301,13 @@ func (cfg *Config) GetCosmoGuardResources() corev1.ResourceRequirements {
 	}
 }
 
+func (cfg *Config) GetHaltHeight() int64 {
+	if cfg != nil && cfg.HaltHeight != nil {
+		return *cfg.HaltHeight
+	}
+	return 0
+}
+
 func (exp *ExposeConfig) Enabled() bool {
 	if exp != nil && exp.P2P != nil {
 		return *exp.P2P

@@ -199,3 +199,21 @@ config:
 In some networks, additional tools might need to run together with the node and have access to its data volume. On an environment where you have the possibility of having `ReadWriteMany` volumes this is not a problem, but on most cloud providers that is mostly not available, or extremely expensive. For this reason, `Cosmopilot` provides you with a way of appending additional containers to the same `Pod` as the node.
 
 Please refer to [SidecarSpec](/03-reference/crds/crds#sidecarspec) for full specification on all available fields.
+
+## Halt Height
+
+In certain scenarios, you may need to stop a node at a specific block height. Cosmos-based nodes provide a `halt-height` configuration field in the `app.toml` file for this purpose. However, directly setting this field through [TOML config overrides](#overriding-toml-config-files) may not work as expected, as `Cosmopilot` will continuously attempt to restart the pod.
+
+To properly handle this scenario, `Cosmopilot` offers its own `.spec.config.haltHeight` field, allowing you to set the desired halt height like this:
+
+```yaml
+config:
+  haltHeight: 12345
+```
+
+When configured this way, `Cosmopilot` will:
+
+- Automatically set the `halt-height` in the `app.toml` file.
+- Prevent the pod from restarting after the node stops at the specified height.
+
+This ensures a smooth and controlled node shutdown without unintended restarts.

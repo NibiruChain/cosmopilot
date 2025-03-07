@@ -1327,6 +1327,11 @@ spec:
                     description: Whether EVM is enabled on this node. Will add evm-rpc
                       port to services. Defaults to `false`.
                     type: boolean
+                  haltHeight:
+                    description: The block height at which the node should stop. Cosmopilot
+                      will not attempt to restart the node beyond this height.
+                    format: int64
+                    type: integer
                   ignoreSyncing:
                     description: Marks the node as ready even when it is catching
                       up. This is useful when a chain is halted, but you still need

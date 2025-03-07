@@ -18,8 +18,6 @@ const (
 
 	ManualUpgrade  UpgradeSource = "manual"
 	OnChainUpgrade UpgradeSource = "on-chain"
-
-	UpgradeInfoFile = "upgrade-info.json"
 )
 
 type UpgradeChecker struct {

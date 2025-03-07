@@ -24,6 +24,7 @@ var (
 	createFifo       bool
 	enableTmkmsProxy bool
 	nodeBinaryName   string
+	haltHeight       int64
 )
 
 func main() {
@@ -46,6 +47,7 @@ func main() {
 		nodeutils.WithTraceStore(traceStore),
 		nodeutils.CreateFifo(createFifo),
 		nodeutils.WithTmkmsProxy(enableTmkmsProxy),
+		nodeutils.WithHaltHeight(haltHeight),
 	)
 	if err != nil {
 		log.Fatal(err)

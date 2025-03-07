@@ -264,6 +264,13 @@ func (chainNode *ChainNode) ShouldIgnoreGroupOnDisruption() bool {
 	return chainNode.Spec.IgnoreGroupOnDisruptionChecks != nil && *chainNode.Spec.IgnoreGroupOnDisruptionChecks
 }
 
+func (chainNode *ChainNode) MustStop() (bool, string) {
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.HaltHeight != nil {
+		return *chainNode.Spec.Config.HaltHeight == chainNode.Status.LatestHeight, fmt.Sprintf("halt height %d", *chainNode.Spec.Config.HaltHeight)
+	}
+	return false, ""
+}
+
 // Validator methods
 
 func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {

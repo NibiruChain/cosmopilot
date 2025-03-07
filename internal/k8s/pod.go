@@ -9,6 +9,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,6 +51,12 @@ func (p *PodHelper) WaitForPodRunning(ctx context.Context, timeout time.Duration
 }
 
 func (p *PodHelper) WaitForPodDeleted(ctx context.Context, timeout time.Duration) error {
+	// Let's check if the pod exists first
+	_, err := p.client.CoreV1().Pods(p.pod.GetNamespace()).Get(ctx, p.pod.GetName(), metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		return nil
+	}
+	
 	fs := fields.SelectorFromSet(map[string]string{
 		"metadata.namespace": p.pod.Namespace,
 		"metadata.name":      p.pod.Name,

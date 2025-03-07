@@ -20,6 +20,7 @@ const (
 	PhaseChainNodeRunning      ChainNodePhase = "Running"
 	PhaseChainNodeSyncing      ChainNodePhase = "Syncing"
 	PhaseChainNodeRestarting   ChainNodePhase = "Restarting"
+	PhaseChainNodeStopped      ChainNodePhase = "Stopped"
 	PhaseChainNodeError        ChainNodePhase = "Error"
 	PhaseChainNodeSnapshotting ChainNodePhase = "Snapshotting"
 	PhaseChainNodeUpgrading    ChainNodePhase = "Upgrading"

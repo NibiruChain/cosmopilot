@@ -356,6 +356,7 @@ Config allows setting specific configurations for a node, including overriding c
 | runFlags | List of flags to be appended to app container when starting the node. | []string | false |
 | volumes | Additional volumes to be created and mounted on this node. | [][VolumeSpec](#volumespec) | false |
 | dashedConfigToml | Whether field naming in config.toml should use dashes instead of underscores. Defaults to `false`. | *bool | false |
+| haltHeight | The block height at which the node should stop. Cosmopilot will not attempt to restart the node beyond this height. | *int64 | false |
 
 [Back to Custom Resources](#custom-resources)
 

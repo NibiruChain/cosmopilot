@@ -243,6 +243,11 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 func (r *Reconciler) createPod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
+	if mustStop, reason := chainNode.MustStop(); mustStop {
+		logger.Info("node must be stopped. not creating pod", "pod", pod.GetName(), "reason", reason)
+		return r.setNodePhase(ctx, chainNode)
+	}
+
 	logger.Info("creating pod", "pod", pod.GetName())
 	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeStarting); err != nil {
 		return err
@@ -422,6 +427,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						{
 							Name:  "NODE_BINARY_NAME",
 							Value: chainNode.Spec.App.App,
+						},
+						{
+							Name:  "HALT_HEIGHT",
+							Value: strconv.FormatInt(chainNode.Spec.Config.GetHaltHeight(), 10),
 						},
 					},
 					Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
@@ -849,19 +858,33 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 	}
 
 	logger.Info("recreating pod", "pod", pod.GetName())
-	phase := appsv1.PhaseChainNodeRestarting
-	if err := r.updatePhase(ctx, chainNode, phase); err != nil {
+	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeRestarting); err != nil {
 		return err
 	}
 
+	logger.V(1).Info("deleting pod", "pod", pod.GetName())
 	deletePod := pod.DeepCopy()
 	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, deletePod)
 	if err := ph.Delete(ctx); err != nil {
 		return err
 	}
+
+	// There is no need to wait for pod to be deleted if we are keeping it stopped
+	if mustStop, stopReason := chainNode.MustStop(); mustStop {
+		logger.Info("node must be stopped. not recreating pod", "pod", pod.GetName(), "reason", stopReason)
+		
+		// Attempt to terminate node-utils container without waiting for grace-period. If there is an error
+		// we will just wait for the grace-period
+		if err := r.stopNodeUtilsContainer(chainNode); err != nil {
+			logger.Info("failed to stop node utils container", "pod", pod.GetName(), "error", err.Error())
+		}
+		return r.setNodePhase(ctx, chainNode)
+	}
+
 	if err := ph.WaitForPodDeleted(ctx, timeoutPodDeleted); err != nil {
 		return err
 	}
+	logger.V(1).Info("pod deleted", "pod", pod.GetName())
 
 	ph = k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
 	if err := ph.Create(ctx); err != nil {
@@ -1006,6 +1029,13 @@ func orderVolumes(podSpec *corev1.PodSpec) {
 
 func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNode) error {
 	logger := log.FromContext(ctx)
+
+	if mustStop, _ := chainNode.MustStop(); mustStop {
+		if chainNode.Status.Phase != appsv1.PhaseChainNodeStopped {
+			return r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeStopped)
+		}
+		return nil
+	}
 
 	if volumeSnapshotInProgress(chainNode) {
 		if chainNode.Status.Phase != appsv1.PhaseChainNodeSnapshotting {
