@@ -425,7 +425,14 @@ func getVolumeSnapshotSpec(chainNode *appsv1.ChainNode) *snapshotv1.VolumeSnapsh
 }
 
 func volumeSnapshotInProgress(chainNode *appsv1.ChainNode) bool {
-	return chainNode.ObjectMeta.Annotations[annotationPvcSnapshotInProgress] == strconv.FormatBool(true)
+	if chainNode.ObjectMeta.Annotations == nil {
+		return false
+	}
+	v, ok := chainNode.ObjectMeta.Annotations[annotationPvcSnapshotInProgress]
+	if !ok {
+		return false
+	}
+	return v == strconv.FormatBool(true)
 }
 
 func setSnapshotInProgress(chainNode *appsv1.ChainNode, snapshotting bool) {
@@ -567,22 +574,13 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: pointer.Int32(60),
 			BackoffLimit:            pointer.Int32(0),
-			PodFailurePolicy: &batchv1.PodFailurePolicy{
-				Rules: []batchv1.PodFailurePolicyRule{
-					{
-						Action: batchv1.PodFailurePolicyActionFailJob,
-						OnExitCodes: &batchv1.PodFailurePolicyOnExitCodesRequirement{
-							ContainerName: pointer.String(chainNode.Spec.App.App),
-							Operator:      batchv1.PodFailurePolicyOnExitCodesOpNotIn,
-							Values:        []int32{0},
-						},
-					},
-				},
-			},
+			Completions:             pointer.Int32(1),
+			Parallelism:             pointer.Int32(1),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					RestartPolicy:     corev1.RestartPolicyNever,
-					PriorityClassName: r.opts.GetDefaultPriorityClassName(),
+					RestartPolicy:         corev1.RestartPolicyNever,
+					PriorityClassName:     r.opts.GetDefaultPriorityClassName(),
+					ShareProcessNamespace: pointer.Bool(true),
 					Volumes: []corev1.Volume{
 						{
 							Name: "data",
@@ -659,7 +657,23 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 							Image:           "busybox",
 							ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
 							Command:         []string{"sh"},
-							Args:            []string{"-c", "while ! nc -z localhost 9090; do sleep 2; done && echo 'Data is ok'"},
+							Args: []string{
+								"-c",
+								"if ! pidof " + chainNode.Spec.App.App + " > /dev/null; then " +
+									"echo '" + chainNode.Spec.App.App + " not running'; exit 1; " +
+									"fi; " +
+									"APP_PID=$(pidof " + chainNode.Spec.App.App + "); " +
+									"echo 'Initial " + chainNode.Spec.App.App + " PID: '$APP_PID; " +
+									"while true; do " +
+									"if nc -z localhost 9090; then " +
+									"echo 'Data is ok'; exit 0; " +
+									"fi; " +
+									"if ! pidof " + chainNode.Spec.App.App + " > /dev/null || [ $(pidof " + chainNode.Spec.App.App + ") -ne $APP_PID ]; then " +
+									"echo '" + chainNode.Spec.App.App + " failed or restarted'; exit 1; " +
+									"fi; " +
+									"sleep 2; " +
+									"done",
+							},
 						},
 					},
 				},
