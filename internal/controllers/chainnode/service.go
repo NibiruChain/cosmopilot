@@ -351,7 +351,7 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 		})
 	}
 
-	if err := r.maybeAddStateSyncAnnotations(ctx, chainNode, svc); err != nil {
+	if err := r.addStateSyncAnnotations(ctx, chainNode, svc); err != nil {
 		r.recorder.Event(chainNode,
 			corev1.EventTypeWarning,
 			appsv1.ReasonNoTrustHeight,
@@ -390,38 +390,52 @@ func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Ser
 	return svc, controllerutil.SetControllerReference(chainNode, svc, r.Scheme)
 }
 
-func (r *Reconciler) maybeAddStateSyncAnnotations(ctx context.Context, chainNode *appsv1.ChainNode, svc *corev1.Service) error {
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.StateSync.Enabled() {
+func (r *Reconciler) addStateSyncAnnotations(ctx context.Context, chainNode *appsv1.ChainNode, svc *corev1.Service) error {
+	logger := log.FromContext(ctx)
 
-		availableSnapshots, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).ListSnapshots()
-		if err != nil {
-			return err
-		}
-
-		if len(availableSnapshots) == 0 {
-			return fmt.Errorf("no state-sync snapshots available")
-		}
-
-		c, err := r.getChainNodeClient(chainNode)
-		if err != nil {
-			return err
-		}
-
-		trustHeight := availableSnapshots[0]
-		if lastUpgradeHeight := chainNode.GetLastUpgradeHeight(); lastUpgradeHeight > trustHeight {
-			trustHeight = lastUpgradeHeight + 1
-		}
-
-		trustHash, err := c.GetBlockHash(ctx, trustHeight)
-		if err != nil {
-			return err
-		}
-
-		if svc.Annotations == nil {
-			svc.Annotations = make(map[string]string)
-		}
-		svc.Annotations[AnnotationStateSyncTrustHeight] = strconv.FormatInt(trustHeight, 10)
-		svc.Annotations[AnnotationStateSyncTrustHash] = trustHash
+	availableHeights, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).ListSnapshots()
+	if err != nil {
+		return err
 	}
+
+	if len(availableHeights) == 0 {
+		return fmt.Errorf("no state-sync snapshots available")
+	}
+
+	c, err := r.getChainNodeClient(chainNode)
+	if err != nil {
+		return err
+	}
+
+	// Get the oldest height for which we still have block info
+	var trustHeight int64
+	var trustHash string
+	for _, height := range availableHeights {
+		if trustHash, err = c.GetBlockHash(ctx, height); err == nil {
+			trustHeight = height
+			break
+		}
+		logger.Info(fmt.Sprintf("state-sync: ignoring height %d: %v", height, err))
+	}
+
+	if trustHeight == 0 {
+		return fmt.Errorf("no valid state-sync snapshot heights with retrievable block hashes")
+	}
+
+	if lastUpgradeHeight := chainNode.GetLastUpgradeHeight(); lastUpgradeHeight > trustHeight {
+		trustHeight = lastUpgradeHeight + 1
+		trustHash, err = c.GetBlockHash(ctx, trustHeight)
+		if err != nil {
+			return err
+		}
+		logger.Info("adjusting trust height due to upgrade", "newTrustHeight", trustHeight)
+	}
+
+	if svc.Annotations == nil {
+		svc.Annotations = make(map[string]string)
+	}
+	svc.Annotations[AnnotationStateSyncTrustHeight] = strconv.FormatInt(trustHeight, 10)
+	svc.Annotations[AnnotationStateSyncTrustHash] = trustHash
+
 	return nil
 }
