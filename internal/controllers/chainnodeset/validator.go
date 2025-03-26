@@ -102,6 +102,5 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 			StateSyncRestore: nodeSet.Spec.Validator.StateSyncRestore,
 		},
 	}
-	setChainNodeServiceMonitor(nodeSet, validator)
 	return validator, controllerutil.SetControllerReference(nodeSet, validator, r.Scheme)
 }

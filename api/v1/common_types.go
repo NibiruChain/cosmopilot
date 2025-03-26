@@ -173,10 +173,6 @@ type Config struct {
 	// +optional
 	SafeToEvict *bool `json:"safeToEvict,omitempty"`
 
-	// ServiceMonitor allows deploying prometheus service monitor for this node.
-	// +optional
-	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
-
 	// Deploys CosmoGuard to protect API endpoints of the node.
 	// +optional
 	CosmoGuard *CosmoGuardConfig `json:"cosmoGuard,omitempty"`
@@ -266,16 +262,6 @@ type CosmoGuardConfig struct {
 	// Compute Resources for CosmoGuard container.
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-}
-
-// ServiceMonitorSpec allows enabling/disabling deployment of ServiceMonitor for this node.
-type ServiceMonitorSpec struct {
-	// Whether a service monitor should be deployed for this node.
-	Enable bool `json:"enable"`
-
-	// Indicates the prometheus installation that will be using this service monitor.
-	// +optional
-	Selector map[string]string `json:"selector,omitempty"`
 }
 
 // SidecarSpec allows configuring additional containers to run alongside the node.

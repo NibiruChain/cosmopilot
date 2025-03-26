@@ -157,20 +157,6 @@ func (cfg *Config) GetEnv() []corev1.EnvVar {
 	return []corev1.EnvVar{}
 }
 
-func (cfg *Config) ServiceMonitorsEnabled() bool {
-	if cfg != nil && cfg.ServiceMonitor != nil {
-		return cfg.ServiceMonitor.Enable
-	}
-	return false
-}
-
-func (cfg *Config) ServiceMonitorSelector() map[string]string {
-	if cfg != nil && cfg.ServiceMonitor != nil && cfg.ServiceMonitor.Selector != nil {
-		return cfg.ServiceMonitor.Selector
-	}
-	return defaultServiceMonitorSelector
-}
-
 func (cfg *Config) GetNodeUtilsResources() corev1.ResourceRequirements {
 	if cfg != nil && cfg.NodeUtilsResources != nil {
 		return *cfg.NodeUtilsResources

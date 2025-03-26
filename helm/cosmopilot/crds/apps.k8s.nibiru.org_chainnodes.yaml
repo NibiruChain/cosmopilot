@@ -1433,23 +1433,6 @@ spec:
                     description: Configures this node to run on seed mode. Defaults
                       to `false`.
                     type: boolean
-                  serviceMonitor:
-                    description: ServiceMonitor allows deploying prometheus service
-                      monitor for this node.
-                    properties:
-                      enable:
-                        description: Whether a service monitor should be deployed
-                          for this node.
-                        type: boolean
-                      selector:
-                        additionalProperties:
-                          type: string
-                        description: Indicates the prometheus installation that will
-                          be using this service monitor.
-                        type: object
-                    required:
-                    - enable
-                    type: object
                   sidecars:
                     description: Allows configuring additional containers to run alongside
                       the node.

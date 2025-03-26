@@ -31,14 +31,13 @@ $ helm install \
 
 ---
 
-If you opted for not installing any of the recomended controllers in [Prerequisites](01-prerequisites) page, you need to disable both webhooks and service monitors:
+If you opted for not installing cert-manager (one of the recommended controllers in [Prerequisites](01-prerequisites) page), you need to disable both webhooks:
 
 ```bash
 $ helm install \
     cosmopilot oci://ghcr.io/nibiruchain/helm/cosmopilot \
     --namespace cosmopilot-system \
     --create-namespace \
-    --set serviceMonitorEnabled=false \
     --set webHooksEnabled=false
 ```
 

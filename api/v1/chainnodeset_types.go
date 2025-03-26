@@ -62,11 +62,6 @@ type ChainNodeSetSpec struct {
 	// List of groups of ChainNodes to be run.
 	Nodes []NodeGroupSpec `json:"nodes"`
 
-	// Allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet.
-	// ServiceMonitor config on ChainNode overrides this one.
-	// +optional
-	ServiceMonitor *ServiceMonitorSpec `json:"serviceMonitor,omitempty"`
-
 	// Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. Cosmopilot will wait
 	// for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this
 	// does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`.

@@ -52,10 +52,6 @@ $ helm show values oci://ghcr.io/nibiruchain/helm/cosmopilot
 
 ## **Features and Functionality**
 
-### `serviceMonitorEnabled`
-- **Description**: If enabled, `cosmopilot` will create `ServiceMonitor`s for each node, so `Prometheus` can scrape metrics from them. Ensure [Prometheus Operator](https://prometheus-operator.dev) is installed before enabling this.
-- **Default**: `true`
-
 ### `webHooksEnabled`
 - **Description**: Enable or disable admission webhooks for validating and mutating requests. Ensure [cert-manager](https://cert-manager.io/docs/) is installed before enabling this.
 - **Default**: `true`

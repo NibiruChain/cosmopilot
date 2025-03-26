@@ -191,12 +191,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	// Create/update service monitors for this node
-	logger.V(1).Info("ensure service monitors if applicable")
-	if err = r.ensureServiceMonitors(ctx, chainNode); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	// Create/update configmap with config files
 	logger.V(1).Info("ensure config")
 	configHash, err := r.ensureConfigMap(ctx, app, chainNode, nodePodRunning)

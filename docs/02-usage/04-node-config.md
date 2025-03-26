@@ -112,17 +112,6 @@ env:
     value: custom_value_2
 ```
 
-## Configuring Service Monitor
-
-Enable or disable service monitoring with Prometheus by configuring the following:
-
-```yaml
-config:
-  serviceMonitor:
-    enable: true
-    selector: main # optional. Indicates the prometheus installation that will be using this service monitor.
-```
-
 ## Configuring Node Startup Time
 
 The startup time corresponds to the startup probe timeout. It defaults to `1h`. If the node does not get helthy within this period it will be restarted. In some cases, like when starting a node with huge data, this might not be enough. You can adjust adjust it, using the following:

@@ -36,7 +36,6 @@ This page provides a detailed reference for the available Custom Resource Defini
 * [Peer](#peer)
 * [Persistence](#persistence)
 * [PvcSnapshot](#pvcsnapshot)
-* [ServiceMonitorSpec](#servicemonitorspec)
 * [SidecarSpec](#sidecarspec)
 * [StateSyncConfig](#statesyncconfig)
 * [TmKMS](#tmkms)
@@ -186,7 +185,6 @@ ChainNodeSetSpec defines the desired state of ChainNode.
 | genesis | Indicates where this node will get the genesis from. Can be omitted when .spec.validator.init is specified. | *[GenesisConfig](#genesisconfig) | true |
 | validator | Indicates this node set will run a validator and allows configuring it. | *[NodeSetValidatorConfig](#nodesetvalidatorconfig) | false |
 | nodes | List of groups of ChainNodes to be run. | [][NodeGroupSpec](#nodegroupspec) | true |
-| serviceMonitor | Allows deploying prometheus service monitor for all ChainNodes in this ChainNodeSet. ServiceMonitor config on ChainNode overrides this one. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
 | rollingUpdates | Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. Cosmopilot will wait for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`. | *bool | false |
 | ingresses | List of ingresses to create for this ChainNodeSet. This allows to create ingresses targeting multiple groups of nodes. | [][GlobalIngressConfig](#globalingressconfig) | false |
 
@@ -344,7 +342,6 @@ Config allows setting specific configurations for a node, including overriding c
 | seedMode | Configures this node to run on seed mode. Defaults to `false`. | *bool | false |
 | env | List of environment variables to set in the app container. | []corev1.EnvVar | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
-| serviceMonitor | ServiceMonitor allows deploying prometheus service monitor for this node. | *[ServiceMonitorSpec](#servicemonitorspec) | false |
 | cosmoGuard | Deploys CosmoGuard to protect API endpoints of the node. | *[CosmoGuardConfig](#cosmoguardconfig) | false |
 | nodeUtilsLogLevel | Log level for node-utils container. Defaults to `info`. | *string | false |
 | startupTime | The time after which a node will be restarted if it does not start properly. Defaults to `1h`. | *string | false |
@@ -536,17 +533,6 @@ PvcSnapshot represents a snapshot to be used to restore a PVC.
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | name | Name of the volume snapshot being referenced. | string | true |
-
-[Back to Custom Resources](#custom-resources)
-
-#### ServiceMonitorSpec
-
-ServiceMonitorSpec allows enabling/disabling deployment of ServiceMonitor for this node.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| enable | Whether a service monitor should be deployed for this node. | bool | true |
-| selector | Indicates the prometheus installation that will be using this service monitor. | map[string]string | false |
 
 [Back to Custom Resources](#custom-resources)
 

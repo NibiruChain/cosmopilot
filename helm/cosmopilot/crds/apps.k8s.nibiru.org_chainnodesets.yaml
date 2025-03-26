@@ -1611,23 +1611,6 @@ spec:
                           description: Configures this node to run on seed mode. Defaults
                             to `false`.
                           type: boolean
-                        serviceMonitor:
-                          description: ServiceMonitor allows deploying prometheus
-                            service monitor for this node.
-                          properties:
-                            enable:
-                              description: Whether a service monitor should be deployed
-                                for this node.
-                              type: boolean
-                            selector:
-                              additionalProperties:
-                                type: string
-                              description: Indicates the prometheus installation that
-                                will be using this service monitor.
-                              type: object
-                          required:
-                          - enable
-                          type: object
                         sidecars:
                           description: Allows configuring additional containers to
                             run alongside the node.
@@ -2453,24 +2436,6 @@ spec:
                   to the next one. Note that this does not apply to upgrades, as those
                   are handled directly by the ChainNode controller. Defaults to `false`.
                 type: boolean
-              serviceMonitor:
-                description: Allows deploying prometheus service monitor for all ChainNodes
-                  in this ChainNodeSet. ServiceMonitor config on ChainNode overrides
-                  this one.
-                properties:
-                  enable:
-                    description: Whether a service monitor should be deployed for
-                      this node.
-                    type: boolean
-                  selector:
-                    additionalProperties:
-                      type: string
-                    description: Indicates the prometheus installation that will be
-                      using this service monitor.
-                    type: object
-                required:
-                - enable
-                type: object
               validator:
                 description: Indicates this node set will run a validator and allows
                   configuring it.
@@ -3838,23 +3803,6 @@ spec:
                         description: Configures this node to run on seed mode. Defaults
                           to `false`.
                         type: boolean
-                      serviceMonitor:
-                        description: ServiceMonitor allows deploying prometheus service
-                          monitor for this node.
-                        properties:
-                          enable:
-                            description: Whether a service monitor should be deployed
-                              for this node.
-                            type: boolean
-                          selector:
-                            additionalProperties:
-                              type: string
-                            description: Indicates the prometheus installation that
-                              will be using this service monitor.
-                            type: object
-                        required:
-                        - enable
-                        type: object
                       sidecars:
                         description: Allows configuring additional containers to run
                           alongside the node.
