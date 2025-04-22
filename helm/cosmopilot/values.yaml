@@ -1,6 +1,6 @@
 image: ghcr.io/nibiruchain/cosmopilot
 nodeUtilsImage: ghcr.io/nibiruchain/node-utils:2.7.0
-cosmoGuardImage: ghcr.io/nibiruchain/cosmoguard:2.4.0
+cosmoGuardImage: ghcr.io/nibiruchain/cosmoguard:2.5.0
 replicas: 1
 imagePullSecrets: []
 workerCount: 1

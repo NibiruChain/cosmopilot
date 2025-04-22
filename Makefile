@@ -260,12 +260,12 @@ KIND ?= $(LOCALBIN)/kind
 MIRRORD ?= $(LOCALBIN)/mirrord
 
 ## Tool Versions
-KUBECTL_VERSION ?= v1.29.1
-CONTROLLER_TOOLS_VERSION ?= v0.11.3
-HELM_VERSION ?= v3.14.0
+KUBECTL_VERSION ?= v1.32.3
+CONTROLLER_TOOLS_VERSION ?= v0.17.3
+HELM_VERSION ?= v3.17.3
 CRD_TO_MARKDOWN_VERSION ?= 0.0.3
 KIND_VERSION ?= 0.21.0
-MIRRORD_VERSION ?= 3.86.1
+MIRRORD_VERSION ?= 3.139.1
 
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be removed before downloading.
