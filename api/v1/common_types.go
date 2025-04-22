@@ -94,7 +94,7 @@ type AppSpec struct {
 	// that, the cosmopilot will switch to the version of last upgrade.
 	// Defaults to `latest`.
 	// +optional
-	// +default=latest
+	// +default="latest"
 	Version *string `json:"version,omitempty"`
 
 	// Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
@@ -111,7 +111,7 @@ type AppSpec struct {
 	// - "v0.47" (default)
 	// - "v0.45"
 	// +optional
-	// +default=v0.47
+	// +default="v0.47"
 	SdkVersion *SdkVersion `json:"sdkVersion,omitempty"`
 
 	// Whether cosmopilot should query gov proposals to find and schedule upgrades.
@@ -144,14 +144,14 @@ type Config struct {
 	// The time to wait for a block before considering node unhealthy.
 	// Defaults to `15s`.
 	// +optional
-	// +default=15s
+	// +default="15s"
 	// +kubebuilder:validation:Format=duration
 	BlockThreshold *string `json:"blockThreshold,omitempty"`
 
 	// Period at which a reconcile loop will happen for this ChainNode.
 	// Defaults to `15s`.
 	// +optional
-	// +default=15s
+	// +default="15s"
 	// +kubebuilder:validation:Format=duration
 	ReconcilePeriod *string `json:"reconcilePeriod,omitempty"`
 
@@ -184,7 +184,7 @@ type Config struct {
 	// The time after which a node will be restarted if it does not start properly.
 	// Defaults to `1h`.
 	// +optional
-	// +default=1h
+	// +default="1h"
 	// +kubebuilder:validation:Format=duration
 	StartupTime *string `json:"startupTime,omitempty"`
 
@@ -349,17 +349,17 @@ type GenesisInitConfig struct {
 
 	// HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
 	// +optional
-	// +default=`m/44'/118'/0'/0/0`
+	// +default="m/44'/118'/0'/0/0"
 	AccountHDPath *string `json:"accountHDPath,omitempty"`
 
 	// Prefix for accounts. Defaults to `nibi`.
 	// +optional
-	// +default=nibi
+	// +default="nibi"
 	AccountPrefix *string `json:"accountPrefix,omitempty"`
 
 	// Prefix for validator operator accounts. Defaults to `nibivaloper`.
 	// +optional
-	// +default=nibivaloper
+	// +default="nibivaloper"
 	ValPrefix *string `json:"valPrefix,omitempty"`
 
 	// Maximum commission change rate percentage (per day). Defaults to `0.1`.
@@ -400,13 +400,13 @@ type GenesisInitConfig struct {
 
 	// Time required to totally unbond delegations. Defaults to `1814400s` (21 days).
 	// +optional
-	// +default=1814400s
+	// +default="1814400s"
 	// +kubebuilder:validation:Format=duration
 	UnbondingTime *string `json:"unbondingTime,omitempty"`
 
 	// Voting period for this chain. Defaults to `120h`.
 	// +optional
-	// +default=120h
+	// +default="120h"
 	// +kubebuilder:validation:Format=duration
 	VotingPeriod *string `json:"votingPeriod,omitempty"`
 
@@ -533,7 +533,7 @@ type TmKMS struct {
 	// Format and type of key for chain.
 	// Defaults to `{"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix": "nibivalconspub"}`.
 	// +optional
-	// +default={type: bech32, account_key_prefix: nibipub, consensus_key_prefix: nibivalconspub}
+	// +default={"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix": "nibivalconspub"}
 	KeyFormat *TmKmsKeyFormat `json:"keyFormat,omitempty"`
 
 	// Tendermint's protocol version to be used.
@@ -659,13 +659,13 @@ type Persistence struct {
 	// Increment size on each auto-resize event.
 	// Defaults to `50Gi`.
 	// +optional
-	// +default=50Gi
+	// +default="50Gi"
 	AutoResizeIncrement *string `json:"autoResizeIncrement,omitempty"`
 
 	// Size at which auto-resize will stop incrementing PVC size.
 	// Defaults to `2Ti`.
 	// +optional
-	// +default=2Ti
+	// +default="2Ti"
 	AutoResizeMaxSize *string `json:"autoResizeMaxSize,omitempty"`
 
 	// Additional commands to run on data initialization. Useful for downloading and
@@ -842,17 +842,17 @@ type CreateValidatorConfig struct {
 
 	// HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
 	// +optional
-	// +default=`m/44'/118'/0'/0/0`
+	// +default="m/44'/118'/0'/0/0"
 	AccountHDPath *string `json:"accountHDPath,omitempty"`
 
 	// Prefix for accounts. Defaults to `nibi`.
 	// +optional
-	// +default=nibi
+	// +default="nibi"
 	AccountPrefix *string `json:"accountPrefix,omitempty"`
 
 	// Prefix for validator operator accounts. Defaults to `nibivaloper`.
 	// +optional
-	// +default=nibivaloper
+	// +default="nibivaloper"
 	ValPrefix *string `json:"valPrefix,omitempty"`
 
 	// Maximum commission change rate percentage (per day). Defaults to `0.1`.
