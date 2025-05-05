@@ -1608,7 +1608,9 @@ spec:
                                   type: object
                                 type: array
                               image:
-                                description: Container image to be used.
+                                description: |-
+                                  Container image to be used.
+                                  Defaults to app image being used by ChainNode.
                                 minLength: 1
                                 type: string
                               imagePullPolicy:
@@ -1861,7 +1863,6 @@ spec:
                                     type: object
                                 type: object
                             required:
-                            - image
                             - name
                             type: object
                           type: array
@@ -3660,7 +3661,9 @@ spec:
                                 type: object
                               type: array
                             image:
-                              description: Container image to be used.
+                              description: |-
+                                Container image to be used.
+                                Defaults to app image being used by ChainNode.
                               minLength: 1
                               type: string
                             imagePullPolicy:
@@ -3913,7 +3916,6 @@ spec:
                                   type: object
                               type: object
                           required:
-                          - image
                           - name
                           type: object
                         type: array

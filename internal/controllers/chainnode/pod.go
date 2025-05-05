@@ -688,7 +688,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		for _, c := range chainNode.Spec.Config.Sidecars {
 			container := corev1.Container{
 				Name:            c.Name,
-				Image:           c.Image,
+				Image:           c.GetImage(chainNode),
 				ImagePullPolicy: chainNode.Spec.Config.GetSidecarImagePullPolicy(c.Name),
 				Command:         c.Command,
 				Args:            c.Args,

@@ -543,7 +543,7 @@ SidecarSpec allows configuring additional containers to run alongside the node.
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | name | Name to be assigned to the container. | string | true |
-| image | Container image to be used. | string | true |
+| image | Container image to be used. Defaults to app image being used by ChainNode. | *string | true |
 | imagePullPolicy | Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
 | mountDataVolume | Where data volume will be mounted on this container. It is not mounted if not specified. | *string | false |
 | mountConfig | Directory where config files from ConfigMap will be mounted on this container. They are not mounted if not specified. | *string | false |

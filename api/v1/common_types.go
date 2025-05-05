@@ -271,8 +271,10 @@ type SidecarSpec struct {
 	Name string `json:"name"`
 
 	// Container image to be used.
+	// Defaults to app image being used by ChainNode.
 	// +kubebuilder:validation:MinLength=1
-	Image string `json:"image"`
+	// +optional
+	Image *string `json:"image"`
 
 	// Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version`
 	// is `latest` and `IfNotPresent` otherwise.

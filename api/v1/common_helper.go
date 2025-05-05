@@ -124,12 +124,12 @@ func (cfg *Config) GetSidecarImagePullPolicy(name string) corev1.PullPolicy {
 			if c.ImagePullPolicy != "" {
 				return c.ImagePullPolicy
 			}
-			parts := strings.Split(c.Image, ":")
-
-			if len(parts) == 1 || parts[1] == DefaultImageVersion {
-				return corev1.PullAlways
+			if c.Image != nil {
+				parts := strings.Split(*c.Image, ":")
+				if len(parts) == 1 || parts[1] == DefaultImageVersion {
+					return corev1.PullAlways
+				}
 			}
-
 			return corev1.PullIfNotPresent
 		}
 	}
@@ -514,6 +514,13 @@ func (s *SidecarSpec) ShouldRunBeforeNode() bool {
 		return *s.RunBeforeNode
 	}
 	return false
+}
+
+func (s *SidecarSpec) GetImage(chainNode *ChainNode) string {
+	if s.Image != nil {
+		return *s.Image
+	}
+	return chainNode.GetAppVersion()
 }
 
 // VolumeSpec methods
