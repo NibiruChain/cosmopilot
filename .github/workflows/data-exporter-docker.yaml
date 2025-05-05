@@ -1,37 +1,127 @@
-name: Build dataexporter image
+name: Build Data Exporter Image
 
 on:
   push:
     tags:
       - "dataexporter/*"
 
-jobs:
-  data-exporter:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+permissions:
+  contents: read
+  packages: write
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+jobs:
+  version:
+    name: Extract Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - name: Extract version from tag
+        id: extract
+        run: |
+          TAG_REF="${GITHUB_REF#refs/tags/dataexporter/}"
+          VERSION_WITHOUT_V="${TAG_REF#v}"
+          echo "version=$VERSION_WITHOUT_V" >> "$GITHUB_OUTPUT"
+  build:
+    name: Build and Push Data Exporter Images
+    needs:
+      - version
+    strategy:
+      fail-fast: true
+      matrix:
+        build:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.build.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare env vars
+        run: |
+          OS=$(echo "${{ matrix.build.platform }}" | cut -d '/' -f 1)
+          ARCH=$(echo "${{ matrix.build.platform }}" | cut -d '/' -f 2)
+          echo "OS=$OS" >> $GITHUB_ENV
+          echo "ARCH=$ARCH" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR container register
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get version
-        id: get_version
-        uses: nowsprinting/check-version-format-action@v3
+      - name: Go Cache for Docker Build
+        id: cache
+        uses: actions/cache@v4
         with:
-          prefix: dataexporter/v
+          path: |
+            go-build
+            go-pkg-mod
+          key: ${{ runner.os }}-${{ runner.arch }}-dataexporter-docker-${{ hashFiles('go.sum') }}
 
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v2
+      - name: Inject cache
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+        with:
+          cache-map: |
+            {
+              "go-build": "/root/.cache/go-build",
+              "go-pkg-mod": "/go/pkg/mod",
+            }
+          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/dataexporter
+          tags: ${{ needs.version.outputs.version }}-${{ env.ARCH }},latest-${{ env.ARCH }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
         with:
           file: Dockerfile.dataExporter
           push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/nibiruchain/dataexporter:latest, ghcr.io/nibiruchain/dataexporter:${{ steps.get_version.outputs.full_without_prefix }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+
+  merge:
+    name: Create Multi-arch Data Exporter Image
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/dataexporter
+          tags: ${{ needs.version.outputs.version }},latest
+
+      - name: Create manifest list and push
+        run: |
+          image=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          TAGS=$(jq -r '.tags[] | "--tag " + .' <<< "$DOCKER_METADATA_OUTPUT_JSON" | tr '\n' ' ')
+          docker buildx imagetools create \
+            $TAGS \
+            "${image}-amd64" \
+            "${image}-arm64"
