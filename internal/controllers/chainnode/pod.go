@@ -994,7 +994,11 @@ func podSpecHash(pod *corev1.Pod) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%x", sha256.Sum256(specBytes)), nil
+	labelsBytes, err := json.Marshal(pod.GetLabels())
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(append(specBytes, labelsBytes...))), nil
 }
 
 func podSpecChanged(ctx context.Context, existing, new *corev1.Pod) bool {
