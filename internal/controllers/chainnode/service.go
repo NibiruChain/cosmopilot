@@ -419,15 +419,16 @@ func (r *Reconciler) addStateSyncAnnotations(ctx context.Context, chainNode *app
 		return err
 	}
 
-	// Get the oldest height for which we still have block info
+	// Get the most recent height with a retrievable block hash
 	var trustHeight int64
 	var trustHash string
-	for _, height := range availableHeights {
+	for i := len(availableHeights) - 1; i >= 0; i-- {
+		height := availableHeights[i]
 		if trustHash, err = c.GetBlockHash(ctx, height); err == nil {
 			trustHeight = height
 			break
 		}
-		logger.Info(fmt.Sprintf("state-sync: ignoring height %d: %v", height, err))
+		logger.Info("state-sync: ignoring snapshot height", "height", height, "error", err)
 	}
 
 	if trustHeight == 0 {

@@ -1,4 +1,4 @@
-# CosmoPilot
+# Cosmopilot
 
 [![Test](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml)
 [![Docker Builds](https://github.com/NibiruChain/cosmopilot/actions/workflows/cosmopilot-docker.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/cosmopilot-docker.yaml)

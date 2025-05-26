@@ -167,11 +167,7 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, c
 			return "", err
 		}
 
-		peers, err = r.filterNonReadyPeers(ctx, chainNode, peers)
-		if err != nil {
-			return "", err
-		}
-
+		peers = r.filterNonReadyPeers(ctx, chainNode, peers)
 		rpcServers := make([]string, 0)
 
 		switch {

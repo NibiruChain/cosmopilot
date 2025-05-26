@@ -19,7 +19,7 @@ func WithChainNodeLabels(chainNode *appsv1.ChainNode, additional ...map[string]s
 	return labels
 }
 
-func (r *Reconciler) filterNonReadyPeers(ctx context.Context, chainNode *appsv1.ChainNode, peers []appsv1.Peer) ([]appsv1.Peer, error) {
+func (r *Reconciler) filterNonReadyPeers(ctx context.Context, chainNode *appsv1.ChainNode, peers []appsv1.Peer) []appsv1.Peer {
 	logger := log.FromContext(ctx)
 	workingPeers := make([]appsv1.Peer, 0)
 
@@ -37,5 +37,5 @@ func (r *Reconciler) filterNonReadyPeers(ctx context.Context, chainNode *appsv1.
 		workingPeers = append(workingPeers, peer)
 	}
 
-	return workingPeers, nil
+	return workingPeers
 }
