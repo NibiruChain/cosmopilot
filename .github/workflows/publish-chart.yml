@@ -6,8 +6,22 @@ on:
       - "v*"
 
 jobs:
-  cosmopilot:
+  version:
+    name: Extract Version
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - name: Extract version from tag
+        id: extract
+        run: |
+          TAG_REF="${GITHUB_REF#refs/tags/}"
+          VERSION_WITHOUT_V="${TAG_REF#v}"
+          echo "version=$VERSION_WITHOUT_V" >> "$GITHUB_OUTPUT"
+  publish:
+    runs-on: ubuntu-latest
+    needs:
+      - version
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -24,10 +38,10 @@ jobs:
         run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.repository_owner }} --password-stdin ghcr.io
 
       - name: Package Chart
-        run: helm package helm/cosmopilot --version ${{ steps.get_version.outputs.version-without-v }} --app-version ${{ steps.get_version.outputs.version-without-v }}
+        run: helm package helm/cosmopilot --version ${{ needs.version.outputs.version }} --app-version ${{ needs.version.outputs.version }}
 
       - name: Push Chart
-        run: helm push cosmopilot-${{ steps.get_version.outputs.version-without-v }}.tgz oci://ghcr.io/nibiruchain/helm
+        run: helm push cosmopilot-${{ needs.version.outputs.version }}.tgz oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/helm
 
       - name: Logout
         run: helm registry logout ghcr.io

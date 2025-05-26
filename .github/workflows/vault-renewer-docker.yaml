@@ -73,7 +73,7 @@ jobs:
           cache-map: |
             {
               "go-build": "/root/.cache/go-build",
-              "go-pkg-mod": "/go/pkg/mod",
+              "go-pkg-mod": "/go/pkg/mod"
             }
           skip-extraction: ${{ steps.cache.outputs.cache-hit }}
 
@@ -82,7 +82,9 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: ghcr.io/${{ github.repository_owner }}/vault-renewer
-          tags: ${{ needs.version.outputs.version }}-${{ env.ARCH }},latest-${{ env.ARCH }}
+          tags: |
+            ${{ needs.version.outputs.version }}-${{ env.ARCH }}
+            latest-${{ env.ARCH }}
 
       - name: Build and push by digest
         id: build
@@ -97,6 +99,7 @@ jobs:
   merge:
     name: Create Multi-arch Vault Token Renewer Image
     needs:
+      - version
       - build
     runs-on: ubuntu-latest
     steps:
@@ -115,13 +118,15 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: ghcr.io/${{ github.repository_owner }}/vault-renewer
-          tags: ${{ needs.version.outputs.version }},latest
+          tags: |
+            ${{ needs.version.outputs.version }}
+            latest
 
       - name: Create manifest list and push
         run: |
-          image=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          image=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON" | cut -d ':' -f 1)
           TAGS=$(jq -r '.tags[] | "--tag " + .' <<< "$DOCKER_METADATA_OUTPUT_JSON" | tr '\n' ' ')
           docker buildx imagetools create \
             $TAGS \
-            "${image}-amd64" \
-            "${image}-arm64"
+            "${image}:${{ needs.version.outputs.version }}-amd64" \
+            "${image}:${{ needs.version.outputs.version }}-arm64"
