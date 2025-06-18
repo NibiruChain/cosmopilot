@@ -24,6 +24,7 @@ func (s *NodeUtils) registerRoutes() {
 	s.router.HandleFunc("/tmkms_active", s.tmkmsConnectionActive).Methods(http.MethodGet)
 	s.router.HandleFunc("/snapshots", s.listSnapshots).Methods(http.MethodGet)
 	s.router.HandleFunc("/shutdown", s.shutdownServer).Methods(http.MethodGet, http.MethodPost)
+	s.router.HandleFunc("/stats", s.stats).Methods(http.MethodGet)
 }
 
 func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
@@ -162,6 +163,33 @@ func (s *NodeUtils) listSnapshots(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(heights, func(i, j int) bool { return heights[i] < heights[j] })
 
 	b, err := json.Marshal(heights)
+	if err != nil {
+		log.Errorf("error building json response: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+}
+
+func (s *NodeUtils) stats(w http.ResponseWriter, r *http.Request) {
+	log.Info("retrieving stats")
+
+	p, err := s.getNodeProcess()
+	if err != nil {
+		log.Errorf("error retrieving app process: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	stats, err := GetProcessStats(p)
+	if err != nil {
+		log.Errorf("error retrieving app stats: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	b, err := json.Marshal(stats)
 	if err != nil {
 		log.Errorf("error building json response: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -9,6 +9,7 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/gorilla/mux"
+	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
@@ -28,6 +29,7 @@ type NodeUtils struct {
 	tmkmsActive       atomic.Bool
 	tmkmsProxy        *proxy.TCP
 	nodeBinaryName    string
+	appProcess        *process.Process
 }
 
 func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
@@ -187,10 +189,19 @@ func (s *NodeUtils) Stop(force bool) error {
 	return s.server.Shutdown(ctx)
 }
 
+func (s *NodeUtils) getNodeProcess() (*process.Process, error) {
+	if s.appProcess != nil {
+		return s.appProcess, nil
+	}
+	var err error
+	s.appProcess, err = findProcessByName(s.nodeBinaryName)
+	return s.appProcess, err
+}
+
 func (s *NodeUtils) StopNode() error {
-	nodeProcess, err := findProcessByName(s.nodeBinaryName)
+	p, err := s.getNodeProcess()
 	if err != nil {
 		return err
 	}
-	return nodeProcess.Terminate()
+	return p.Terminate()
 }
