@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
+	"time"
 )
 
 type Client struct {
@@ -99,4 +101,68 @@ func (c *Client) ListSnapshots() ([]int64, error) {
 		return nil, err
 	}
 	return snapshots, nil
+}
+
+func (c *Client) GetCPUStats(since time.Duration) (float64, error) {
+	endpoint := c.url + "/stats/cpu"
+	if since > 0 {
+		params := url.Values{}
+		params.Set("average", since.String())
+		endpoint += "?" + params.Encode()
+	}
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return 0, fmt.Errorf("http get error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, b)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("read error: %w", err)
+	}
+
+	val, err := strconv.ParseFloat(string(body), 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse float error: %w", err)
+	}
+
+	return val, nil
+}
+
+func (c *Client) GetMemoryStats(since time.Duration) (uint64, error) {
+	endpoint := c.url + "/stats/memory"
+	if since > 0 {
+		params := url.Values{}
+		params.Set("average", since.String())
+		endpoint += "?" + params.Encode()
+	}
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return 0, fmt.Errorf("http get error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, b)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("read error: %w", err)
+	}
+
+	val, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse uint error: %w", err)
+	}
+
+	return val, nil
 }

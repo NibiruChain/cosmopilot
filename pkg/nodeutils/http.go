@@ -2,6 +2,7 @@ package nodeutils
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -12,6 +13,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/NibiruChain/cosmopilot/pkg/statscollector"
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
@@ -25,13 +27,32 @@ func (s *NodeUtils) registerRoutes() {
 	s.router.HandleFunc("/snapshots", s.listSnapshots).Methods(http.MethodGet)
 	s.router.HandleFunc("/shutdown", s.shutdownServer).Methods(http.MethodGet, http.MethodPost)
 	s.router.HandleFunc("/stats", s.stats).Methods(http.MethodGet)
+	s.router.HandleFunc("/stats/cpu", s.statsCPU).Methods(http.MethodGet)
+	s.router.HandleFunc("/stats/memory", s.statsMemory).Methods(http.MethodGet)
+}
+
+func writeError(w http.ResponseWriter, format string, args ...interface{}) {
+	err := fmt.Errorf(format, args...)
+	log.Error(err)
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		writeError(w, "error encoding json response: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write(b)
 }
 
 func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
 	isSyncing, err := s.client.IsNodeSyncing(r.Context())
 	if err != nil {
-		log.Errorf("error getting syncing status: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, "error getting syncing status: %v", err)
 		return
 	}
 
@@ -44,8 +65,7 @@ func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.BlockThreshold > 0 {
 		block, err := s.client.GetLatestBlock(r.Context())
 		if err != nil {
-			log.Errorf("error getting latest block: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeError(w, "error getting latest block: %v", err)
 			return
 		}
 
@@ -74,28 +94,18 @@ func (s *NodeUtils) health(w http.ResponseWriter, r *http.Request) {
 
 	status, err := s.client.GetNodeStatus(r.Context())
 	if err != nil {
-		log.Errorf("error getting node status: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	b, err := json.Marshal(status)
-	if err != nil {
-		log.Errorf("error encoding node status to json: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, "error getting node status: %v", err)
 		return
 	}
 
 	log.Info("node is healthy")
-	w.WriteHeader(http.StatusOK)
-	w.Write(b)
+	writeJSON(w, http.StatusOK, status)
 }
 
 func (s *NodeUtils) dataSize(w http.ResponseWriter, r *http.Request) {
 	size, err := utils.DirSize(s.cfg.DataPath)
 	if err != nil {
-		log.Errorf("error getting data directory size: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, "error getting data size: %v", err)
 		return
 	}
 	log.WithField("size", size).Info("retrieved data size")
@@ -132,8 +142,7 @@ func (s *NodeUtils) tmkmsConnectionActive(w http.ResponseWriter, r *http.Request
 func (s *NodeUtils) shutdownServer(w http.ResponseWriter, r *http.Request) {
 	log.Info("shutting down server")
 	if err := s.Stop(true); err != nil {
-		log.Errorf("error stopping server: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, "error shutting down server: %v", err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -143,8 +152,7 @@ func (s *NodeUtils) listSnapshots(w http.ResponseWriter, r *http.Request) {
 	log.Info("retrieving snapshots")
 	files, err := os.ReadDir(path.Join(s.cfg.DataPath, "snapshots"))
 	if err != nil {
-		log.Errorf("error reading directory: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, "error reading snapshots: %v", err)
 		return
 	}
 
@@ -161,15 +169,7 @@ func (s *NodeUtils) listSnapshots(w http.ResponseWriter, r *http.Request) {
 	}
 	// Sort heights in ascending order
 	sort.Slice(heights, func(i, j int) bool { return heights[i] < heights[j] })
-
-	b, err := json.Marshal(heights)
-	if err != nil {
-		log.Errorf("error building json response: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(b)
+	writeJSON(w, http.StatusOK, heights)
 }
 
 func (s *NodeUtils) stats(w http.ResponseWriter, r *http.Request) {
@@ -189,12 +189,71 @@ func (s *NodeUtils) stats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := json.Marshal(stats)
-	if err != nil {
-		log.Errorf("error building json response: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	writeJSON(w, http.StatusOK, stats)
+}
+
+func (s *NodeUtils) selectCollector(duration time.Duration) *statscollector.Collector {
+	if duration <= time.Hour {
+		return s.fineStats
+	}
+	return s.coarseStats
+}
+
+func (s *NodeUtils) statsCPU(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("average")
+	if query == "" {
+		// Live stats
+		p, err := s.getNodeProcess()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("process error: %v", err), http.StatusInternalServerError)
+			return
+		}
+		stats, err := GetProcessStats(p)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("stats error: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write([]byte(strconv.FormatFloat(stats.CPUTimeSec, 'E', -1, 64)))
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(b)
+
+	// Average over duration
+	dur, err := time.ParseDuration(query)
+	if err != nil {
+		http.Error(w, "invalid duration format", http.StatusBadRequest)
+		return
+	}
+
+	collector := s.selectCollector(dur)
+	avg := collector.AverageCPUUsage(dur)
+	w.Write([]byte(strconv.FormatFloat(avg, 'E', -1, 64)))
+}
+
+func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("average")
+	if query == "" {
+		p, err := s.getNodeProcess()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("process error: %v", err), http.StatusInternalServerError)
+			return
+		}
+		stats, err := GetProcessStats(p)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("stats error: %v", err), http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(strconv.FormatUint(stats.MemoryRSS, 10)))
+		return
+	}
+
+	dur, err := time.ParseDuration(query)
+	if err != nil {
+		http.Error(w, "invalid duration format", http.StatusBadRequest)
+		return
+	}
+
+	collector := s.selectCollector(dur)
+	avg := collector.AverageMemoryUsage(dur)
+	w.Write([]byte(strconv.FormatUint(avg, 10)))
 }

@@ -7,8 +7,6 @@ import (
 )
 
 type ProcessStats struct {
-	PID        int32   `json:"pid"`
-	Command    string  `json:"command"`
 	CPUTimeSec float64 `json:"cpu_time_sec"`     // total CPU time in seconds
 	MemoryRSS  uint64  `json:"memory_rss_bytes"` // resident memory usage
 }
@@ -41,11 +39,7 @@ func GetProcessStats(proc *process.Process) (*ProcessStats, error) {
 		return nil, fmt.Errorf("failed to get memory info: %w", err)
 	}
 
-	name, _ := proc.Name()
-
 	return &ProcessStats{
-		PID:        proc.Pid,
-		Command:    name,
 		CPUTimeSec: times.User + times.System,
 		MemoryRSS:  mem.RSS,
 	}, nil

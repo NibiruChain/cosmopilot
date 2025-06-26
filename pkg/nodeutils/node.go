@@ -14,7 +14,13 @@ import (
 
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
 	"github.com/NibiruChain/cosmopilot/pkg/proxy"
+	"github.com/NibiruChain/cosmopilot/pkg/statscollector"
 	"github.com/NibiruChain/cosmopilot/pkg/tracer"
+)
+
+const (
+	fineStatsCollectorInterval   = 10 * time.Second
+	coarseStatsCollectorInterval = 5 * time.Minute
 )
 
 type NodeUtils struct {
@@ -30,6 +36,8 @@ type NodeUtils struct {
 	tmkmsProxy        *proxy.TCP
 	nodeBinaryName    string
 	appProcess        *process.Process
+	fineStats         *statscollector.Collector
+	coarseStats       *statscollector.Collector
 }
 
 func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
@@ -60,6 +68,8 @@ func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
 		tracer:         t,
 		upgradeChecker: uc,
 		nodeBinaryName: nodeBinaryName,
+		fineStats:      statscollector.NewCollector(int(time.Hour / fineStatsCollectorInterval)),
+		coarseStats:    statscollector.NewCollector(int((24 * time.Hour) / coarseStatsCollectorInterval)),
 	}
 
 	if options.TmkmsProxy {
@@ -99,6 +109,34 @@ func (s *NodeUtils) Start() error {
 			}
 		}()
 	}
+
+	// Fine-grained collector (1h window)
+	go func() {
+		ticker := time.NewTicker(fineStatsCollectorInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.collectProcessStats(s.fineStats); err != nil {
+					log.Errorf("error collecting process fine-grained stats: %v", err)
+				}
+			}
+		}
+	}()
+
+	// Coarse-grained collector (24h window)
+	go func() {
+		ticker := time.NewTicker(coarseStatsCollectorInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.collectProcessStats(s.coarseStats); err != nil {
+					log.Errorf("error collecting process coarse-grained stats: %v", err)
+				}
+			}
+		}
+	}()
 
 	// Goroutine to update latest height and check for upgrades
 	go func() {
@@ -204,4 +242,22 @@ func (s *NodeUtils) StopNode() error {
 		return err
 	}
 	return p.Terminate()
+}
+
+func (s *NodeUtils) collectProcessStats(collector *statscollector.Collector) error {
+	p, err := s.getNodeProcess()
+	if err != nil {
+		return err
+	}
+
+	stats, err := GetProcessStats(p)
+	if err != nil {
+		return err
+	}
+
+	collector.AddSample(statscollector.ProcessStats{
+		CPUTimeSec: stats.CPUTimeSec,
+		MemoryRSS:  stats.MemoryRSS,
+	})
+	return nil
 }
