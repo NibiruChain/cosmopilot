@@ -2,6 +2,7 @@ package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/NibiruChain/cosmopilot/internal/tmkms"
@@ -51,6 +52,8 @@ const (
 	ReasonCreateValidatorFailure = "FailedCreateValidator"
 	ReasonCreateValidatorSuccess = "CreateValidatorSuccess"
 	ReasonInvalid                = "Invalid"
+	ReasonVPAScaleUp             = "VPAScaleUp"
+	ReasonVPAScaleDown           = "VPAScaleDown"
 )
 
 // SdkVersion specifies the cosmos-sdk version used by this application.
@@ -882,4 +885,136 @@ type CreateValidatorConfig struct {
 
 	// Gas prices in decimal format to determine the transaction fee.
 	GasPrices string `json:"gasPrices"`
+}
+
+// VerticalAutoscalingConfig defines rules and thresholds for vertical autoscaling of a pod.
+type VerticalAutoscalingConfig struct {
+	// Enables vertical autoscaling for the pod.
+	Enabled bool `json:"enabled"`
+
+	// CPU resource autoscaling configuration.
+	// +optional
+	CPU *VerticalAutoscalingMetricConfig `json:"cpu,omitempty"`
+
+	// Memory resource autoscaling configuration.
+	// +optional
+	Memory *VerticalAutoscalingMetricConfig `json:"memory,omitempty"`
+}
+
+// LimitSource specifies which resource value should be used as the scaling reference.
+// +kubebuilder:validation:Enum=effective-limit;requests;limits
+type LimitSource string
+
+const (
+	// EffectiveLimit means use limits if set; otherwise fallback to requests.
+	EffectiveLimit LimitSource = "effective-limit"
+
+	// Requests means always use the pod's requested resource value.
+	Requests LimitSource = "requests"
+
+	// Limits means always use the pod's resource limit value.
+	Limits LimitSource = "limits"
+)
+
+// LimitUpdateStrategy defines how resource limits should be managed when autoscaling.
+// +kubebuilder:validation:Enum=equal;max;percentage;retain;unset
+type LimitUpdateStrategy string
+
+const (
+	// LimitRetain retains the original limits from .spec.resources (no updates).
+	LimitRetain LimitUpdateStrategy = "retain"
+
+	// LimitEqual sets limits to match the updated request value.
+	LimitEqual LimitUpdateStrategy = "equal"
+
+	// LimitVpaMax sets limits to the configured VPA Max value.
+	LimitVpaMax LimitUpdateStrategy = "max"
+
+	// LimitPercentage sets limits to a percentage above the request (e.g. 150%).
+	LimitPercentage LimitUpdateStrategy = "percentage"
+
+	// LimitUnset removes the limits field entirely from the pod spec.
+	LimitUnset LimitUpdateStrategy = "unset"
+)
+
+// VerticalAutoscalingMetricConfig defines autoscaling behavior for a specific resource type (CPU or memory).
+type VerticalAutoscalingMetricConfig struct {
+	// Source determines whether to base autoscaling decisions on requests, limits, or effective limit.
+	// Valid values are:
+	// `effective-limit` (default) (use limits if set; otherwise fallback to requests)
+	// `requests` (use the pod’s requested resource value)
+	// `limits` (use the pod’s resource limit value)
+	// +optional
+	// +default="effective-limit"
+	Source *LimitSource `json:"source,omitempty"`
+
+	// Minimum resource value allowed during scaling (e.g. "100m" or "128Mi").
+	Min resource.Quantity `json:"min"`
+
+	// Maximum resource value allowed during scaling (e.g. "8000m" or "2Gi").
+	Max resource.Quantity `json:"max"`
+
+	// Rules define when and how scaling should occur based on sustained usage levels.
+	Rules []*VerticalAutoscalingRule `json:"rules"`
+
+	// Cooldown is the minimum duration to wait between consecutive scaling actions.
+	// Defaults to "5m".
+	// +optional
+	// +default="5m"
+	// +kubebuilder:validation:Format=duration
+	Cooldown *string `json:"cooldown,omitempty"`
+
+	// LimitStrategy controls how resource limits should be updated after autoscaling.
+	// Valid values are:
+	// `retain` (default) (keep original limits)
+	// `equal` (match request value)
+	// `max` (use configured VPA Max)
+	// `percentage` (request × percentage)
+	// `unset` (remove the limits field entirely)
+	// +optional
+	// +default="retain"
+	LimitStrategy *LimitUpdateStrategy `json:"limitStrategy,omitempty"`
+
+	// LimitPercentage defines the percentage multiplier to apply when using "percentage" LimitStrategy.
+	// For example, 150 means limit = request * 1.5.
+	// Only used when LimitStrategy = "percentage". Defaults to `150` when not set.
+	// +optional
+	LimitPercentage *int `json:"limitPercentage,omitempty"`
+}
+
+// ScalingDirection determines whether the scaling action is an increase or decrease in resource.
+// +kubebuilder:validation:Enum=up;down
+type ScalingDirection string
+
+const (
+	// ScaleUp scales the resource upward (increase).
+	ScaleUp ScalingDirection = "up"
+
+	// ScaleDown scales the resource downward (decrease).
+	ScaleDown ScalingDirection = "down"
+)
+
+// VerticalAutoscalingRule defines a single rule for when to trigger a scaling adjustment.
+type VerticalAutoscalingRule struct {
+	// Direction of scaling: "up" or "down".
+	Direction ScalingDirection `json:"direction"`
+
+	// UsagePercent is the resource usage percentage (0–100) that must be met.
+	// Usage is compared against the selected Source value.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	UsagePercent int `json:"usagePercent"`
+
+	// Duration is the length of time the usage must remain above/below the threshold before scaling.
+	// Defaults to "5m".
+	// +optional
+	// +default="5m"
+	// +kubebuilder:validation:Format=duration
+	Duration *string `json:"duration,omitempty"`
+
+	// StepPercent defines how much to adjust the resource by, as a percentage of the current value.
+	// For example, 50 = scale by 50% of current value.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	StepPercent int `json:"stepPercent"`
 }

@@ -201,6 +201,10 @@ type NodeSetValidatorConfig struct {
 	// Indicates cosmopilot should run create-validator tx to make this node a validator.
 	// +optional
 	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
+
+	// Vertical Pod Autoscaling configuration for this node.
+	// +optional
+	VPA *VerticalAutoscalingConfig `json:"vpa,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group.
@@ -262,6 +266,10 @@ type NodeGroupSpec struct {
 	// Defaults to `false`.
 	// +optional
 	IgnoreGroupOnDisruptionChecks *bool `json:"ignoreGroupOnDisruptionChecks,omitempty"`
+
+	// Vertical Pod Autoscaling configuration for this node.
+	// +optional
+	VPA *VerticalAutoscalingConfig `json:"vpa,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints.

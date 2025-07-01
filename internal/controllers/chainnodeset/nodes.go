@@ -255,6 +255,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			NodeSelector:                  group.NodeSelector,
 			StateSyncRestore:              group.StateSyncRestore,
 			IgnoreGroupOnDisruptionChecks: group.IgnoreGroupOnDisruptionChecks,
+			VPA:                           group.VPA,
 		},
 	}
 

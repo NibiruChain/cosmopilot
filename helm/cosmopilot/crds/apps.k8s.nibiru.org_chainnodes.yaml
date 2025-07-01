@@ -2556,6 +2556,229 @@ spec:
                     - provider
                     type: object
                 type: object
+              vpa:
+                description: Vertical Pod Autoscaling configuration for this node.
+                properties:
+                  cpu:
+                    description: CPU resource autoscaling configuration.
+                    properties:
+                      cooldown:
+                        default: 5m
+                        description: |-
+                          Cooldown is the minimum duration to wait between consecutive scaling actions.
+                          Defaults to "5m".
+                        format: duration
+                        type: string
+                      limitPercentage:
+                        description: |-
+                          LimitPercentage defines the percentage multiplier to apply when using "percentage" LimitStrategy.
+                          For example, 150 means limit = request * 1.5.
+                          Only used when LimitStrategy = "percentage". Defaults to `150` when not set.
+                        type: integer
+                      limitStrategy:
+                        default: retain
+                        description: |-
+                          LimitStrategy controls how resource limits should be updated after autoscaling.
+                          Valid values are:
+                          `retain` (default) (keep original limits)
+                          `equal` (match request value)
+                          `max` (use configured VPA Max)
+                          `percentage` (request × percentage)
+                          `unset` (remove the limits field entirely)
+                        enum:
+                        - equal
+                        - max
+                        - percentage
+                        - retain
+                        - unset
+                        type: string
+                      max:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Maximum resource value allowed during scaling
+                          (e.g. "8000m" or "2Gi").
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      min:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Minimum resource value allowed during scaling
+                          (e.g. "100m" or "128Mi").
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      rules:
+                        description: Rules define when and how scaling should occur
+                          based on sustained usage levels.
+                        items:
+                          description: VerticalAutoscalingRule defines a single rule
+                            for when to trigger a scaling adjustment.
+                          properties:
+                            direction:
+                              description: 'Direction of scaling: "up" or "down".'
+                              enum:
+                              - up
+                              - down
+                              type: string
+                            duration:
+                              default: 5m
+                              description: |-
+                                Duration is the length of time the usage must remain above/below the threshold before scaling.
+                                Defaults to "5m".
+                              format: duration
+                              type: string
+                            stepPercent:
+                              description: |-
+                                StepPercent defines how much to adjust the resource by, as a percentage of the current value.
+                                For example, 50 = scale by 50% of current value.
+                              maximum: 100
+                              minimum: 1
+                              type: integer
+                            usagePercent:
+                              description: |-
+                                UsagePercent is the resource usage percentage (0–100) that must be met.
+                                Usage is compared against the selected Source value.
+                              maximum: 100
+                              minimum: 1
+                              type: integer
+                          required:
+                          - direction
+                          - stepPercent
+                          - usagePercent
+                          type: object
+                        type: array
+                      source:
+                        default: effective-limit
+                        description: |-
+                          Source determines whether to base autoscaling decisions on requests, limits, or effective limit.
+                          Valid values are:
+                          `effective-limit` (default) (use limits if set; otherwise fallback to requests)
+                          `requests` (use the pod’s requested resource value)
+                          `limits` (use the pod’s resource limit value)
+                        enum:
+                        - effective-limit
+                        - requests
+                        - limits
+                        type: string
+                    required:
+                    - max
+                    - min
+                    - rules
+                    type: object
+                  enabled:
+                    description: Enables vertical autoscaling for the pod.
+                    type: boolean
+                  memory:
+                    description: Memory resource autoscaling configuration.
+                    properties:
+                      cooldown:
+                        default: 5m
+                        description: |-
+                          Cooldown is the minimum duration to wait between consecutive scaling actions.
+                          Defaults to "5m".
+                        format: duration
+                        type: string
+                      limitPercentage:
+                        description: |-
+                          LimitPercentage defines the percentage multiplier to apply when using "percentage" LimitStrategy.
+                          For example, 150 means limit = request * 1.5.
+                          Only used when LimitStrategy = "percentage". Defaults to `150` when not set.
+                        type: integer
+                      limitStrategy:
+                        default: retain
+                        description: |-
+                          LimitStrategy controls how resource limits should be updated after autoscaling.
+                          Valid values are:
+                          `retain` (default) (keep original limits)
+                          `equal` (match request value)
+                          `max` (use configured VPA Max)
+                          `percentage` (request × percentage)
+                          `unset` (remove the limits field entirely)
+                        enum:
+                        - equal
+                        - max
+                        - percentage
+                        - retain
+                        - unset
+                        type: string
+                      max:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Maximum resource value allowed during scaling
+                          (e.g. "8000m" or "2Gi").
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      min:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Minimum resource value allowed during scaling
+                          (e.g. "100m" or "128Mi").
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      rules:
+                        description: Rules define when and how scaling should occur
+                          based on sustained usage levels.
+                        items:
+                          description: VerticalAutoscalingRule defines a single rule
+                            for when to trigger a scaling adjustment.
+                          properties:
+                            direction:
+                              description: 'Direction of scaling: "up" or "down".'
+                              enum:
+                              - up
+                              - down
+                              type: string
+                            duration:
+                              default: 5m
+                              description: |-
+                                Duration is the length of time the usage must remain above/below the threshold before scaling.
+                                Defaults to "5m".
+                              format: duration
+                              type: string
+                            stepPercent:
+                              description: |-
+                                StepPercent defines how much to adjust the resource by, as a percentage of the current value.
+                                For example, 50 = scale by 50% of current value.
+                              maximum: 100
+                              minimum: 1
+                              type: integer
+                            usagePercent:
+                              description: |-
+                                UsagePercent is the resource usage percentage (0–100) that must be met.
+                                Usage is compared against the selected Source value.
+                              maximum: 100
+                              minimum: 1
+                              type: integer
+                          required:
+                          - direction
+                          - stepPercent
+                          - usagePercent
+                          type: object
+                        type: array
+                      source:
+                        default: effective-limit
+                        description: |-
+                          Source determines whether to base autoscaling decisions on requests, limits, or effective limit.
+                          Valid values are:
+                          `effective-limit` (default) (use limits if set; otherwise fallback to requests)
+                          `requests` (use the pod’s requested resource value)
+                          `limits` (use the pod’s resource limit value)
+                        enum:
+                        - effective-limit
+                        - requests
+                        - limits
+                        type: string
+                    required:
+                    - max
+                    - min
+                    - rules
+                    type: object
+                required:
+                - enabled
+                type: object
             required:
             - app
             type: object

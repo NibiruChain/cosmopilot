@@ -37,6 +37,8 @@ const (
 	DefaultNodeUtilsMemory         = "100Mi"
 	DefaultCosmoGuardCPU           = "200m"
 	DefaultCosmoGuardMemory        = "250Mi"
+	DefaultVpaCooldown             = 5 * time.Minute
+	DefaultLimitPercentage         = 150
 )
 
 var (
@@ -530,4 +532,49 @@ func (v *VolumeSpec) ShouldDeleteWithNode() bool {
 		return *v.DeleteWithNode
 	}
 	return false
+}
+
+// Vertical Pod Autoscaling
+
+func (vpa *VerticalAutoscalingConfig) IsEnabled() bool {
+	return vpa != nil && vpa.Enabled
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetCooldownDuration() time.Duration {
+	if vpam != nil && vpam.Cooldown != nil {
+		if d, err := strfmt.ParseDuration(*vpam.Cooldown); err == nil {
+			return d
+		}
+	}
+	return DefaultVpaCooldown
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetSource() LimitSource {
+	if vpam != nil && vpam.Source != nil {
+		return *vpam.Source
+	}
+	return EffectiveLimit
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetLimitUpdateStrategy() LimitUpdateStrategy {
+	if vpam != nil && vpam.LimitStrategy != nil {
+		return *vpam.LimitStrategy
+	}
+	return LimitRetain
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetLimitPercentage() int {
+	if vpam != nil && vpam.LimitPercentage != nil {
+		return *vpam.LimitPercentage
+	}
+	return DefaultLimitPercentage
+}
+
+func (vpar *VerticalAutoscalingRule) GetDuration() time.Duration {
+	if vpar != nil && vpar.Duration != nil {
+		if d, err := strfmt.ParseDuration(*vpar.Duration); err == nil {
+			return d
+		}
+	}
+	return DefaultVpaCooldown
 }

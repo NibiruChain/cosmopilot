@@ -39,6 +39,9 @@ const (
 	annotationExportingTarball        = "apps.k8s.nibiru.org/exporting-tarball"
 	annotationSnapshotIntegrityStatus = "apps.k8s.nibiru.org/snapshot-integrity-status"
 	annotationPodSpecHash             = "apps.k8s.nibiru.org/pod-spec-hash"
+	annotationVPAResources            = "apps.k8s.nibiru.org/vpa-resources"
+	annotationVPALastCPUScale         = "apps.k8s.nibiru.org/last-cpu-scale"
+	annotationVPALastMemoryScale      = "apps.k8s.nibiru.org/last-memory-scale"
 
 	timeoutPodRunning              = 5 * time.Minute
 	timeoutPodDeleted              = 2 * time.Minute

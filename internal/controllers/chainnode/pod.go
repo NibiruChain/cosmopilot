@@ -269,6 +269,8 @@ func (r *Reconciler) createPod(ctx context.Context, chainNode *appsv1.ChainNode,
 }
 
 func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) (*corev1.Pod, error) {
+	logger := log.FromContext(ctx)
+
 	// Load configmap to have config file names. We will mount them individually to allow the config
 	// dir to be writable. When ConfigMap is mounted as whole, the directory is read only.
 	config := &corev1.ConfigMap{}
@@ -293,6 +295,14 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	}
 
 	var sidecarRestartAlways = corev1.ContainerRestartPolicyAlways
+
+	// Get resources from VPA. NOTE: We trust that this method always falls back to ChainNode specified resources
+	// if needed. We don't want to fall back ourselves here because if VPA fails it might still fallback to its previous
+	// values and avoid unnecessary restarts.
+	appResources, err := r.maybeGetVpaResources(ctx, chainNode)
+	if err != nil {
+		logger.Info("could not get resources from vpa: " + err.Error())
+	}
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -561,7 +571,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						PeriodSeconds:    10,
 						TimeoutSeconds:   readinessProbeTimeoutSeconds,
 					},
-					Resources: chainNode.Spec.Resources,
+					Resources: appResources,
 				},
 			},
 		},

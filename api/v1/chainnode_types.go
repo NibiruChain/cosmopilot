@@ -121,6 +121,10 @@ type ChainNodeSpec struct {
 	// Defaults to `false`.
 	// +optional
 	IgnoreGroupOnDisruptionChecks *bool `json:"ignoreGroupOnDisruptionChecks,omitempty"`
+
+	// Vertical Pod Autoscaling configuration for this node.
+	// +optional
+	VPA *VerticalAutoscalingConfig `json:"vpa,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode

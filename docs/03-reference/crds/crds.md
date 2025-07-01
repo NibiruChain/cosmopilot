@@ -45,6 +45,9 @@ This page provides a detailed reference for the available Custom Resource Defini
 * [Upgrade](#upgrade)
 * [UpgradeSpec](#upgradespec)
 * [ValidatorInfo](#validatorinfo)
+* [VerticalAutoscalingConfig](#verticalautoscalingconfig)
+* [VerticalAutoscalingMetricConfig](#verticalautoscalingmetricconfig)
+* [VerticalAutoscalingRule](#verticalautoscalingrule)
 * [VolumeSnapshotsConfig](#volumesnapshotsconfig)
 * [VolumeSpec](#volumespec)
 
@@ -90,6 +93,7 @@ ChainNodeSpec defines the desired state of ChainNode.
 | nodeSelector | Selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. | map[string]string | false |
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
+| vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -266,6 +270,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | stateSyncRestore | Configures these nodes to find state-sync snapshots on the network and restore from it. This is disabled by default. | *bool | false |
 | inheritValidatorGasPrice | Whether these nodes should inherit gas price from validator (if there is not configured on this ChainNodeSet) Defaults to `true`. | *bool | false |
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
+| vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -286,6 +291,7 @@ NodeSetValidatorConfig contains validator configurations.
 | tmKMS | TmKMS configuration for signing commits for this validator. When configured, .spec.validator.privateKeySecret will not be mounted on the validator node. | *[TmKMS](#tmkms) | false |
 | stateSyncRestore | Configures this node to find a state-sync snapshot on the network and restore from it. This is disabled by default. | *bool | false |
 | createValidator | Indicates cosmopilot should run create-validator tx to make this node a validator. | *[CreateValidatorConfig](#createvalidatorconfig) | false |
+| vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -655,6 +661,47 @@ ValidatorInfo contains information about this validator.
 | details | Details of this validator. | *string | false |
 | website | Website of the validator. | *string | false |
 | identity | Identity signature of this validator. | *string | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### VerticalAutoscalingConfig
+
+VerticalAutoscalingConfig defines rules and thresholds for vertical autoscaling of a pod.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| enabled | Enables vertical autoscaling for the pod. | bool | true |
+| cpu | CPU resource autoscaling configuration. | *[VerticalAutoscalingMetricConfig](#verticalautoscalingmetricconfig) | false |
+| memory | Memory resource autoscaling configuration. | *[VerticalAutoscalingMetricConfig](#verticalautoscalingmetricconfig) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### VerticalAutoscalingMetricConfig
+
+VerticalAutoscalingMetricConfig defines autoscaling behavior for a specific resource type (CPU or memory).
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| source | Source determines whether to base autoscaling decisions on requests, limits, or effective limit. Valid values are: `effective-limit` (default) (use limits if set; otherwise fallback to requests) `requests` (use the pod’s requested resource value) `limits` (use the pod’s resource limit value) | *LimitSource | false |
+| min | Minimum resource value allowed during scaling (e.g. \"100m\" or \"128Mi\"). | resource.Quantity | true |
+| max | Maximum resource value allowed during scaling (e.g. \"8000m\" or \"2Gi\"). | resource.Quantity | true |
+| rules | Rules define when and how scaling should occur based on sustained usage levels. | []*[VerticalAutoscalingRule](#verticalautoscalingrule) | true |
+| cooldown | Cooldown is the minimum duration to wait between consecutive scaling actions. Defaults to \"5m\". | *string | false |
+| limitStrategy | LimitStrategy controls how resource limits should be updated after autoscaling. Valid values are: `retain` (default) (keep original limits) `equal` (match request value) `max` (use configured VPA Max) `percentage` (request × percentage) `unset` (remove the limits field entirely) | *LimitUpdateStrategy | false |
+| limitPercentage | LimitPercentage defines the percentage multiplier to apply when using \"percentage\" LimitStrategy. For example, 150 means limit = request * 1.5. Only used when LimitStrategy = \"percentage\". Defaults to `150` when not set. | *int | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### VerticalAutoscalingRule
+
+VerticalAutoscalingRule defines a single rule for when to trigger a scaling adjustment.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| direction | Direction of scaling: \"up\" or \"down\". | ScalingDirection | true |
+| usagePercent | UsagePercent is the resource usage percentage (0–100) that must be met. Usage is compared against the selected Source value. | int | true |
+| duration | Duration is the length of time the usage must remain above/below the threshold before scaling. Defaults to \"5m\". | *string | false |
+| stepPercent | StepPercent defines how much to adjust the resource by, as a percentage of the current value. For example, 50 = scale by 50% of current value. | int | true |
 
 [Back to Custom Resources](#custom-resources)
 

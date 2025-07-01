@@ -111,7 +111,7 @@ func TestStatsCollector_AverageUsage_RespectsWindow(t *testing.T) {
 	cpuAvg := collector.AverageCPUUsage(time.Minute)
 	memAvg := collector.AverageMemoryUsage(time.Minute)
 
-	// Average is based only on deltas between last two (10 - 5) / 15s = ~0.333... but we assume 1s interval
+	// Average CPU usage = (deltaCPU) / (deltaTime) = (10 - 5) / 1s = 5
 	assert.Equal(t, float64(5), cpuAvg)
 	assert.Equal(t, uint64(1250), memAvg) // avg of 1000 and 1500
 }

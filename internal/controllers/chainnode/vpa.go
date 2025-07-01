@@ -1,0 +1,397 @@
+package chainnode
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
+)
+
+const OneMiB = int64(1024 * 1024)
+
+func (r *Reconciler) maybeGetVpaResources(ctx context.Context, chainNode *appsv1.ChainNode) (corev1.ResourceRequirements, error) {
+	logger := log.FromContext(ctx).WithValues("module", "vpa")
+
+	if !chainNode.Spec.VPA.IsEnabled() {
+		return chainNode.Spec.Resources, nil
+	}
+
+	// Clone the last applied or fallback
+	updated := getVpaLastAppliedResourcesOrFallback(chainNode)
+	var cpuScaleTs, memScaleTs time.Time
+
+	client := nodeutils.NewClient(chainNode.GetNodeFQDN())
+
+	if chainNode.Spec.VPA.CPU != nil && !withinCooldown(getLastCpuScaleTime(chainNode), chainNode.Spec.VPA.CPU.GetCooldownDuration()) {
+		for _, rule := range chainNode.Spec.VPA.CPU.Rules {
+			shouldScale, newCpuRequest, err := r.evaluateCpuRule(chainNode, client, updated, chainNode.Spec.VPA.CPU, rule)
+			if err != nil {
+				return getVpaLastAppliedResourcesOrFallback(chainNode), err
+			}
+
+			if shouldScale {
+				oldCpuRequest := updated.Requests[corev1.ResourceCPU]
+				var oldCpuLimit *resource.Quantity
+				if v, ok := updated.Limits[corev1.ResourceCPU]; ok {
+					oldCpuLimit = &v
+				}
+
+				updated.Requests[corev1.ResourceCPU] = newCpuRequest
+				cpuScaleTs = time.Now()
+
+				newCpuLimit := calculateLimitFromRequest(chainNode, newCpuRequest, chainNode.Spec.VPA.CPU, corev1.ResourceCPU)
+				if newCpuLimit != nil {
+					if updated.Limits == nil {
+						updated.Limits = corev1.ResourceList{}
+					}
+					updated.Limits[corev1.ResourceCPU] = *newCpuLimit
+				} else {
+					delete(updated.Limits, corev1.ResourceCPU)
+				}
+
+				logger.Info("scaling cpu",
+					"old-request", oldCpuRequest,
+					"new-request", newCpuRequest,
+					"old-limit", oldCpuLimit,
+					"new-limit", newCpuLimit,
+				)
+				break
+			}
+		}
+	} else {
+		logger.Info("vpa is within cooldown period for cpu scaling", "cooldown", chainNode.Spec.VPA.CPU.GetCooldownDuration())
+	}
+
+	if chainNode.Spec.VPA.Memory != nil && !withinCooldown(getLastMemoryScaleTime(chainNode), chainNode.Spec.VPA.Memory.GetCooldownDuration()) {
+		for _, rule := range chainNode.Spec.VPA.Memory.Rules {
+			shouldScale, newMemRequest, err := r.evaluateMemoryRule(chainNode, client, updated, chainNode.Spec.VPA.Memory, rule)
+			if err != nil {
+				return getVpaLastAppliedResourcesOrFallback(chainNode), err
+			}
+
+			if shouldScale {
+				oldMemRequest := updated.Requests[corev1.ResourceMemory]
+				var oldMemLimit *resource.Quantity
+				if v, ok := updated.Limits[corev1.ResourceMemory]; ok {
+					oldMemLimit = &v
+				}
+
+				updated.Requests[corev1.ResourceMemory] = newMemRequest
+				memScaleTs = time.Now()
+
+				newMemLimit := calculateLimitFromRequest(chainNode, newMemRequest, chainNode.Spec.VPA.Memory, corev1.ResourceMemory)
+				if newMemLimit != nil {
+					if updated.Limits == nil {
+						updated.Limits = corev1.ResourceList{}
+					}
+					updated.Limits[corev1.ResourceMemory] = *newMemLimit
+				} else {
+					delete(updated.Limits, corev1.ResourceMemory)
+				}
+
+				logger.Info("scaling memory",
+					"old-request", oldMemRequest,
+					"new-request", newMemRequest,
+					"old-limit", oldMemLimit,
+					"new-limit", newMemLimit,
+				)
+				break
+			}
+		}
+	} else {
+		logger.Info("vpa is within cooldown period for memory scaling", "cooldown", chainNode.Spec.VPA.Memory.GetCooldownDuration())
+	}
+
+	return updated, r.storeVpaLastAppliedResources(ctx, chainNode, updated, cpuScaleTs, memScaleTs)
+}
+
+func getScaleReason(direction appsv1.ScalingDirection) string {
+	if direction == appsv1.ScaleUp {
+		return appsv1.ReasonVPAScaleUp
+	}
+	return appsv1.ReasonVPAScaleDown
+}
+
+func (r *Reconciler) evaluateCpuRule(chainNode *appsv1.ChainNode, client *nodeutils.Client, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
+	avg, err := client.GetCPUStats(rule.GetDuration())
+	if err != nil {
+		return false, resource.Quantity{}, err
+	}
+
+	if avg == 0 {
+		return false, resource.Quantity{}, nil
+	}
+
+	limit, err := getSourceCpuQuantity(current, cfg.GetSource())
+	if err != nil {
+		return false, resource.Quantity{}, err
+	}
+
+	limitMillicores := limit.MilliValue()
+	usedPercent := int((avg * 1000 / float64(limitMillicores)) * 100)
+
+	if (rule.Direction == appsv1.ScaleUp && usedPercent >= rule.UsagePercent) || (rule.Direction == appsv1.ScaleDown && usedPercent <= rule.UsagePercent) {
+		step := limitMillicores * int64(rule.StepPercent) / 100
+		var newVal int64
+		if rule.Direction == appsv1.ScaleUp {
+			newVal = limitMillicores + step
+		} else {
+			newVal = limitMillicores - step
+		}
+		// Clamp
+		newVal = clamp(newVal, cfg.Min.MilliValue(), cfg.Max.MilliValue())
+		newQuantity := resource.NewMilliQuantity(newVal, resource.DecimalSI)
+
+		r.recorder.Eventf(chainNode, corev1.EventTypeNormal, getScaleReason(rule.Direction),
+			"Scaling CPU requests %s from %s to %s (CPU usage was at %d%% for the past %s)",
+			rule.Direction, limit.String(), newQuantity.String(), usedPercent, rule.GetDuration().String(),
+		)
+
+		return true, *newQuantity, nil
+	}
+
+	return false, resource.Quantity{}, nil
+}
+
+func (r *Reconciler) evaluateMemoryRule(chainNode *appsv1.ChainNode, client *nodeutils.Client, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
+	avg, err := client.GetMemoryStats(rule.GetDuration())
+	if err != nil {
+		return false, resource.Quantity{}, err
+	}
+
+	if avg == 0 {
+		return false, resource.Quantity{}, nil
+	}
+
+	limit, err := getSourceMemoryQuantity(current, cfg.GetSource())
+	if err != nil {
+		return false, resource.Quantity{}, err
+	}
+
+	limitBytes := limit.Value()
+	if limitBytes == 0 {
+		return false, resource.Quantity{}, fmt.Errorf("memory limit is zero, cannot evaluate")
+	}
+
+	usedPercent := int((float64(avg) / float64(limitBytes)) * 100)
+
+	if (rule.Direction == appsv1.ScaleUp && usedPercent >= rule.UsagePercent) ||
+		(rule.Direction == appsv1.ScaleDown && usedPercent <= rule.UsagePercent) {
+		step := int64(float64(limitBytes) * float64(rule.StepPercent) / 100.0)
+		var newVal int64
+		if rule.Direction == appsv1.ScaleUp {
+			newVal = limitBytes + step
+		} else {
+			newVal = limitBytes - step
+		}
+		// Clamp within configured min/max
+		newVal = clamp(newVal, cfg.Min.Value(), cfg.Max.Value())
+
+		// Round up to nearest MiB
+		rounded := ((newVal + OneMiB - 1) / OneMiB) * OneMiB
+		newQuantity := resource.NewQuantity(rounded, resource.BinarySI)
+
+		r.recorder.Eventf(chainNode, corev1.EventTypeNormal, getScaleReason(rule.Direction),
+			"Scaling memory requests %s from %s to %s (Memory usage was at %d%% for the past %s)",
+			rule.Direction, limit.String(), newQuantity.String(), usedPercent, rule.GetDuration().String(),
+		)
+
+		return true, *newQuantity, nil
+	}
+
+	return false, resource.Quantity{}, nil
+}
+
+func getSourceCpuQuantity(current corev1.ResourceRequirements, source appsv1.LimitSource) (resource.Quantity, error) {
+	return getSourceQuantity(current, source, corev1.ResourceCPU)
+}
+
+func getSourceMemoryQuantity(current corev1.ResourceRequirements, source appsv1.LimitSource) (resource.Quantity, error) {
+	return getSourceQuantity(current, source, corev1.ResourceMemory)
+}
+
+func getSourceQuantity(current corev1.ResourceRequirements, source appsv1.LimitSource, name corev1.ResourceName) (resource.Quantity, error) {
+	switch source {
+	case appsv1.Limits:
+		if cpu, ok := current.Limits[name]; ok {
+			return cpu, nil
+		}
+		return resource.Quantity{}, fmt.Errorf("no %s %s found", name, source)
+
+	case appsv1.Requests:
+		if cpu, ok := current.Requests[name]; ok {
+			return cpu, nil
+		}
+		return resource.Quantity{}, fmt.Errorf("no %s %s found", name, source)
+
+	case appsv1.EffectiveLimit:
+		if cpu, ok := current.Limits[name]; ok {
+			return cpu, nil
+		}
+		// Fallback to requests
+		if q, ok := current.Requests[name]; ok {
+			return q, nil
+		}
+		return resource.Quantity{}, fmt.Errorf("no %s limits or requests found", name)
+
+	default:
+		return resource.Quantity{}, fmt.Errorf("invalid limit source")
+	}
+}
+
+func withinCooldown(last time.Time, cooldown time.Duration) bool {
+	return time.Since(last) < cooldown
+}
+
+func getLastCpuScaleTime(chainNode *appsv1.ChainNode) time.Time {
+	if s, ok := chainNode.ObjectMeta.Annotations[annotationVPALastCPUScale]; ok {
+		if ts, err := time.Parse(timeLayout, s); err == nil {
+			return ts.UTC()
+		}
+	}
+	return time.Time{}
+}
+
+func getLastMemoryScaleTime(chainNode *appsv1.ChainNode) time.Time {
+	if s, ok := chainNode.ObjectMeta.Annotations[annotationVPALastMemoryScale]; ok {
+		if ts, err := time.Parse(timeLayout, s); err == nil {
+			return ts.UTC()
+		}
+	}
+	return time.Time{}
+}
+
+func (r *Reconciler) storeVpaLastAppliedResources(
+	ctx context.Context,
+	chainNode *appsv1.ChainNode,
+	resources corev1.ResourceRequirements,
+	cpuScaleTs, memScaleTs time.Time,
+) error {
+	logger := log.FromContext(ctx).WithValues("module", "vpa")
+
+	// Serialize current resources
+	b, err := json.Marshal(resources)
+	if err != nil {
+		return err
+	}
+	newResourcesJSON := string(b)
+
+	// Get current annotations
+	annotations := chainNode.Annotations
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+
+	changed := false
+
+	// Compare resources
+	if annotations[annotationVPAResources] != newResourcesJSON {
+		annotations[annotationVPAResources] = newResourcesJSON
+		changed = true
+	}
+
+	// Compare CPU timestamp
+	if !cpuScaleTs.IsZero() {
+		newCPUTime := cpuScaleTs.UTC().Format(timeLayout)
+		if annotations[annotationVPALastCPUScale] != newCPUTime {
+			annotations[annotationVPALastCPUScale] = newCPUTime
+			changed = true
+		}
+	}
+
+	// Compare Memory timestamp
+	if !memScaleTs.IsZero() {
+		newMemTime := memScaleTs.UTC().Format(timeLayout)
+		if annotations[annotationVPALastMemoryScale] != newMemTime {
+			annotations[annotationVPALastMemoryScale] = newMemTime
+			changed = true
+		}
+	}
+
+	if changed {
+		logger.Info("updating annotations")
+		chainNode.Annotations = annotations
+		return r.Update(ctx, chainNode)
+	}
+	return nil
+}
+
+func getVpaLastAppliedResourcesOrFallback(chainNode *appsv1.ChainNode) corev1.ResourceRequirements {
+	data, ok := chainNode.Annotations[annotationVPAResources]
+	if !ok {
+		return chainNode.Spec.Resources
+	}
+
+	resources := corev1.ResourceRequirements{}
+	if err := json.Unmarshal([]byte(data), &resources); err != nil {
+		return chainNode.Spec.Resources
+	}
+
+	return resources
+}
+
+func clamp(val, min, max int64) int64 {
+	if val < min {
+		return min
+	}
+	if val > max {
+		return max
+	}
+	return val
+}
+
+func calculateLimitFromRequest(chainNode *appsv1.ChainNode, request resource.Quantity, cfg *appsv1.VerticalAutoscalingMetricConfig, resourceName corev1.ResourceName) *resource.Quantity {
+	switch cfg.GetLimitUpdateStrategy() {
+	case appsv1.LimitEqual:
+		// Match requests
+		limit := request.DeepCopy()
+		return &limit
+
+	case appsv1.LimitVpaMax:
+		// Use configured max
+		limit := cfg.Max.DeepCopy()
+		return &limit
+
+	case appsv1.LimitPercentage:
+		// Use % of requests
+		percent := cfg.GetLimitPercentage()
+
+		if resourceName == corev1.ResourceCPU {
+			val := request.MilliValue()
+			adjusted := val * int64(percent) / 100
+			return resource.NewMilliQuantity(adjusted, resource.DecimalSI)
+		}
+
+		valBytes := request.Value() // memory in bytes
+		adjustedBytes := valBytes * int64(percent) / 100
+
+		// Round to MiB boundary to avoid KiB-level noise
+		adjustedMiB := (adjustedBytes + OneMiB - 1) / OneMiB // round up
+		adjusted := adjustedMiB * OneMiB
+		return resource.NewQuantity(adjusted, resource.BinarySI)
+
+	case appsv1.LimitUnset:
+		// Clear limits entirely
+		return nil
+
+	case appsv1.LimitRetain:
+		// Copy from ChainNode .spec.resources if it exists
+		if chainNode.Spec.Resources.Limits != nil {
+			qtt, ok := chainNode.Spec.Resources.Limits[resourceName]
+			if ok {
+				return &qtt
+			}
+		}
+		return nil
+
+	default:
+		return nil
+	}
+}
