@@ -11,6 +11,7 @@ const (
 	LabelChainNodeSetValidator = "validator"
 	LabelGlobalIngress         = "global-ingress"
 	LabelScope                 = "scope"
+	LabelChainID               = "chain-id"
 
 	scopeGlobal = "global"
 	scopeGroup  = "group"
@@ -18,6 +19,7 @@ const (
 	ingressClassNameNginx = "nginx"
 
 	validatorGroupName = "validator"
+	StringValueTrue    = "true"
 )
 
 var (

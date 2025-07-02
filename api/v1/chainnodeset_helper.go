@@ -117,6 +117,20 @@ func (group *NodeGroupSpec) ShouldInheritValidatorGasPrice() bool {
 	return true
 }
 
+func (group *NodeGroupSpec) HasPdbEnabled() bool {
+	if group.PDB != nil {
+		return group.PDB.Enabled
+	}
+	return false
+}
+
+func (group *NodeGroupSpec) GetPdbMinAvailable() int {
+	if group.PDB != nil && group.PDB.MinAvailable != nil {
+		return *group.PDB.MinAvailable
+	}
+	return group.GetInstances() - 1
+}
+
 // Validator methods
 
 func (val *NodeSetValidatorConfig) GetPrivKeySecretName(obj client.Object) string {
@@ -167,6 +181,20 @@ func (val *NodeSetValidatorConfig) GetInitVotingPeriod() string {
 		return *val.Init.VotingPeriod
 	}
 	return DefaultVotingPeriod
+}
+
+func (val *NodeSetValidatorConfig) HasPdbEnabled() bool {
+	if val.PDB != nil {
+		return val.PDB.Enabled
+	}
+	return false
+}
+
+func (val *NodeSetValidatorConfig) GetPdbMinAvailable() int {
+	if val.PDB != nil && val.PDB.MinAvailable != nil {
+		return *val.PDB.MinAvailable
+	}
+	return 0
 }
 
 // Global Ingress helper methods

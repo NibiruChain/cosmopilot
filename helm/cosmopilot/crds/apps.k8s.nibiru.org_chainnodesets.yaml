@@ -2009,6 +2009,21 @@ spec:
                         Selector which must be true for the pod to fit on a node.
                         Selector which must match a node's labels for the pod to be scheduled on that node.
                       type: object
+                    pdb:
+                      description: Pod Disruption Budget configuration for this group.
+                      properties:
+                        enabled:
+                          description: Whether to deploy a Pod Disruption Budget
+                          type: boolean
+                        minAvailable:
+                          description: |-
+                            MinAvailable indicates minAvailable field set in PDB.
+                            Defaults to the number of instances in the group minus 1,
+                            i.e. it allows only a single disruption.
+                          type: integer
+                      required:
+                      - enabled
+                      type: object
                     peers:
                       description: Additional persistent peers that should be added
                         to these nodes.
@@ -4417,6 +4432,25 @@ spec:
                     description: |-
                       Selector which must be true for the pod to fit on a node.
                       Selector which must match a node's labels for the pod to be scheduled on that node.
+                    type: object
+                  pdb:
+                    description: |-
+                      Pod Disruption Budget configuration for the validator pod.
+                      This is mainly useful in testnets where multiple validators might run in the same namespace.
+                      In production mainnet environments, where typically only one validator runs per namespace,
+                      this is rarely needed.
+                    properties:
+                      enabled:
+                        description: Whether to deploy a Pod Disruption Budget
+                        type: boolean
+                      minAvailable:
+                        description: |-
+                          MinAvailable indicates minAvailable field set in PDB.
+                          Defaults to the number of instances in the group minus 1,
+                          i.e. it allows only a single disruption.
+                        type: integer
+                    required:
+                    - enabled
                     type: object
                   persistence:
                     description: |-

@@ -205,6 +205,13 @@ type NodeSetValidatorConfig struct {
 	// Vertical Pod Autoscaling configuration for this node.
 	// +optional
 	VPA *VerticalAutoscalingConfig `json:"vpa,omitempty"`
+
+	// Pod Disruption Budget configuration for the validator pod.
+	// This is mainly useful in testnets where multiple validators might run in the same namespace.
+	// In production mainnet environments, where typically only one validator runs per namespace,
+	// this is rarely needed.
+	// +optional
+	PDB *PdbConfig `json:"pdb,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group.
@@ -270,6 +277,10 @@ type NodeGroupSpec struct {
 	// Vertical Pod Autoscaling configuration for this node.
 	// +optional
 	VPA *VerticalAutoscalingConfig `json:"vpa,omitempty"`
+
+	// Pod Disruption Budget configuration for this group.
+	// +optional
+	PDB *PdbConfig `json:"pdb,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints.
@@ -358,4 +369,15 @@ type GlobalIngressConfig struct {
 	// Name of the secret containing TLS certificate.
 	// +optional
 	TlsSecretName *string `json:"tlsSecretName,omitempty"`
+}
+
+type PdbConfig struct {
+	// Whether to deploy a Pod Disruption Budget
+	Enabled bool `json:"enabled"`
+
+	// MinAvailable indicates minAvailable field set in PDB.
+	// Defaults to the number of instances in the group minus 1,
+	// i.e. it allows only a single disruption.
+	// +optional
+	MinAvailable *int `json:"minAvailable,omitempty"`
 }

@@ -52,7 +52,7 @@ type ChainNodeList struct {
 //+kubebuilder:printcolumn:name="Jailed",type=boolean,JSONPath=`.status.jailed`
 //+kubebuilder:printcolumn:name="DataUsage",type=string,JSONPath=`.status.dataUsage`
 //+kubebuilder:printcolumn:name="LatestHeight",type=integer,JSONPath=`.status.latestHeight`
-// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+//+kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // ChainNode is the Schema for the chainnodes API.
 type ChainNode struct {

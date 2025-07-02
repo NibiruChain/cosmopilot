@@ -20,6 +20,7 @@ This page provides a detailed reference for the available Custom Resource Defini
 * [IngressConfig](#ingressconfig)
 * [NodeGroupSpec](#nodegroupspec)
 * [NodeSetValidatorConfig](#nodesetvalidatorconfig)
+* [PdbConfig](#pdbconfig)
 * [AccountAssets](#accountassets)
 * [AppSpec](#appspec)
 * [ChainNodeAssets](#chainnodeassets)
@@ -271,6 +272,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | inheritValidatorGasPrice | Whether these nodes should inherit gas price from validator (if there is not configured on this ChainNodeSet) Defaults to `true`. | *bool | false |
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
+| pdb | Pod Disruption Budget configuration for this group. | *[PdbConfig](#pdbconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -292,6 +294,18 @@ NodeSetValidatorConfig contains validator configurations.
 | stateSyncRestore | Configures this node to find a state-sync snapshot on the network and restore from it. This is disabled by default. | *bool | false |
 | createValidator | Indicates cosmopilot should run create-validator tx to make this node a validator. | *[CreateValidatorConfig](#createvalidatorconfig) | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
+| pdb | Pod Disruption Budget configuration for the validator pod. This is mainly useful in testnets where multiple validators might run in the same namespace. In production mainnet environments, where typically only one validator runs per namespace, this is rarely needed. | *[PdbConfig](#pdbconfig) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### PdbConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| enabled | Whether to deploy a Pod Disruption Budget | bool | true |
+| minAvailable | MinAvailable indicates minAvailable field set in PDB. Defaults to the number of instances in the group minus 1, i.e. it allows only a single disruption. | *int | false |
 
 [Back to Custom Resources](#custom-resources)
 
