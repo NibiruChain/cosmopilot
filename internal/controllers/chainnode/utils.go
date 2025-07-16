@@ -3,7 +3,11 @@ package chainnode
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
@@ -19,23 +23,67 @@ func WithChainNodeLabels(chainNode *appsv1.ChainNode, additional ...map[string]s
 	return labels
 }
 
-func (r *Reconciler) filterNonReadyPeers(ctx context.Context, chainNode *appsv1.ChainNode, peers []appsv1.Peer) []appsv1.Peer {
+func (r *Reconciler) filterNonWorkingPeers(ctx context.Context, chainNode *appsv1.ChainNode, peers []appsv1.Peer) []appsv1.Peer {
 	logger := log.FromContext(ctx)
 	workingPeers := make([]appsv1.Peer, 0)
 
 	for _, peer := range peers {
-		client, err := r.getChainNodeClientByHost(fmt.Sprintf("%s.%s.svc.cluster.local", peer.Address, chainNode.GetNamespace()))
+		peerName := strings.TrimSuffix(peer.Address, "-internal")
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      peerName,
+				Namespace: chainNode.Namespace,
+			},
+		}
+
+		err := r.Get(ctx, client.ObjectKeyFromObject(pod), pod)
 		if err != nil {
-			logger.Info("excluding peer from rpc-servers list", "peer", peer.ID, "address", peer.Address)
+			logger.Info("excluding peer from rpc-servers list",
+				"id", peer.ID,
+				"peer", peerName,
+				"reason", fmt.Errorf("error retrieving pod: %v", err),
+			)
 			continue
 		}
-		_, err = client.GetNodeStatus(ctx)
+
+		if !IsPodReady(pod) {
+			logger.Info("excluding peer from rpc-servers list",
+				"id", peer.ID,
+				"peer", peerName,
+				"reason", "pod is not ready",
+			)
+			continue
+		}
+
+		c, err := r.getChainNodeClientByHost(fmt.Sprintf("%s.%s.svc.cluster.local", peer.Address, chainNode.GetNamespace()))
 		if err != nil {
-			logger.Info("excluding peer from rpc-servers list", "peer", peer.ID, "address", peer.Address)
+			logger.Info("excluding peer from rpc-servers list",
+				"id", peer.ID,
+				"peer", peerName,
+				"reason", fmt.Errorf("error creating chainnode client: %v", err),
+			)
+			continue
+		}
+		_, err = c.GetNodeStatus(ctx)
+		if err != nil {
+			logger.Info("excluding peer from rpc-servers list",
+				"id", peer.ID,
+				"peer", peerName,
+				"reason", fmt.Errorf("error retrieving node status: %v", err),
+			)
 			continue
 		}
 		workingPeers = append(workingPeers, peer)
 	}
 
 	return workingPeers
+}
+
+func IsPodReady(pod *corev1.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
