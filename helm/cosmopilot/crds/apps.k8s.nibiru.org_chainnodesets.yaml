@@ -1998,6 +1998,7 @@ spec:
                     instances:
                       default: 1
                       description: Number of ChainNode instances to run on this group.
+                      minimum: 0
                       type: integer
                     name:
                       description: Name of this group.
@@ -2135,8 +2136,9 @@ spec:
                             according to this config.
                           properties:
                             disableWhileSyncing:
+                              default: true
                               description: Whether to disable snapshots while the
-                                node is syncing
+                                node is syncing. Defaults to `true`.
                               type: boolean
                             exportTarball:
                               description: Whether to create a tarball of data directory
@@ -2291,6 +2293,13 @@ spec:
                             More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                           type: object
                       type: object
+                    snapshotNodeIndex:
+                      default: 0
+                      description: |-
+                        Index of the node in the group to take volume snapshots from (if enabled).
+                        Defaults to `0`.
+                      minimum: 0
+                      type: integer
                     stateSyncRestore:
                       description: |-
                         Configures these nodes to find state-sync snapshots on the network and restore from it.
@@ -4537,8 +4546,9 @@ spec:
                           according to this config.
                         properties:
                           disableWhileSyncing:
+                            default: true
                             description: Whether to disable snapshots while the node
-                              is syncing
+                              is syncing. Defaults to `true`.
                             type: boolean
                           exportTarball:
                             description: Whether to create a tarball of data directory

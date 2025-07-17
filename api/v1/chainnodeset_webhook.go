@@ -62,6 +62,10 @@ func (nodeSet *ChainNodeSet) Validate(old *ChainNodeSet) (admission.Warnings, er
 				return nil, fmt.Errorf("bad format for .spec.nodes[%d].persistence.size: %v", i, err)
 			}
 		}
+
+		if group.GetSnapshotNodeIndex() < 0 || group.GetSnapshotNodeIndex() >= group.GetInstances() {
+			return nil, fmt.Errorf(".spec.nodes[%d].snapshotNodeIndex is out of range", i)
+		}
 	}
 
 	return nil, nil

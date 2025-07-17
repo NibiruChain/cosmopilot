@@ -131,6 +131,13 @@ func (group *NodeGroupSpec) GetPdbMinAvailable() int {
 	return group.GetInstances() - 1
 }
 
+func (group *NodeGroupSpec) GetSnapshotNodeIndex() int {
+	if group.SnapshotNodeIndex != nil {
+		return *group.SnapshotNodeIndex
+	}
+	return 0
+}
+
 // Validator methods
 
 func (val *NodeSetValidatorConfig) GetPrivKeySecretName(obj client.Object) string {

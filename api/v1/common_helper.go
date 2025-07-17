@@ -423,7 +423,7 @@ func (s *VolumeSnapshotsConfig) ShouldDisableWhileSyncing() bool {
 	if s != nil && s.DisableWhileSyncing != nil {
 		return *s.DisableWhileSyncing
 	}
-	return false
+	return true
 }
 
 // ExportTarballConfig helper methods

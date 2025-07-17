@@ -2004,8 +2004,9 @@ spec:
                       according to this config.
                     properties:
                       disableWhileSyncing:
+                        default: true
                         description: Whether to disable snapshots while the node is
-                          syncing
+                          syncing. Defaults to `true`.
                         type: boolean
                       exportTarball:
                         description: Whether to create a tarball of data directory

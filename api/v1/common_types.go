@@ -722,8 +722,9 @@ type VolumeSnapshotsConfig struct {
 	// +default=false
 	Verify *bool `json:"verify,omitempty"`
 
-	// Whether to disable snapshots while the node is syncing
+	// Whether to disable snapshots while the node is syncing. Defaults to `true`.
 	// +optional
+	// +default=true
 	DisableWhileSyncing *bool `json:"disableWhileSyncing,omitempty"`
 }
 

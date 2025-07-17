@@ -224,6 +224,7 @@ type NodeGroupSpec struct {
 	// Number of ChainNode instances to run on this group.
 	// +optional
 	// +default=1
+	// +kubebuilder:validation:Minimum=0
 	Instances *int `json:"instances,omitempty"`
 
 	// Specific configurations for these nodes.
@@ -283,6 +284,13 @@ type NodeGroupSpec struct {
 	// Pod Disruption Budget configuration for this group.
 	// +optional
 	PDB *PdbConfig `json:"pdb,omitempty"`
+
+	// Index of the node in the group to take volume snapshots from (if enabled).
+	// Defaults to `0`.
+	// +optional
+	// +default=0
+	// +kubebuilder:validation:Minimum=0
+	SnapshotNodeIndex *int `json:"snapshotNodeIndex,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints.

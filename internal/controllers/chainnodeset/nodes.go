@@ -247,7 +247,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			Genesis:                       genesisConfig,
 			App:                           nodeSet.GetAppSpecWithUpgrades(),
 			Config:                        group.Config,
-			Persistence:                   group.Persistence,
+			Persistence:                   group.Persistence.DeepCopy(),
 			Peers:                         group.Peers,
 			Expose:                        group.Expose,
 			Resources:                     group.Resources,
@@ -302,10 +302,10 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 		node.Labels = utils.MergeMaps(node.Labels, globalIngressLabels)
 	}
 
-	// When enabling snapshots on a group, lets do it only for the first node of the group.
-	// We will also name it after the group, and not the individual node.
-	if index > 0 && group.Persistence != nil {
-		group.Persistence.Snapshots = nil
+	// When enabling snapshots on a group, we only do it on one node, the onde with the index indicated
+	// by `.nodes[].snapshotNodeIndex`.
+	if node.Spec.Persistence != nil && index != group.GetSnapshotNodeIndex() {
+		node.Spec.Persistence.Snapshots = nil
 	}
 
 	return node, controllerutil.SetControllerReference(nodeSet, node, r.Scheme)

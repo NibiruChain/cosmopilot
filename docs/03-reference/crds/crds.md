@@ -273,6 +273,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 | pdb | Pod Disruption Budget configuration for this group. | *[PdbConfig](#pdbconfig) | false |
+| snapshotNodeIndex | Index of the node in the group to take volume snapshots from (if enabled). Defaults to `0`. | *int | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -731,7 +732,7 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 | stopNode | Whether the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
 | exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
 | verify | Whether cosmopilot should verify the snapshot for corruption after it is ready. Defaults to `false`. | *bool | false |
-| disableWhileSyncing | Whether to disable snapshots while the node is syncing | *bool | false |
+| disableWhileSyncing | Whether to disable snapshots while the node is syncing. Defaults to `true`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 
