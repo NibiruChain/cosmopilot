@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
 
@@ -257,7 +258,7 @@ func withinCooldown(last time.Time, cooldown time.Duration) bool {
 }
 
 func getLastCpuScaleTime(chainNode *appsv1.ChainNode) time.Time {
-	if s, ok := chainNode.ObjectMeta.Annotations[annotationVPALastCPUScale]; ok {
+	if s, ok := chainNode.ObjectMeta.Annotations[controllers.AnnotationVPALastCPUScale]; ok {
 		if ts, err := time.Parse(timeLayout, s); err == nil {
 			return ts.UTC()
 		}
@@ -266,7 +267,7 @@ func getLastCpuScaleTime(chainNode *appsv1.ChainNode) time.Time {
 }
 
 func getLastMemoryScaleTime(chainNode *appsv1.ChainNode) time.Time {
-	if s, ok := chainNode.ObjectMeta.Annotations[annotationVPALastMemoryScale]; ok {
+	if s, ok := chainNode.ObjectMeta.Annotations[controllers.AnnotationVPALastMemoryScale]; ok {
 		if ts, err := time.Parse(timeLayout, s); err == nil {
 			return ts.UTC()
 		}
@@ -298,16 +299,16 @@ func (r *Reconciler) storeVpaLastAppliedResources(
 	changed := false
 
 	// Compare resources
-	if annotations[annotationVPAResources] != newResourcesJSON {
-		annotations[annotationVPAResources] = newResourcesJSON
+	if annotations[controllers.AnnotationVPAResources] != newResourcesJSON {
+		annotations[controllers.AnnotationVPAResources] = newResourcesJSON
 		changed = true
 	}
 
 	// Compare CPU timestamp
 	if !cpuScaleTs.IsZero() {
 		newCPUTime := cpuScaleTs.UTC().Format(timeLayout)
-		if annotations[annotationVPALastCPUScale] != newCPUTime {
-			annotations[annotationVPALastCPUScale] = newCPUTime
+		if annotations[controllers.AnnotationVPALastCPUScale] != newCPUTime {
+			annotations[controllers.AnnotationVPALastCPUScale] = newCPUTime
 			changed = true
 		}
 	}
@@ -315,8 +316,8 @@ func (r *Reconciler) storeVpaLastAppliedResources(
 	// Compare Memory timestamp
 	if !memScaleTs.IsZero() {
 		newMemTime := memScaleTs.UTC().Format(timeLayout)
-		if annotations[annotationVPALastMemoryScale] != newMemTime {
-			annotations[annotationVPALastMemoryScale] = newMemTime
+		if annotations[controllers.AnnotationVPALastMemoryScale] != newMemTime {
+			annotations[controllers.AnnotationVPALastMemoryScale] = newMemTime
 			changed = true
 		}
 	}
@@ -330,7 +331,7 @@ func (r *Reconciler) storeVpaLastAppliedResources(
 }
 
 func getVpaLastAppliedResourcesOrFallback(chainNode *appsv1.ChainNode) corev1.ResourceRequirements {
-	data, ok := chainNode.Annotations[annotationVPAResources]
+	data, ok := chainNode.Annotations[controllers.AnnotationVPAResources]
 	if !ok {
 		return chainNode.Spec.Resources
 	}

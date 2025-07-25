@@ -14,6 +14,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
 )
 
@@ -26,7 +27,7 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 		if pvc == nil {
 			return fmt.Errorf("pvc not found")
 		}
-		if v, ok := pvc.Annotations[annotationGenesisDownloaded]; ok && v == StringValueTrue {
+		if v, ok := pvc.Annotations[controllers.AnnotationGenesisDownloaded]; ok && v == controllers.StringValueTrue {
 			return nil
 		}
 	} else if chainNode.Status.ChainID != "" {
@@ -79,7 +80,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 			if pvc.Annotations == nil {
 				pvc.Annotations = map[string]string{}
 			}
-			pvc.Annotations[annotationGenesisDownloaded] = StringValueTrue
+			pvc.Annotations[controllers.AnnotationGenesisDownloaded] = controllers.StringValueTrue
 			if err = r.Update(ctx, pvc); err != nil {
 				return err
 			}
@@ -165,7 +166,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		if pvc.Annotations == nil {
 			pvc.Annotations = map[string]string{}
 		}
-		pvc.Annotations[annotationGenesisDownloaded] = StringValueTrue
+		pvc.Annotations[controllers.AnnotationGenesisDownloaded] = controllers.StringValueTrue
 		if err = r.Update(ctx, pvc); err != nil {
 			return err
 		}

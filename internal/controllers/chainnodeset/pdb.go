@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 )
 
 func (r *Reconciler) ensurePodDisruptionBudgets(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
@@ -22,8 +23,8 @@ func (r *Reconciler) ensurePodDisruptionBudgets(ctx context.Context, nodeSet *ap
 			fmt.Sprintf("%s-validator", nodeSet.GetName()),
 			nodeSet.Spec.Validator.GetPdbMinAvailable(),
 			map[string]string{
-				LabelChainID:               nodeSet.Status.ChainID,
-				LabelChainNodeSetValidator: StringValueTrue,
+				controllers.LabelChainID:               nodeSet.Status.ChainID,
+				controllers.LabelChainNodeSetValidator: controllers.StringValueTrue,
 			},
 		)
 		if err := r.ensurePodDisruptionBudget(ctx, pdb); err != nil {
@@ -42,8 +43,8 @@ func (r *Reconciler) ensurePodDisruptionBudgets(ctx context.Context, nodeSet *ap
 				group.GetServiceName(nodeSet),
 				group.GetPdbMinAvailable(),
 				map[string]string{
-					LabelChainNodeSet:      nodeSet.GetName(),
-					LabelChainNodeSetGroup: group.Name,
+					controllers.LabelChainNodeSet:      nodeSet.GetName(),
+					controllers.LabelChainNodeSetGroup: group.Name,
 				},
 			)
 			if err := r.ensurePodDisruptionBudget(ctx, pdb); err != nil {

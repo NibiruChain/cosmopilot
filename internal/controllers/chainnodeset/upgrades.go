@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 )
 
 func (r *Reconciler) ensureUpgrades(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
@@ -23,7 +24,7 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, nodeSet *appsv1.ChainNo
 
 	// Grab all nodes for this ChainNodeSet
 	selector := labels.SelectorFromSet(map[string]string{
-		LabelChainNodeSet: nodeSet.GetName(),
+		controllers.LabelChainNodeSet: nodeSet.GetName(),
 	})
 	chainNodeList := &appsv1.ChainNodeList{}
 	if err := r.List(ctx, chainNodeList, &client.ListOptions{

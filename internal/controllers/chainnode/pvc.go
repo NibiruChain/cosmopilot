@@ -18,6 +18,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
 
@@ -46,7 +47,7 @@ func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, ch
 	if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
 		return err
 	}
-	pvc.Annotations[annotationDataInitialized] = StringValueTrue
+	pvc.Annotations[controllers.AnnotationDataInitialized] = controllers.StringValueTrue
 	if err := r.Update(ctx, pvc); err != nil {
 		return err
 	}
@@ -91,7 +92,7 @@ func (r *Reconciler) ensureDataVolume(ctx context.Context, app *chainutils.App, 
 			}
 
 			// Get height from the snapshot so that operator knows which version to run in case there were upgrades already.
-			if hs, ok := snapshot.Annotations[annotationDataHeight]; ok {
+			if hs, ok := snapshot.Annotations[controllers.AnnotationDataHeight]; ok {
 				height, err := strconv.ParseInt(hs, 10, 64)
 				if err != nil {
 					return nil, err
@@ -120,8 +121,8 @@ func (r *Reconciler) ensureDataVolume(ctx context.Context, app *chainutils.App, 
 				Namespace: chainNode.GetNamespace(),
 				Labels:    WithChainNodeLabels(chainNode),
 				Annotations: map[string]string{
-					annotationDataInitialized: strconv.FormatBool(chainNode.ShouldRestoreFromSnapshot()),
-					annotationDataHeight:      strconv.FormatInt(chainNode.Status.LatestHeight, 10),
+					controllers.AnnotationDataInitialized: strconv.FormatBool(chainNode.ShouldRestoreFromSnapshot()),
+					controllers.AnnotationDataHeight:      strconv.FormatInt(chainNode.Status.LatestHeight, 10),
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
@@ -159,7 +160,7 @@ func (r *Reconciler) ensureDataVolume(ctx context.Context, app *chainutils.App, 
 		// block height for the data on that volume, so that operator will know which version to run this
 		// node with.
 		if chainNode.Status.PvcSize == "" {
-			if dataHeight, ok := pvc.Annotations[annotationDataHeight]; ok {
+			if dataHeight, ok := pvc.Annotations[controllers.AnnotationDataHeight]; ok {
 				height, err := strconv.ParseInt(dataHeight, 10, 64)
 				if err != nil {
 					return nil, err
@@ -175,7 +176,7 @@ func (r *Reconciler) ensureDataVolume(ctx context.Context, app *chainutils.App, 
 		}
 	}
 
-	if pvc.Annotations[annotationDataInitialized] != StringValueTrue {
+	if pvc.Annotations[controllers.AnnotationDataInitialized] != controllers.StringValueTrue {
 		return pvc, r.initializeData(ctx, app, chainNode, pvc)
 	}
 	return pvc, nil
@@ -194,8 +195,8 @@ func (r *Reconciler) ensurePvcUpdates(ctx context.Context, chainNode *appsv1.Cha
 	}
 
 	dataHeight := strconv.FormatInt(chainNode.Status.LatestHeight, 10)
-	if pvc.Annotations[annotationDataHeight] != dataHeight {
-		pvc.Annotations[annotationDataHeight] = dataHeight
+	if pvc.Annotations[controllers.AnnotationDataHeight] != dataHeight {
+		pvc.Annotations[controllers.AnnotationDataHeight] = dataHeight
 		if err = r.Update(ctx, pvc); err != nil {
 			return err
 		}

@@ -241,8 +241,8 @@ func (r *Reconciler) getServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Servic
 				},
 			},
 			Selector: WithChainNodeLabels(chainNode, map[string]string{
-				LabelNodeID:  chainNode.Status.NodeID,
-				LabelChainID: chainNode.Status.ChainID,
+				controllers.LabelNodeID:  chainNode.Status.NodeID,
+				controllers.LabelChainID: chainNode.Status.ChainID,
 			}),
 		},
 	}
@@ -287,9 +287,11 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 			Name:      fmt.Sprintf("%s-internal", chainNode.GetName()),
 			Namespace: chainNode.GetNamespace(),
 			Labels: WithChainNodeLabels(chainNode, map[string]string{
-				LabelNodeID:    chainNode.Status.NodeID,
-				LabelChainID:   chainNode.Status.ChainID,
-				LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
+				controllers.LabelPeer:      controllers.StringValueTrue,
+				controllers.LabelSeed:      controllers.StringValueFalse,
+				controllers.LabelNodeID:    chainNode.Status.NodeID,
+				controllers.LabelChainID:   chainNode.Status.ChainID,
+				controllers.LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
 			}),
 		},
 		Spec: corev1.ServiceSpec{
@@ -333,8 +335,8 @@ func (r *Reconciler) getInternalServiceSpec(ctx context.Context, chainNode *apps
 				},
 			},
 			Selector: WithChainNodeLabels(chainNode, map[string]string{
-				LabelNodeID:  chainNode.Status.NodeID,
-				LabelChainID: chainNode.Status.ChainID,
+				controllers.LabelNodeID:  chainNode.Status.NodeID,
+				controllers.LabelChainID: chainNode.Status.ChainID,
 			}),
 		},
 	}
@@ -394,8 +396,8 @@ func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Ser
 				},
 			},
 			Selector: WithChainNodeLabels(chainNode, map[string]string{
-				LabelNodeID:  chainNode.Status.NodeID,
-				LabelChainID: chainNode.Status.ChainID,
+				controllers.LabelNodeID:  chainNode.Status.NodeID,
+				controllers.LabelChainID: chainNode.Status.ChainID,
 			}),
 		},
 	}
@@ -447,8 +449,8 @@ func (r *Reconciler) addStateSyncAnnotations(ctx context.Context, chainNode *app
 	if svc.Annotations == nil {
 		svc.Annotations = make(map[string]string)
 	}
-	svc.Annotations[AnnotationStateSyncTrustHeight] = strconv.FormatInt(trustHeight, 10)
-	svc.Annotations[AnnotationStateSyncTrustHash] = trustHash
+	svc.Annotations[controllers.AnnotationStateSyncTrustHeight] = strconv.FormatInt(trustHeight, 10)
+	svc.Annotations[controllers.AnnotationStateSyncTrustHash] = trustHash
 
 	return nil
 }

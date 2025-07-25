@@ -16,11 +16,14 @@ This page provides a detailed reference for the available Custom Resource Defini
 * [ChainNodeSetNodeStatus](#chainnodesetnodestatus)
 * [ChainNodeSetSpec](#chainnodesetspec)
 * [ChainNodeSetStatus](#chainnodesetstatus)
+* [CosmoseedConfig](#cosmoseedconfig)
+* [CosmoseedIngressConfig](#cosmoseedingressconfig)
 * [GlobalIngressConfig](#globalingressconfig)
 * [IngressConfig](#ingressconfig)
 * [NodeGroupSpec](#nodegroupspec)
 * [NodeSetValidatorConfig](#nodesetvalidatorconfig)
 * [PdbConfig](#pdbconfig)
+* [SeedStatus](#seedstatus)
 * [AccountAssets](#accountassets)
 * [AppSpec](#appspec)
 * [ChainNodeAssets](#chainnodeassets)
@@ -192,6 +195,7 @@ ChainNodeSetSpec defines the desired state of ChainNode.
 | nodes | List of groups of ChainNodes to be run. | [][NodeGroupSpec](#nodegroupspec) | true |
 | rollingUpdates | Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. Cosmopilot will wait for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`. Deprecated: recent versions of `cosmopilot` includes disruption checks when handling pods of the same group. If you need more control over it, please use `.spec.nodes[].pdb` instead. | *bool | false |
 | ingresses | List of ingresses to create for this ChainNodeSet. This allows to create ingresses targeting multiple groups of nodes. | [][GlobalIngressConfig](#globalingressconfig) | false |
+| cosmoseed | Allows deploying seed nodes using Cosmoseed. | *[CosmoseedConfig](#cosmoseedconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -211,6 +215,42 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet.
 | pubKey | Public key of the validator if this ChainNodeSet has one. | string | false |
 | upgrades | All scheduled/completed upgrades performed by cosmopilot on ChainNodes of this CHainNodeSet. | [][Upgrade](#upgrade) | false |
 | latestHeight | Last height read on the nodes by cosmopilot. | int64 | false |
+| seeds | Status of seed nodes (cosmoseed) | [][SeedStatus](#seedstatus) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### CosmoseedConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| enabled | Whether to enable deployment of Cosmoseed. If false or unset, no seed node instances will be created. | *bool | false |
+| instances | Number of seed node instances to deploy. Defaults to 1. | *int | false |
+| expose | Configuration for exposing the P2P endpoint (e.g., via LoadBalancer or NodePort). | *[ExposeConfig](#exposeconfig) | false |
+| resources | Compute Resources to be applied on the cosmoseed container. | corev1.ResourceRequirements | false |
+| addrBookStrict | Whether to enforce strict routability rules for peer addresses. Set to true to only accept publicly routable IPs (recommended for public networks). Set to false to allow local/private IPs (e.g., in testnets or dev environments). Mirrors CometBFT's `addr_book_strict` setting. Defaults to `true`. | *bool | false |
+| maxInboundPeers | Maximum number of inbound P2P connections. Defaults to `2000`. | *int | false |
+| maxOutboundPeers | Maximum number of outbound P2P connections. Defaults to `20`. | *int | false |
+| peerQueueSize | Size of the internal peer queue used by dial workers in the PEX reactor. This queue holds peers to be dialed; dial workers consume from it. If the queue is full, new discovered peers may be discarded. Use together with `DialWorkers` to control peer discovery throughput. Defaults to `1000`. | *int | false |
+| dialWorkers | Number of concurrent dialer workers used for outbound peer discovery. Each worker fetches peers from the queue (`PeerQueueSize`) and attempts to dial them. Higher values increase parallelism, but may increase CPU/network load. Defaults to `20`. | *int | false |
+| maxPacketMsgPayloadSize | Maximum size (in bytes) of packet message payloads over P2P. Defaults to `1024`. | *int | false |
+| additionalSeeds | Additional seed nodes to append to the node’s default seed list. Comma-separated list in the format `nodeID@ip:port`. | *string | false |
+| logLevel | Log level of cosmoseed. Defaults to `info`. | *string | false |
+| ingress | Ingress configuration for cosmoseed nodes. | *[CosmoseedIngressConfig](#cosmoseedingressconfig) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### CosmoseedIngressConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| host | Host in which cosmoseed nodes will be exposed. | string | true |
+| annotations | Annotations to be appended to the ingress. | map[string]string | false |
+| disableTLS | Whether to disable TLS on ingress resource. | bool | false |
+| tlsSecretName | Name of the secret containing TLS certificate. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -307,6 +347,18 @@ NodeSetValidatorConfig contains validator configurations.
 | ----- | ----------- | ------ | -------- |
 | enabled | Whether to deploy a Pod Disruption Budget | bool | true |
 | minAvailable | MinAvailable indicates minAvailable field set in PDB. Defaults to the number of instances in the group minus 1, i.e. it allows only a single disruption. | *int | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### SeedStatus
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name |  | string | true |
+| id |  | string | true |
+| publicAddress |  | string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -516,7 +568,7 @@ InitCommand represents an initialization command. It may be used for running add
 
 #### Peer
 
-Peer represents a persistent peer.
+Peer represents a peer.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -525,6 +577,7 @@ Peer represents a persistent peer.
 | port | P2P port to be used. Defaults to `26656`. | *int | false |
 | unconditional | Indicates this peer is unconditional. | *bool | false |
 | private | Indicates this peer is private. | *bool | false |
+| seed | Indicates this is a seed. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

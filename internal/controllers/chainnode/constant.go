@@ -16,41 +16,12 @@ const (
 	tarballFinished    = "finished"
 	upgradesConfigFile = "upgrades.json"
 
-	LabelNodeID    = "node-id"
-	LabelChainID   = "chain-id"
-	LabelValidator = "validator"
-	LabelChainNode = "chain-node"
-
-	StringValueTrue  = "true"
-	StringValueFalse = "false"
-
-	AnnotationStateSyncTrustHeight    = "apps.k8s.nibiru.org/state-sync-trust-height"
-	AnnotationStateSyncTrustHash      = "apps.k8s.nibiru.org/state-sync-trust-hash"
-	annotationDataHeight              = "apps.k8s.nibiru.org/data-height"
-	annotationSafeEvict               = "cluster-autoscaler.kubernetes.io/safe-to-evict"
-	annotationConfigHash              = "apps.k8s.nibiru.org/config-hash"
-	annotationDataInitialized         = "apps.k8s.nibiru.org/data-initialized"
-	annotationGenesisDownloaded       = "apps.k8s.nibiru.org/genesis-downloaded"
-	annotationVaultKeyUploaded        = "apps.k8s.nibiru.org/vault-key-uploaded"
-	annotationPvcSnapshotInProgress   = "apps.k8s.nibiru.org/snapshotting-pvc"
-	annotationLastPvcSnapshot         = "apps.k8s.nibiru.org/last-pvc-snapshot"
-	annotationSnapshotRetention       = "apps.k8s.nibiru.org/snapshot-retention"
-	annotationPvcSnapshotReady        = "apps.k8s.nibiru.org/snapshot-ready"
-	annotationExportingTarball        = "apps.k8s.nibiru.org/exporting-tarball"
-	annotationSnapshotIntegrityStatus = "apps.k8s.nibiru.org/snapshot-integrity-status"
-	annotationPodSpecHash             = "apps.k8s.nibiru.org/pod-spec-hash"
-	annotationVPAResources            = "apps.k8s.nibiru.org/vpa-resources"
-	annotationVPALastCPUScale         = "apps.k8s.nibiru.org/last-cpu-scale"
-	annotationVPALastMemoryScale      = "apps.k8s.nibiru.org/last-memory-scale"
-
 	timeoutPodRunning              = 5 * time.Minute
 	timeoutPodDeleted              = 2 * time.Minute
 	timeoutWaitServiceIP           = 5 * time.Minute
 	minimumTimeBeforeFirstSnapshot = 10 * time.Minute
 	livenessProbeTimeoutSeconds    = 5
 	readinessProbeTimeoutSeconds   = 5
-
-	prometheusScrapeInterval = "15s"
 
 	nodeUtilsContainerName = "node-utils"
 	nodeUtilsPortName      = "node-utils"

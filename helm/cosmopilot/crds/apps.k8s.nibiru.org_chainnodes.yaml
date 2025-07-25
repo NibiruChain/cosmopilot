@@ -1898,7 +1898,7 @@ spec:
                 description: Additional persistent peers that should be added to this
                   node.
                 items:
-                  description: Peer represents a persistent peer.
+                  description: Peer represents a peer.
                   properties:
                     address:
                       description: Hostname or IP address of this peer.
@@ -1912,6 +1912,9 @@ spec:
                       type: integer
                     private:
                       description: Indicates this peer is private.
+                      type: boolean
+                    seed:
+                      description: Indicates this is a seed.
                       type: boolean
                     unconditional:
                       description: Indicates this peer is unconditional.

@@ -6,20 +6,21 @@ const (
 	ChainNodeWaitTimeout = 3 * time.Minute
 	ChainNodeKind        = "ChainNode"
 
-	LabelChainNodeSet          = "nodeset"
-	LabelChainNodeSetGroup     = "group"
-	LabelChainNodeSetValidator = "validator"
-	LabelGlobalIngress         = "global-ingress"
-	LabelScope                 = "scope"
-	LabelChainID               = "chain-id"
-
 	scopeGlobal = "global"
 	scopeGroup  = "group"
 
 	ingressClassNameNginx = "nginx"
 
 	validatorGroupName = "validator"
-	StringValueTrue    = "true"
+
+	cosmoseedMountPoint      = "/data/cosmoseed"
+	cosmoseedConfigFileName  = "config.yaml"
+	cosmoseedNodeKeyFileName = "nodekey.json"
+	cosmoseedHttpPortName    = "http"
+	cosmoseedHttpPort        = 8080
+	cosmoseedP2pPort         = 26656
+
+	timeoutWaitServiceIP = 5 * time.Minute
 )
 
 var (

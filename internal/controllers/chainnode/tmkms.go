@@ -11,6 +11,7 @@ import (
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
 	"github.com/NibiruChain/cosmopilot/internal/cometbft"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 	"github.com/NibiruChain/cosmopilot/internal/tmkms"
 )
 
@@ -61,7 +62,7 @@ func (r *Reconciler) ensureTmKMSConfig(ctx context.Context, chainNode *appsv1.Ch
 				chainNode.Annotations = make(map[string]string)
 			}
 
-			chainNode.Annotations[annotationVaultKeyUploaded] = strconv.FormatBool(true)
+			chainNode.Annotations[controllers.AnnotationVaultKeyUploaded] = strconv.FormatBool(true)
 			return r.Update(ctx, chainNode)
 		}
 	}
@@ -125,7 +126,7 @@ func (r *Reconciler) getTmkms(chainNode *appsv1.ChainNode) (tmkms.Provider, *tmk
 }
 
 func (r *Reconciler) loadPrivKey(ctx context.Context, chainNode *appsv1.ChainNode) (string, error) {
-	uploaded, ok := chainNode.Annotations[annotationVaultKeyUploaded]
+	uploaded, ok := chainNode.Annotations[controllers.AnnotationVaultKeyUploaded]
 	if ok && uploaded == strconv.FormatBool(true) {
 		return "", nil
 	}

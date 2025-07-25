@@ -74,6 +74,10 @@ type ChainNodeSetSpec struct {
 	// multiple groups of nodes.
 	// +optional
 	Ingresses []GlobalIngressConfig `json:"ingresses,omitempty"`
+
+	// Allows deploying seed nodes using Cosmoseed.
+	// +optional
+	Cosmoseed *CosmoseedConfig `json:"cosmoseed,omitempty"`
 }
 
 // ChainNodeSetStatus defines the observed state of ChainNodeSet.
@@ -118,6 +122,9 @@ type ChainNodeSetStatus struct {
 	// Last height read on the nodes by cosmopilot.
 	// +optional
 	LatestHeight int64 `json:"latestHeight,omitempty"`
+
+	// Status of seed nodes (cosmoseed)
+	Seeds []SeedStatus `json:"seeds,omitempty"`
 }
 
 // ChainNodeSetNodeStatus contains information about a node running on this ChainNodeSet.
@@ -390,4 +397,107 @@ type PdbConfig struct {
 	// i.e. it allows only a single disruption.
 	// +optional
 	MinAvailable *int `json:"minAvailable,omitempty"`
+}
+
+type CosmoseedConfig struct {
+	// Whether to enable deployment of Cosmoseed.
+	// If false or unset, no seed node instances will be created.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Number of seed node instances to deploy.
+	// Defaults to 1.
+	// +optional
+	// +default=1
+	// +kubebuilder:validation:Minimum=0
+	Instances *int `json:"instances,omitempty"`
+
+	// Configuration for exposing the P2P endpoint (e.g., via LoadBalancer or NodePort).
+	// +optional
+	Expose *ExposeConfig `json:"expose,omitempty"`
+
+	// Compute Resources to be applied on the cosmoseed container.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Whether to enforce strict routability rules for peer addresses.
+	// Set to true to only accept publicly routable IPs (recommended for public networks).
+	// Set to false to allow local/private IPs (e.g., in testnets or dev environments).
+	// Mirrors CometBFT's `addr_book_strict` setting.
+	// Defaults to `true`.
+	// +default=true
+	// +optional
+	AddrBookStrict *bool `json:"addrBookStrict,omitempty"`
+
+	// Maximum number of inbound P2P connections.
+	// Defaults to `2000`.
+	// +default=2000
+	// +optional
+	MaxInboundPeers *int `json:"maxInboundPeers,omitempty"`
+
+	// Maximum number of outbound P2P connections.
+	// Defaults to `20`.
+	// +default=20
+	// +optional
+	MaxOutboundPeers *int `json:"maxOutboundPeers,omitempty"`
+
+	// Size of the internal peer queue used by dial workers in the PEX reactor.
+	// This queue holds peers to be dialed; dial workers consume from it.
+	// If the queue is full, new discovered peers may be discarded.
+	// Use together with `DialWorkers` to control peer discovery throughput.
+	// Defaults to `1000`.
+	// +default=1000
+	// +optional
+	PeerQueueSize *int `json:"peerQueueSize,omitempty"`
+
+	// Number of concurrent dialer workers used for outbound peer discovery.
+	// Each worker fetches peers from the queue (`PeerQueueSize`) and attempts to dial them.
+	// Higher values increase parallelism, but may increase CPU/network load.
+	// Defaults to `20`.
+	// +default=20
+	// +optional
+	DialWorkers *int `json:"dialWorkers,omitempty"`
+
+	// Maximum size (in bytes) of packet message payloads over P2P.
+	// Defaults to `1024`.
+	// +default=1024
+	// +optional
+	MaxPacketMsgPayloadSize *int `json:"maxPacketMsgPayloadSize,omitempty"`
+
+	// Additional seed nodes to append to the node’s default seed list.
+	// Comma-separated list in the format `nodeID@ip:port`.
+	// +optional
+	AdditionalSeeds *string `json:"additionalSeeds,omitempty"`
+
+	// Log level of cosmoseed.
+	// Defaults to `info`.
+	// +optional
+	LogLevel *string `json:"logLevel,omitempty"`
+
+	// Ingress configuration for cosmoseed nodes.
+	// +optional
+	Ingress *CosmoseedIngressConfig `json:"ingress,omitempty"`
+}
+
+type SeedStatus struct {
+	Name          string `json:"name"`
+	ID            string `json:"id"`
+	PublicAddress string `json:"publicAddress,omitempty"`
+}
+
+type CosmoseedIngressConfig struct {
+	// Host in which cosmoseed nodes will be exposed.
+	Host string `json:"host"`
+
+	// Annotations to be appended to the ingress.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Whether to disable TLS on ingress resource.
+	// +optional
+	DisableTLS bool `json:"disableTLS,omitempty"`
+
+	// Name of the secret containing TLS certificate.
+	// +optional
+	TlsSecretName *string `json:"tlsSecretName,omitempty"`
 }

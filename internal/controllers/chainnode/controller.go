@@ -193,7 +193,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Create/update configmap with config files
 	logger.V(1).Info("ensure config")
-	configHash, err := r.ensureConfigMap(ctx, app, chainNode, nodePodRunning)
+	configHash, err := r.ensureConfigs(ctx, app, chainNode, nodePodRunning)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

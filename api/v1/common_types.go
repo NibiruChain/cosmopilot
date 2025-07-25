@@ -487,7 +487,9 @@ type GenesisConfig struct {
 	ChainID *string `json:"chainID,omitempty"`
 }
 
-// Peer represents a persistent peer.
+type PeerList []Peer
+
+// Peer represents a peer.
 type Peer struct {
 	// Tendermint node ID for this node.
 	ID string `json:"id"`
@@ -507,6 +509,10 @@ type Peer struct {
 	// Indicates this peer is private.
 	// +optional
 	Private *bool `json:"private,omitempty"`
+
+	// Indicates this is a seed.
+	// +optional
+	Seed *bool `json:"seed,omitempty"`
 }
 
 // ExposeConfig allows configuring how P2P endpoint is exposed to public.

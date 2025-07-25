@@ -105,14 +105,14 @@ func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainN
 	}
 
 	// Clean up if necessary
-	groupIngresses, err := r.listChainNodeSetIngresses(ctx, nodeSet, LabelScope, scopeGroup)
+	groupIngresses, err := r.listChainNodeSetIngresses(ctx, nodeSet, controllers.LabelScope, scopeGroup)
 	if err != nil {
 		return err
 	}
 
 	for _, ing := range groupIngresses.Items {
-		if _, ok := ing.Labels[LabelChainNodeSetGroup]; !ok ||
-			!ContainsGroup(nodeSet.Spec.Nodes, ing.Labels[LabelChainNodeSetGroup]) {
+		if _, ok := ing.Labels[controllers.LabelChainNodeSetGroup]; !ok ||
+			!ContainsGroup(nodeSet.Spec.Nodes, ing.Labels[controllers.LabelChainNodeSetGroup]) {
 			logger.Info("deleting ingress", "ingress", ing.GetName())
 			if err = r.Delete(ctx, &ing); err != nil {
 				return err
@@ -120,14 +120,14 @@ func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainN
 		}
 	}
 
-	globalIngresses, err := r.listChainNodeSetIngresses(ctx, nodeSet, LabelScope, scopeGlobal)
+	globalIngresses, err := r.listChainNodeSetIngresses(ctx, nodeSet, controllers.LabelScope, scopeGlobal)
 	if err != nil {
 		return err
 	}
 
 	for _, ing := range globalIngresses.Items {
-		if _, ok := ing.Labels[LabelGlobalIngress]; !ok ||
-			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, ing.Labels[LabelGlobalIngress]) {
+		if _, ok := ing.Labels[controllers.LabelGlobalIngress]; !ok ||
+			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, ing.Labels[controllers.LabelGlobalIngress]) {
 			logger.Info("deleting ingress", "ingress", ing.GetName())
 			if err = r.Delete(ctx, &ing); err != nil {
 				return err
@@ -175,9 +175,9 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 			Name:      fmt.Sprintf("%s-%s", nodeSet.GetName(), group.Name),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:      nodeSet.GetName(),
-				LabelChainNodeSetGroup: group.Name,
-				LabelScope:             scopeGroup,
+				controllers.LabelChainNodeSet:      nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup: group.Name,
+				controllers.LabelScope:             scopeGroup,
 			}),
 			Annotations: group.Ingress.Annotations,
 		},
@@ -326,9 +326,9 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 			Name:      fmt.Sprintf("%s-%s-grpc", nodeSet.GetName(), group.Name),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:      nodeSet.GetName(),
-				LabelChainNodeSetGroup: group.Name,
-				LabelScope:             scopeGroup,
+				controllers.LabelChainNodeSet:      nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup: group.Name,
+				controllers.LabelScope:             scopeGroup,
 			}),
 			Annotations: nginxGrpcAnnotations,
 		},
@@ -373,9 +373,9 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 			Name:      globalIngress.GetName(nodeSet),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:  nodeSet.GetName(),
-				LabelGlobalIngress: globalIngress.Name,
-				LabelScope:         scopeGlobal,
+				controllers.LabelChainNodeSet:  nodeSet.GetName(),
+				controllers.LabelGlobalIngress: globalIngress.Name,
+				controllers.LabelScope:         scopeGlobal,
 			}),
 			Annotations: globalIngress.Annotations,
 		},
@@ -524,9 +524,9 @@ func (r *Reconciler) getGrpcGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, glob
 			Name:      globalIngress.GetGrpcName(nodeSet),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:  nodeSet.GetName(),
-				LabelGlobalIngress: globalIngress.Name,
-				LabelScope:         scopeGlobal,
+				controllers.LabelChainNodeSet:  nodeSet.GetName(),
+				controllers.LabelGlobalIngress: globalIngress.Name,
+				controllers.LabelScope:         scopeGlobal,
 			}),
 			Annotations: nginxGrpcAnnotations,
 		},
@@ -571,7 +571,7 @@ func (r *Reconciler) listChainNodeSetIngresses(ctx context.Context, nodeSet *app
 		return nil, fmt.Errorf("list of labels must contain pairs of key-value")
 	}
 
-	selectorMap := map[string]string{LabelChainNodeSet: nodeSet.GetName()}
+	selectorMap := map[string]string{controllers.LabelChainNodeSet: nodeSet.GetName()}
 	for i := 0; i < len(l); i += 2 {
 		selectorMap[l[i]] = l[i+1]
 	}

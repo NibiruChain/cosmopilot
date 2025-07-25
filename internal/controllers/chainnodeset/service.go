@@ -60,14 +60,14 @@ func (r *Reconciler) ensureServices(ctx context.Context, nodeSet *appsv1.ChainNo
 	}
 
 	// Clean up if necessary
-	groupServices, err := r.listChainNodeSetServices(ctx, nodeSet, LabelScope, scopeGroup)
+	groupServices, err := r.listChainNodeSetServices(ctx, nodeSet, controllers.LabelScope, scopeGroup)
 	if err != nil {
 		return err
 	}
 
 	for _, svc := range groupServices.Items {
-		if _, ok := svc.Labels[LabelChainNodeSetGroup]; !ok ||
-			!ContainsGroup(nodeSet.Spec.Nodes, svc.Labels[LabelChainNodeSetGroup]) {
+		if _, ok := svc.Labels[controllers.LabelChainNodeSetGroup]; !ok ||
+			!ContainsGroup(nodeSet.Spec.Nodes, svc.Labels[controllers.LabelChainNodeSetGroup]) {
 			logger.Info("deleting service", "svc", svc.GetName())
 			if err = r.Delete(ctx, &svc); err != nil {
 				return err
@@ -75,14 +75,14 @@ func (r *Reconciler) ensureServices(ctx context.Context, nodeSet *appsv1.ChainNo
 		}
 	}
 
-	globalServices, err := r.listChainNodeSetServices(ctx, nodeSet, LabelScope, scopeGlobal)
+	globalServices, err := r.listChainNodeSetServices(ctx, nodeSet, controllers.LabelScope, scopeGlobal)
 	if err != nil {
 		return err
 	}
 
 	for _, svc := range globalServices.Items {
-		if _, ok := svc.Labels[LabelGlobalIngress]; !ok ||
-			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, svc.Labels[LabelGlobalIngress]) {
+		if _, ok := svc.Labels[controllers.LabelGlobalIngress]; !ok ||
+			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, svc.Labels[controllers.LabelGlobalIngress]) {
 			logger.Info("deleting service", "svc", svc.GetName())
 			if err = r.Delete(ctx, &svc); err != nil {
 				return err
@@ -130,9 +130,9 @@ func (r *Reconciler) getServiceSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 			Name:      group.GetServiceName(nodeSet),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:      nodeSet.GetName(),
-				LabelChainNodeSetGroup: group.Name,
-				LabelScope:             scopeGroup,
+				controllers.LabelChainNodeSet:      nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup: group.Name,
+				controllers.LabelScope:             scopeGroup,
 			}),
 		},
 		Spec: corev1.ServiceSpec{
@@ -157,8 +157,8 @@ func (r *Reconciler) getServiceSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 				},
 			},
 			Selector: map[string]string{
-				LabelChainNodeSet:      nodeSet.GetName(),
-				LabelChainNodeSetGroup: group.Name,
+				controllers.LabelChainNodeSet:      nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup: group.Name,
 			},
 		},
 	}
@@ -197,9 +197,9 @@ func (r *Reconciler) getInternalServiceSpec(nodeSet *appsv1.ChainNodeSet, group 
 			Name:      fmt.Sprintf("%s-internal", group.GetServiceName(nodeSet)),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:      nodeSet.GetName(),
-				LabelChainNodeSetGroup: group.Name,
-				LabelScope:             scopeGroup,
+				controllers.LabelChainNodeSet:      nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup: group.Name,
+				controllers.LabelScope:             scopeGroup,
 			}),
 		},
 		Spec: corev1.ServiceSpec{
@@ -224,8 +224,8 @@ func (r *Reconciler) getInternalServiceSpec(nodeSet *appsv1.ChainNodeSet, group 
 				},
 			},
 			Selector: map[string]string{
-				LabelChainNodeSet:      nodeSet.GetName(),
-				LabelChainNodeSetGroup: group.Name,
+				controllers.LabelChainNodeSet:      nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup: group.Name,
 			},
 		},
 	}
@@ -254,9 +254,9 @@ func (r *Reconciler) getGlobalServiceSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 			Name:      globalIngress.GetName(nodeSet),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:  nodeSet.GetName(),
-				LabelGlobalIngress: globalIngress.Name,
-				LabelScope:         scopeGlobal,
+				controllers.LabelChainNodeSet:  nodeSet.GetName(),
+				controllers.LabelGlobalIngress: globalIngress.Name,
+				controllers.LabelScope:         scopeGlobal,
 			}),
 		},
 		Spec: corev1.ServiceSpec{
@@ -293,7 +293,7 @@ func (r *Reconciler) getGlobalServiceSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 				},
 			},
 			Selector: map[string]string{
-				LabelChainNodeSet:              nodeSet.GetName(),
+				controllers.LabelChainNodeSet:  nodeSet.GetName(),
 				globalIngress.GetName(nodeSet): strconv.FormatBool(true),
 			},
 		},
@@ -316,9 +316,9 @@ func (r *Reconciler) getGlobalInternalServiceSpec(nodeSet *appsv1.ChainNodeSet, 
 			Name:      fmt.Sprintf("%s-internal", globalIngress.GetName(nodeSet)),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:  nodeSet.GetName(),
-				LabelGlobalIngress: globalIngress.Name,
-				LabelScope:         scopeGlobal,
+				controllers.LabelChainNodeSet:  nodeSet.GetName(),
+				controllers.LabelGlobalIngress: globalIngress.Name,
+				controllers.LabelScope:         scopeGlobal,
 			}),
 		},
 		Spec: corev1.ServiceSpec{
@@ -355,7 +355,7 @@ func (r *Reconciler) getGlobalInternalServiceSpec(nodeSet *appsv1.ChainNodeSet, 
 				},
 			},
 			Selector: map[string]string{
-				LabelChainNodeSet:              nodeSet.GetName(),
+				controllers.LabelChainNodeSet:  nodeSet.GetName(),
 				globalIngress.GetName(nodeSet): strconv.FormatBool(true),
 			},
 		},
@@ -369,7 +369,7 @@ func (r *Reconciler) listChainNodeSetServices(ctx context.Context, nodeSet *apps
 		return nil, fmt.Errorf("list of labels must contain pairs of key-value")
 	}
 
-	selectorMap := map[string]string{LabelChainNodeSet: nodeSet.GetName()}
+	selectorMap := map[string]string{controllers.LabelChainNodeSet: nodeSet.GetName()}
 	for i := 0; i < len(l); i += 2 {
 		selectorMap[l[i]] = l[i+1]
 	}

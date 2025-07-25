@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/mitchellh/hashstructure/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +23,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
@@ -42,7 +45,7 @@ func getConfigsLockForAppVersion(version string) *sync.Mutex {
 	return newLock
 }
 
-func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, nodePodRunning bool) (string, error) {
+func (r *Reconciler) ensureConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, nodePodRunning bool) (string, error) {
 	logger := log.FromContext(ctx)
 
 	configs, err := r.getGeneratedConfigs(ctx, app, chainNode)
@@ -162,12 +165,12 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, c
 	// Apply state-sync restore config if enabled and node is not running. Also ignore this if this node is restoring
 	// from a volume snapshot.
 	if chainNode.StateSyncRestoreEnabled() && !nodePodRunning && !chainNode.ShouldRestoreFromSnapshot() {
-		peers, stateSyncAnnotations, err := r.getChainPeers(ctx, chainNode, AnnotationStateSyncTrustHeight, AnnotationStateSyncTrustHash)
+		peers, stateSyncAnnotations, err := r.getChainPeers(ctx, chainNode, controllers.AnnotationStateSyncTrustHeight, controllers.AnnotationStateSyncTrustHash)
 		if err != nil {
 			return "", err
 		}
 
-		peers = r.filterNonWorkingPeers(ctx, chainNode, peers)
+		peers = r.filterNonWorkingPeers(ctx, chainNode, peers.ExcludeSeeds())
 		rpcServers := make([]string, 0)
 
 		switch {
@@ -243,62 +246,60 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, app *chainutils.App, c
 		}
 	}
 
-	cm := &corev1.ConfigMap{}
-	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), cm)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("creating configs configmap", "configmap", cm.GetName(), "hash", hash)
-			cm = &corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      chainNode.GetName(),
-					Namespace: chainNode.GetNamespace(),
-					Labels:    WithChainNodeLabels(chainNode),
-					Annotations: map[string]string{
-						annotationConfigHash: hash,
-					},
-				},
-				Data: cmData,
-			}
-			if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
-				return "", err
-			}
-			if err = r.Create(ctx, cm); err != nil {
-				return "", err
-			}
-			r.recorder.Eventf(chainNode,
-				corev1.EventTypeNormal,
-				appsv1.ReasonConfigsCreated,
-				"Configuration files successfully created",
-			)
-			return hash, nil
-		}
+	cm := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      chainNode.GetName(),
+			Namespace: chainNode.GetNamespace(),
+			Labels:    WithChainNodeLabels(chainNode),
+			Annotations: map[string]string{
+				controllers.AnnotationConfigHash: hash,
+			},
+		},
+		Data: cmData,
+	}
+
+	if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
 		return "", err
 	}
 
+	return hash, r.ensureConfigMap(ctx, cm)
+}
+
+func (r *Reconciler) ensureConfigMap(ctx context.Context, cm *corev1.ConfigMap) error {
+	logger := log.FromContext(ctx).WithValues("cm", cm.GetName())
+
+	currentCm := &corev1.ConfigMap{}
+	err := r.Get(ctx, client.ObjectKeyFromObject(cm), currentCm)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info("creating configmap")
+			return r.Create(ctx, cm)
+		}
+		return err
+	}
+
+	patchResult, err := patch.DefaultPatchMaker.Calculate(currentCm, cm, patch.IgnoreStatusFields(), patch.IgnoreField("data"))
+	if err != nil {
+		return err
+	}
+
 	var shouldUpdate bool
-	for file, data := range cmData {
-		if oldData, ok := cm.Data[file]; !ok || data != oldData {
+	for file, data := range cm.Data {
+		if oldData, ok := currentCm.Data[file]; !ok || data != oldData {
 			shouldUpdate = true
 			break
 		}
 	}
 
-	if shouldUpdate {
-		logger.Info("updating configs configmap", "configmap", cm.GetName(), "hash", hash)
-		cm.Annotations[annotationConfigHash] = hash
-		cm.Data = cmData
-		if err := r.Update(ctx, cm); err != nil {
-			return "", err
-		}
-		r.recorder.Eventf(chainNode,
-			corev1.EventTypeNormal,
-			appsv1.ReasonConfigsUpdated,
-			"Configuration files updated",
-		)
-		return hash, nil
+	if shouldUpdate || !patchResult.IsEmpty() || !reflect.DeepEqual(currentCm.Annotations, cm.Annotations) {
+		logger.Info("updating configmap")
+		cm.ObjectMeta.ResourceVersion = currentCm.ObjectMeta.ResourceVersion
+		return r.Update(ctx, cm)
 	}
-	return hash, nil
+
+	*cm = *currentCm
+	return nil
 }
 
 func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
@@ -366,8 +367,9 @@ func (r *Reconciler) getPeerConfiguration(ctx context.Context, chainNode *appsv1
 	peers := make([]string, 0)
 	unconditional := make([]string, 0)
 	private := make([]string, 0)
+	seeds := make([]string, 0)
 
-	var peersList []appsv1.Peer
+	var peersList appsv1.PeerList
 	if chainNode.AutoDiscoverPeersEnabled() {
 		chainPeers, _, err := r.getChainPeers(ctx, chainNode)
 		if err != nil {
@@ -379,7 +381,12 @@ func (r *Reconciler) getPeerConfiguration(ctx context.Context, chainNode *appsv1
 	}
 
 	for _, peer := range peersList {
-		peers = append(peers, fmt.Sprintf("%s@%s:%d", peer.ID, peer.Address, peer.GetPort()))
+		if peer.IsSeed() {
+			seeds = append(seeds, peer.String())
+		} else {
+			peers = append(peers, peer.String())
+		}
+
 		if peer.IsUnconditional() {
 			unconditional = append(unconditional, peer.ID)
 		}
@@ -393,13 +400,17 @@ func (r *Reconciler) getPeerConfiguration(ctx context.Context, chainNode *appsv1
 			kf.PersistentPeers():      strings.Join(peers, ","),
 			kf.UnconditionalPeerIDs(): strings.Join(unconditional, ","),
 			kf.PrivatePeerIDs():       strings.Join(private, ","),
+			kf.Seeds():                strings.Join(seeds, ","),
 		},
 	}, nil
 }
 
-func (r *Reconciler) getChainPeers(ctx context.Context, chainNode *appsv1.ChainNode, getAnnotations ...string) ([]appsv1.Peer, []map[string]string, error) {
+func (r *Reconciler) getChainPeers(ctx context.Context, chainNode *appsv1.ChainNode, getAnnotations ...string) (appsv1.PeerList, []map[string]string, error) {
 	// List all services with the same chain ID label
-	listOption := client.MatchingLabels{LabelChainID: chainNode.Status.ChainID}
+	listOption := client.MatchingLabels{
+		controllers.LabelPeer:    controllers.StringValueTrue,
+		controllers.LabelChainID: chainNode.Status.ChainID,
+	}
 	svcList := &corev1.ServiceList{}
 	if err := r.List(ctx, svcList, listOption); err != nil {
 		return nil, nil, err
@@ -409,18 +420,23 @@ func (r *Reconciler) getChainPeers(ctx context.Context, chainNode *appsv1.ChainN
 	annotationsList := make([]map[string]string, 0)
 
 	for _, svc := range svcList.Items {
-		if svc.Labels[LabelNodeID] == chainNode.Status.NodeID {
+		// Ignore self
+		if svc.Labels[controllers.LabelNodeID] == chainNode.Status.NodeID {
 			continue
 		}
 
 		peer := appsv1.Peer{
-			ID:            svc.Labels[LabelNodeID],
+			ID:            svc.Labels[controllers.LabelNodeID],
 			Address:       svc.Name,
 			Port:          pointer.Int(chainutils.P2pPort),
 			Unconditional: pointer.Bool(true),
 		}
 
-		if svc.Labels[LabelValidator] == StringValueTrue {
+		if svc.Labels[controllers.LabelSeed] == controllers.StringValueTrue {
+			peer.Seed = pointer.Bool(true)
+		}
+
+		if svc.Labels[controllers.LabelValidator] == controllers.StringValueTrue {
 			peer.Private = pointer.Bool(true)
 		}
 
@@ -448,7 +464,7 @@ func getMostRecentHeightFromServicesAnnotations(annotationsList []map[string]str
 	var trustHash string
 
 	for _, annotations := range annotationsList {
-		heightStr, ok := annotations[AnnotationStateSyncTrustHeight]
+		heightStr, ok := annotations[controllers.AnnotationStateSyncTrustHeight]
 		if !ok {
 			continue
 		}
@@ -456,7 +472,7 @@ func getMostRecentHeightFromServicesAnnotations(annotationsList []map[string]str
 		height, err := strconv.ParseInt(heightStr, 10, 64)
 		if err == nil && height > trustHeight {
 			trustHeight = height
-			trustHash = annotations[AnnotationStateSyncTrustHash]
+			trustHash = annotations[controllers.AnnotationStateSyncTrustHash]
 		}
 	}
 

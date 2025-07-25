@@ -39,6 +39,11 @@ func init() {
 		"cosmoguard image to be deployed with nodes when enabled.",
 	)
 
+	flag.StringVar(&runOpts.CosmoseedImage, "cosmoseed-image",
+		environ.GetString("COSMOSEED_IMAGE", "ghcr.io/nibiruchain/cosmoseed"),
+		"image to be used in cosmoseed deployments when enabled.",
+	)
+
 	flag.StringVar(&runOpts.WorkerName, "worker-name",
 		environ.GetString("WORKER_NAME", ""),
 		"name of the worker, passed in label `worker-name`. Used for limiting resources processed by this operator instance.",

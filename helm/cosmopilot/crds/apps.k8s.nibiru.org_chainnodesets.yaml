@@ -128,6 +128,173 @@ spec:
                 - app
                 - image
                 type: object
+              cosmoseed:
+                description: Allows deploying seed nodes using Cosmoseed.
+                properties:
+                  additionalSeeds:
+                    description: |-
+                      Additional seed nodes to append to the node’s default seed list.
+                      Comma-separated list in the format `nodeID@ip:port`.
+                    type: string
+                  addrBookStrict:
+                    default: true
+                    description: |-
+                      Whether to enforce strict routability rules for peer addresses.
+                      Set to true to only accept publicly routable IPs (recommended for public networks).
+                      Set to false to allow local/private IPs (e.g., in testnets or dev environments).
+                      Mirrors CometBFT's `addr_book_strict` setting.
+                      Defaults to `true`.
+                    type: boolean
+                  dialWorkers:
+                    default: 20
+                    description: |-
+                      Number of concurrent dialer workers used for outbound peer discovery.
+                      Each worker fetches peers from the queue (`PeerQueueSize`) and attempts to dial them.
+                      Higher values increase parallelism, but may increase CPU/network load.
+                      Defaults to `20`.
+                    type: integer
+                  enabled:
+                    description: |-
+                      Whether to enable deployment of Cosmoseed.
+                      If false or unset, no seed node instances will be created.
+                    type: boolean
+                  expose:
+                    description: Configuration for exposing the P2P endpoint (e.g.,
+                      via LoadBalancer or NodePort).
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations to be appended to the p2p service.
+                        type: object
+                      p2p:
+                        default: false
+                        description: Whether to expose p2p endpoint for this node.
+                          Defaults to `false`.
+                        type: boolean
+                      p2pServiceType:
+                        default: NodePort
+                        description: |-
+                          P2pServiceType indicates how P2P port will be exposed.
+                          Valid values are:
+                          - `LoadBalancer`
+                          - `NodePort` (default)
+                        type: string
+                    type: object
+                  ingress:
+                    description: Ingress configuration for cosmoseed nodes.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations to be appended to the ingress.
+                        type: object
+                      disableTLS:
+                        description: Whether to disable TLS on ingress resource.
+                        type: boolean
+                      host:
+                        description: Host in which cosmoseed nodes will be exposed.
+                        type: string
+                      tlsSecretName:
+                        description: Name of the secret containing TLS certificate.
+                        type: string
+                    required:
+                    - host
+                    type: object
+                  instances:
+                    default: 1
+                    description: |-
+                      Number of seed node instances to deploy.
+                      Defaults to 1.
+                    minimum: 0
+                    type: integer
+                  logLevel:
+                    description: |-
+                      Log level of cosmoseed.
+                      Defaults to `info`.
+                    type: string
+                  maxInboundPeers:
+                    default: 2000
+                    description: |-
+                      Maximum number of inbound P2P connections.
+                      Defaults to `2000`.
+                    type: integer
+                  maxOutboundPeers:
+                    default: 20
+                    description: |-
+                      Maximum number of outbound P2P connections.
+                      Defaults to `20`.
+                    type: integer
+                  maxPacketMsgPayloadSize:
+                    default: 1024
+                    description: |-
+                      Maximum size (in bytes) of packet message payloads over P2P.
+                      Defaults to `1024`.
+                    type: integer
+                  peerQueueSize:
+                    default: 1000
+                    description: |-
+                      Size of the internal peer queue used by dial workers in the PEX reactor.
+                      This queue holds peers to be dialed; dial workers consume from it.
+                      If the queue is full, new discovered peers may be discarded.
+                      Use together with `DialWorkers` to control peer discovery throughput.
+                      Defaults to `1000`.
+                    type: integer
+                  resources:
+                    description: Compute Resources to be applied on the cosmoseed
+                      container.
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                type: object
               genesis:
                 description: Indicates where this node will get the genesis from.
                   Can be omitted when .spec.validator.init is specified.
@@ -2029,7 +2196,7 @@ spec:
                       description: Additional persistent peers that should be added
                         to these nodes.
                       items:
-                        description: Peer represents a persistent peer.
+                        description: Peer represents a peer.
                         properties:
                           address:
                             description: Hostname or IP address of this peer.
@@ -2043,6 +2210,9 @@ spec:
                             type: integer
                           private:
                             description: Indicates this peer is private.
+                            type: boolean
+                          seed:
+                            description: Indicates this is a seed.
                             type: boolean
                           unconditional:
                             description: Indicates this peer is unconditional.
@@ -5177,6 +5347,21 @@ spec:
                 description: Public key of the validator if this ChainNodeSet has
                   one.
                 type: string
+              seeds:
+                description: Status of seed nodes (cosmoseed)
+                items:
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    publicAddress:
+                      type: string
+                  required:
+                  - id
+                  - name
+                  type: object
+                type: array
               upgrades:
                 description: All scheduled/completed upgrades performed by cosmopilot
                   on ChainNodes of this CHainNodeSet.

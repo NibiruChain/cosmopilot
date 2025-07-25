@@ -53,7 +53,7 @@ func (r *Reconciler) ensureNodes(ctx context.Context, nodeSet *appsv1.ChainNodeS
 	// Create map of group nodes to track deleted ones
 	groupList := map[string]int{}
 	for _, node := range chainNodes.Items {
-		if group, ok := node.Labels[LabelChainNodeSetGroup]; ok {
+		if group, ok := node.Labels[controllers.LabelChainNodeSetGroup]; ok {
 			groupList[group]++
 		}
 	}
@@ -92,7 +92,7 @@ func (r *Reconciler) listNodeSetNodes(ctx context.Context, nodeSet *appsv1.Chain
 		return nil, fmt.Errorf("list of labels must contain pairs of key-value")
 	}
 
-	selectorMap := map[string]string{LabelChainNodeSet: nodeSet.GetName()}
+	selectorMap := map[string]string{controllers.LabelChainNodeSet: nodeSet.GetName()}
 	for i := 0; i < len(l); i += 2 {
 		selectorMap[l[i]] = l[i+1]
 	}
@@ -106,7 +106,7 @@ func (r *Reconciler) listNodeSetNodes(ctx context.Context, nodeSet *appsv1.Chain
 func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainNodeSet, group appsv1.NodeGroupSpec) error {
 	logger := log.FromContext(ctx)
 
-	chainNodeList, err := r.listNodeSetNodes(ctx, nodeSet, LabelChainNodeSetGroup, group.Name)
+	chainNodeList, err := r.listNodeSetNodes(ctx, nodeSet, controllers.LabelChainNodeSetGroup, group.Name)
 	if err != nil {
 		return err
 	}
@@ -239,8 +239,8 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			Name:      fmt.Sprintf("%s-%s-%d", nodeSet.GetName(), group.Name, index),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:      nodeSet.GetName(),
-				LabelChainNodeSetGroup: group.Name,
+				controllers.LabelChainNodeSet:      nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup: group.Name,
 			}),
 		},
 		Spec: appsv1.ChainNodeSpec{

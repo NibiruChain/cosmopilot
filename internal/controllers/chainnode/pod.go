@@ -26,7 +26,6 @@ import (
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
 	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/controllers/chainnodeset"
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
 	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
@@ -159,7 +158,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		if err != nil {
 			return err
 		}
-		configHash, err = r.ensureConfigMap(ctx, app, chainNode, true)
+		configHash, err = r.ensureConfigs(ctx, app, chainNode, true)
 		if err != nil {
 			return err
 		}
@@ -223,7 +222,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 	}
 
 	// Re-create pod if config changed
-	if currentPod.Annotations[annotationConfigHash] != configHash {
+	if currentPod.Annotations[controllers.AnnotationConfigHash] != configHash {
 		logger.Info("config changed", "pod", pod.GetName())
 		return r.recreatePod(ctx, chainNode, pod, r.opts.DisruptionCheckEnabled)
 	}
@@ -309,12 +308,12 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Name:      chainNode.GetName(),
 			Namespace: chainNode.GetNamespace(),
 			Annotations: map[string]string{
-				annotationConfigHash: configHash,
+				controllers.AnnotationConfigHash: configHash,
 			},
 			Labels: WithChainNodeLabels(chainNode, map[string]string{
-				LabelNodeID:    chainNode.Status.NodeID,
-				LabelChainID:   chainNode.Status.ChainID,
-				LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
+				controllers.LabelNodeID:    chainNode.Status.NodeID,
+				controllers.LabelChainID:   chainNode.Status.ChainID,
+				controllers.LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
 			}),
 		},
 		Spec: corev1.PodSpec{
@@ -428,7 +427,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						},
 						{
 							Name:  "CREATE_FIFO",
-							Value: StringValueTrue,
+							Value: controllers.StringValueTrue,
 						},
 						{
 							Name:  "TRACE_STORE",
@@ -747,7 +746,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	}
 
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.SafeToEvict != nil {
-		pod.Annotations[annotationSafeEvict] = strconv.FormatBool(*chainNode.Spec.Config.SafeToEvict)
+		pod.Annotations[controllers.AnnotationSafeEvict] = strconv.FormatBool(*chainNode.Spec.Config.SafeToEvict)
 	}
 
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.CosmoGuardEnabled() {
@@ -828,7 +827,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	if err != nil {
 		return nil, err
 	}
-	pod.Annotations[annotationPodSpecHash] = specHash
+	pod.Annotations[controllers.AnnotationPodSpecHash] = specHash
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
 }
 
@@ -841,15 +840,15 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 		var disruptionLabels map[string]string
 		if chainNode.IsValidator() {
 			disruptionLabels = map[string]string{
-				LabelChainID:   chainNode.Status.ChainID,
-				LabelValidator: strconv.FormatBool(true),
+				controllers.LabelChainID:   chainNode.Status.ChainID,
+				controllers.LabelValidator: strconv.FormatBool(true),
 			}
 		} else {
 			disruptionLabels = WithChainNodeLabels(chainNode, map[string]string{
-				LabelChainID: chainNode.Status.ChainID,
+				controllers.LabelChainID: chainNode.Status.ChainID,
 			})
 			if chainNode.ShouldIgnoreGroupOnDisruption() {
-				delete(disruptionLabels, chainnodeset.LabelChainNodeSetGroup)
+				delete(disruptionLabels, controllers.LabelChainNodeSetGroup)
 			}
 		}
 
@@ -1014,12 +1013,12 @@ func podSpecHash(pod *corev1.Pod) (string, error) {
 func podSpecChanged(ctx context.Context, existing, new *corev1.Pod) bool {
 	logger := log.FromContext(ctx)
 
-	oldSpecHash, ok := existing.Annotations[annotationPodSpecHash]
+	oldSpecHash, ok := existing.Annotations[controllers.AnnotationPodSpecHash]
 	if !ok {
 		// Annotation should be there, so lets assume the spec changed
 		return true
 	}
-	newSpecHash := new.Annotations[annotationPodSpecHash]
+	newSpecHash := new.Annotations[controllers.AnnotationPodSpecHash]
 
 	logger.V(1).Info("checked pod spec hash", "old-spec", oldSpecHash, "new-spec", newSpecHash)
 	return newSpecHash != oldSpecHash

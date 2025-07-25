@@ -13,6 +13,7 @@ import (
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/chainutils"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 )
 
 func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
@@ -79,9 +80,9 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 			Name:      fmt.Sprintf("%s-validator", nodeSet.GetName()),
 			Namespace: nodeSet.GetNamespace(),
 			Labels: WithChainNodeSetLabels(nodeSet, map[string]string{
-				LabelChainNodeSet:          nodeSet.GetName(),
-				LabelChainNodeSetGroup:     validatorGroupName,
-				LabelChainNodeSetValidator: strconv.FormatBool(true),
+				controllers.LabelChainNodeSet:          nodeSet.GetName(),
+				controllers.LabelChainNodeSetGroup:     validatorGroupName,
+				controllers.LabelChainNodeSetValidator: strconv.FormatBool(true),
 			}),
 		},
 		Spec: appsv1.ChainNodeSpec{

@@ -194,6 +194,10 @@ func (kf *KeyFormatter) TrustPeriod() string {
 	return kf.FormatKey("trust_period")
 }
 
+func (kf *KeyFormatter) Seeds() string {
+	return kf.FormatKey("seeds")
+}
+
 func (kf *KeyFormatter) PersistentPeers() string {
 	return kf.FormatKey("persistent_peers")
 }

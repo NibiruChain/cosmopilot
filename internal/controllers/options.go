@@ -12,6 +12,7 @@ type ControllerRunOptions struct {
 	NodeUtilsImage           string
 	DisableWebhooks          bool
 	CosmoGuardImage          string
+	CosmoseedImage           string
 	ReleaseName              string
 	DisruptionCheckEnabled   bool
 	DisruptionMaxUnavailable int

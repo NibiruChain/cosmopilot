@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/controllers/chainnodeset"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
 	"github.com/NibiruChain/cosmopilot/internal/datasnapshot"
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
@@ -71,7 +71,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		// and if it is, we mark it as ready and register its timestamp in chainnode.
 		// In case tarball export is enabled, we also start the export right away, unless integrity checks are enabled,
 		// in that case integrity check starts first
-		case snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(false) && isSnapshotReady(&snapshot):
+		case snapshot.Annotations[controllers.AnnotationPvcSnapshotReady] == strconv.FormatBool(false) && isSnapshotReady(&snapshot):
 			logger.Info("pvc snapshot has finished", "snapshot", snapshot.GetName())
 			r.recorder.Eventf(chainNode,
 				corev1.EventTypeNormal,
@@ -80,7 +80,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 			)
 
 			// Update snapshot ready annotation
-			snapshot.ObjectMeta.Annotations[annotationPvcSnapshotReady] = strconv.FormatBool(true)
+			snapshot.ObjectMeta.Annotations[controllers.AnnotationPvcSnapshotReady] = strconv.FormatBool(true)
 			if err = r.Update(ctx, &snapshot); err != nil {
 				return err
 			}
@@ -98,7 +98,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				if err = r.startSnapshotIntegrityCheck(ctx, chainNode, &snapshot); err != nil {
 					return err
 				}
-				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
+				snapshot.ObjectMeta.Annotations[controllers.AnnotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
 				if err = r.Update(ctx, &snapshot); err != nil {
 					return err
 				}
@@ -112,7 +112,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				if err = r.exportTarball(ctx, chainNode, &snapshot); err != nil {
 					return err
 				}
-				snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
+				snapshot.ObjectMeta.Annotations[controllers.AnnotationExportingTarball] = strconv.FormatBool(true)
 				if err = r.Update(ctx, &snapshot); err != nil {
 					return err
 				}
@@ -125,8 +125,8 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 
 		// Let's start the verification job if not started yet, and check if it has completed otherwise.
 		case chainNode.Spec.Persistence.Snapshots.ShouldVerify() &&
-			snapshot.Annotations[annotationSnapshotIntegrityStatus] != string(snapshotIntegrityOk) &&
-			snapshot.Annotations[annotationSnapshotIntegrityStatus] != string(snapshotIntegrityCorrupted):
+			snapshot.Annotations[controllers.AnnotationSnapshotIntegrityStatus] != string(snapshotIntegrityOk) &&
+			snapshot.Annotations[controllers.AnnotationSnapshotIntegrityStatus] != string(snapshotIntegrityCorrupted):
 
 			status, err := r.getSnapshotIntegrityCheckStatus(ctx, chainNode, &snapshot)
 			if err != nil {
@@ -139,18 +139,18 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 
 			case snapshotIntegrityOk:
 				logger.Info("data integrity check finished successfully. Data is ok.", "snapshot", snapshot.GetName())
-				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityOk)
+				snapshot.ObjectMeta.Annotations[controllers.AnnotationSnapshotIntegrityStatus] = string(snapshotIntegrityOk)
 				if err = r.Update(ctx, &snapshot); err != nil {
 					return err
 				}
 
 				// Let's start the tarball export right now if it is enabled
-				if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && snapshot.Annotations[annotationExportingTarball] == "" {
+				if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && snapshot.Annotations[controllers.AnnotationExportingTarball] == "" {
 					logger.Info("starting tarball export", "snapshot", snapshot.GetName())
 					if err = r.exportTarball(ctx, chainNode, &snapshot); err != nil {
 						return err
 					}
-					snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
+					snapshot.ObjectMeta.Annotations[controllers.AnnotationExportingTarball] = strconv.FormatBool(true)
 					if err = r.Update(ctx, &snapshot); err != nil {
 						return err
 					}
@@ -163,7 +163,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 
 			case snapshotIntegrityCorrupted:
 				logger.Info("data integrity check finished. Data is corrupted.", "snapshot", snapshot.GetName())
-				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityCorrupted)
+				snapshot.ObjectMeta.Annotations[controllers.AnnotationSnapshotIntegrityStatus] = string(snapshotIntegrityCorrupted)
 				if err = r.Update(ctx, &snapshot); err != nil {
 					return err
 				}
@@ -180,7 +180,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				if err = r.startSnapshotIntegrityCheck(ctx, chainNode, &snapshot); err != nil {
 					return err
 				}
-				snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
+				snapshot.ObjectMeta.Annotations[controllers.AnnotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
 				if err = r.Update(ctx, &snapshot); err != nil {
 					return err
 				}
@@ -193,14 +193,14 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 
 		// If for some reason, there is an error starting the tarball export, it is never retried. So we do it here.
 		case chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() &&
-			(!chainNode.Spec.Persistence.Snapshots.ShouldVerify() || snapshot.Annotations[annotationSnapshotIntegrityStatus] == string(snapshotIntegrityOk)) &&
-			snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(true) &&
-			snapshot.Annotations[annotationExportingTarball] == "":
+			(!chainNode.Spec.Persistence.Snapshots.ShouldVerify() || snapshot.Annotations[controllers.AnnotationSnapshotIntegrityStatus] == string(snapshotIntegrityOk)) &&
+			snapshot.Annotations[controllers.AnnotationPvcSnapshotReady] == strconv.FormatBool(true) &&
+			snapshot.Annotations[controllers.AnnotationExportingTarball] == "":
 			logger.Info("starting tarball export", "snapshot", snapshot.GetName())
 			if err = r.exportTarball(ctx, chainNode, &snapshot); err != nil {
 				return err
 			}
-			snapshot.ObjectMeta.Annotations[annotationExportingTarball] = strconv.FormatBool(true)
+			snapshot.ObjectMeta.Annotations[controllers.AnnotationExportingTarball] = strconv.FormatBool(true)
 			if err = r.Update(ctx, &snapshot); err != nil {
 				return err
 			}
@@ -214,8 +214,8 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		// has finished, and if it is, we set the export-tarballl annotation to finished so that it won't be processed
 		// again
 		case chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() &&
-			snapshot.Annotations[annotationPvcSnapshotReady] == strconv.FormatBool(true) &&
-			snapshot.Annotations[annotationExportingTarball] == strconv.FormatBool(true):
+			snapshot.Annotations[controllers.AnnotationPvcSnapshotReady] == strconv.FormatBool(true) &&
+			snapshot.Annotations[controllers.AnnotationExportingTarball] == strconv.FormatBool(true):
 			ready, err := r.isTarballReady(ctx, chainNode, &snapshot)
 			if err != nil {
 				r.recorder.Eventf(chainNode,
@@ -227,7 +227,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 			}
 			if ready {
 				logger.Info("finished tarball export", "snapshot", snapshot.GetName())
-				snapshot.Annotations[annotationExportingTarball] = tarballFinished
+				snapshot.Annotations[controllers.AnnotationExportingTarball] = tarballFinished
 				if err = r.Update(ctx, &snapshot); err != nil {
 					return err
 				}
@@ -241,7 +241,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				return err
 			}
 			if expired {
-				logger.Info("deleting expired pvc snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[annotationSnapshotRetention])
+				logger.Info("deleting expired pvc snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
 				if err = r.Delete(ctx, &snapshot); err != nil {
 					return err
 				}
@@ -251,7 +251,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 					"Deleted expired PVC snapshot %s", snapshot.GetName(),
 				)
 				if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && chainNode.Spec.Persistence.Snapshots.ExportTarball.DeleteWhenExpired() {
-					logger.Info("deleting expired snapshot tarball", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[annotationSnapshotRetention])
+					logger.Info("deleting expired snapshot tarball", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
 					if err = r.deleteTarball(ctx, chainNode, &snapshot); err != nil {
 						return err
 					}
@@ -300,7 +300,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 }
 
 func (r *Reconciler) listNodeSnapshots(ctx context.Context, chainNode *appsv1.ChainNode) ([]snapshotv1.VolumeSnapshot, error) {
-	listOption := client.MatchingLabels{LabelChainNode: chainNode.GetName()}
+	listOption := client.MatchingLabels{controllers.LabelChainNode: chainNode.GetName()}
 	list := &snapshotv1.VolumeSnapshotList{}
 	if err := r.List(ctx, list, listOption); err != nil {
 		return nil, err
@@ -383,7 +383,7 @@ func isSnapshotReady(snapshot *snapshotv1.VolumeSnapshot) bool {
 }
 
 func isSnapshotExpired(snapshot *snapshotv1.VolumeSnapshot) (bool, error) {
-	retention, ok := snapshot.Annotations[annotationSnapshotRetention]
+	retention, ok := snapshot.Annotations[controllers.AnnotationSnapshotRetention]
 	if !ok {
 		return false, nil
 	}
@@ -402,11 +402,11 @@ func getVolumeSnapshotSpec(chainNode *appsv1.ChainNode) *snapshotv1.VolumeSnapsh
 			Name:      getSnapshotName(chainNode),
 			Namespace: chainNode.GetNamespace(),
 			Annotations: map[string]string{
-				annotationPvcSnapshotReady: strconv.FormatBool(false),
-				annotationDataHeight:       strconv.FormatInt(chainNode.Status.LatestHeight, 10),
+				controllers.AnnotationPvcSnapshotReady: strconv.FormatBool(false),
+				controllers.AnnotationDataHeight:       strconv.FormatInt(chainNode.Status.LatestHeight, 10),
 			},
 			Labels: WithChainNodeLabels(chainNode, map[string]string{
-				LabelChainNode: chainNode.GetName(),
+				controllers.LabelChainNode: chainNode.GetName(),
 			}),
 		},
 		Spec: snapshotv1.VolumeSnapshotSpec{
@@ -418,7 +418,7 @@ func getVolumeSnapshotSpec(chainNode *appsv1.ChainNode) *snapshotv1.VolumeSnapsh
 	}
 
 	if chainNode.Spec.Persistence.Snapshots.Retention != nil {
-		spec.ObjectMeta.Annotations[annotationSnapshotRetention] = *chainNode.Spec.Persistence.Snapshots.Retention
+		spec.ObjectMeta.Annotations[controllers.AnnotationSnapshotRetention] = *chainNode.Spec.Persistence.Snapshots.Retention
 	}
 
 	return spec
@@ -428,7 +428,7 @@ func volumeSnapshotInProgress(chainNode *appsv1.ChainNode) bool {
 	if chainNode.ObjectMeta.Annotations == nil {
 		return false
 	}
-	v, ok := chainNode.ObjectMeta.Annotations[annotationPvcSnapshotInProgress]
+	v, ok := chainNode.ObjectMeta.Annotations[controllers.AnnotationPvcSnapshotInProgress]
 	if !ok {
 		return false
 	}
@@ -439,7 +439,7 @@ func setSnapshotInProgress(chainNode *appsv1.ChainNode, snapshotting bool) {
 	if chainNode.ObjectMeta.Annotations == nil {
 		chainNode.ObjectMeta.Annotations = make(map[string]string)
 	}
-	chainNode.ObjectMeta.Annotations[annotationPvcSnapshotInProgress] = strconv.FormatBool(snapshotting)
+	chainNode.ObjectMeta.Annotations[controllers.AnnotationPvcSnapshotInProgress] = strconv.FormatBool(snapshotting)
 	if snapshotting {
 		chainNode.Status.Phase = appsv1.PhaseChainNodeSnapshotting
 	} else {
@@ -451,11 +451,11 @@ func setSnapshotTime(chainNode *appsv1.ChainNode, ts time.Time) {
 	if chainNode.ObjectMeta.Annotations == nil {
 		chainNode.ObjectMeta.Annotations = make(map[string]string)
 	}
-	chainNode.ObjectMeta.Annotations[annotationLastPvcSnapshot] = ts.UTC().Format(timeLayout)
+	chainNode.ObjectMeta.Annotations[controllers.AnnotationLastPvcSnapshot] = ts.UTC().Format(timeLayout)
 }
 
 func getLastSnapshotTime(chainNode *appsv1.ChainNode) time.Time {
-	if s, ok := chainNode.ObjectMeta.Annotations[annotationLastPvcSnapshot]; ok {
+	if s, ok := chainNode.ObjectMeta.Annotations[controllers.AnnotationLastPvcSnapshot]; ok {
 		if ts, err := time.Parse(timeLayout, s); err == nil {
 			return ts.UTC()
 		}
@@ -468,8 +468,8 @@ func getSnapshotName(chainNode *appsv1.ChainNode) string {
 
 	// When taking snapshots from a chainnode that belongs to chainnodeset group, we will only snapshot
 	// from one of the group nodes, so we give it the group name instead.
-	if group, ok := chainNode.Labels[chainnodeset.LabelChainNodeSetGroup]; ok && group != "" {
-		if nodeset, ok := chainNode.Labels[chainnodeset.LabelChainNodeSet]; ok && nodeset != "" {
+	if group, ok := chainNode.Labels[controllers.LabelChainNodeSetGroup]; ok && group != "" {
+		if nodeset, ok := chainNode.Labels[controllers.LabelChainNodeSet]; ok && nodeset != "" {
 			name = fmt.Sprintf("%s-%s", nodeset, group)
 		}
 
@@ -722,7 +722,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 		return err
 	}
 
-	snapshot.ObjectMeta.Annotations[annotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
+	snapshot.ObjectMeta.Annotations[controllers.AnnotationSnapshotIntegrityStatus] = string(snapshotIntegrityChecking)
 	return r.Update(ctx, snapshot)
 }
 

@@ -189,29 +189,6 @@ func (cfg *Config) UseDashedConfigToml() bool {
 	return false
 }
 
-// Peer helper methods
-
-func (peer *Peer) GetPort() int {
-	if peer.Port != nil {
-		return *peer.Port
-	}
-	return DefaultP2pPort
-}
-
-func (peer *Peer) IsUnconditional() bool {
-	if peer.Unconditional != nil {
-		return *peer.Unconditional
-	}
-	return false
-}
-
-func (peer *Peer) IsPrivate() bool {
-	if peer.Private != nil {
-		return *peer.Private
-	}
-	return false
-}
-
 func (cfg *Config) GetBlockThreshold() string {
 	if cfg != nil && cfg.BlockThreshold != nil {
 		return *cfg.BlockThreshold
@@ -577,4 +554,59 @@ func (vpar *VerticalAutoscalingRule) GetDuration() time.Duration {
 		}
 	}
 	return DefaultVpaCooldown
+}
+
+// Peer helper methods
+
+func (peer *Peer) String() string {
+	if peer == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%s@%s:%d", peer.ID, peer.Address, peer.GetPort())
+}
+
+func (peer *Peer) GetPort() int {
+	if peer.Port != nil {
+		return *peer.Port
+	}
+	return DefaultP2pPort
+}
+
+func (peer *Peer) IsUnconditional() bool {
+	if peer.Unconditional != nil {
+		return *peer.Unconditional
+	}
+	return false
+}
+
+func (peer *Peer) IsPrivate() bool {
+	if peer.Private != nil {
+		return *peer.Private
+	}
+	return false
+}
+
+func (peer *Peer) IsSeed() bool {
+	if peer.Seed != nil {
+		return *peer.Seed
+	}
+	return false
+}
+
+func (p PeerList) String() string {
+	stringPeers := make([]string, len(p))
+	for i, peer := range p {
+		stringPeers[i] = peer.String()
+	}
+	return strings.Join(stringPeers, ",")
+}
+
+func (p PeerList) ExcludeSeeds() PeerList {
+	l := make(PeerList, 0)
+	for _, peer := range p {
+		if !peer.IsSeed() {
+			l = append(l, peer)
+		}
+	}
+	return l
 }

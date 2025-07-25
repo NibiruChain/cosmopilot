@@ -48,6 +48,18 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - apps.k8s.nibiru.org
   resources:
   - chainnodes

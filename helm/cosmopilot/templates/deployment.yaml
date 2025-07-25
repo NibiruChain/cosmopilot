@@ -57,6 +57,8 @@ spec:
               value: {{ .Values.nodeUtilsImage }}
             - name: COSMOGUARD_IMAGE
               value: {{ .Values.cosmoGuardImage }}
+            - name: COSMOSEED_IMAGE
+              value: {{ .Values.cosmoseedImage }}
             - name: WORKER_NAME
               value: {{ .Values.workerName }}
             - name: WORKER_COUNT
@@ -68,7 +70,7 @@ spec:
             - name: ENABLE_LEADER_ELECTION
               value: "true"
             - name: DISRUPTION_CHECKS_ENABLED
-              value:  "{{ .Values.disruptionChecksEnabled }}"
+              value: "{{ .Values.disruptionChecksEnabled }}"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/NibiruChain/cosmoseed/pkg/cosmoseed"
 	"github.com/goccy/go-json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -13,7 +14,8 @@ import (
 )
 
 const (
-	DefaultGroupInstances = 1
+	DefaultGroupInstances    = 1
+	DefaultCosmoseedLogLevel = "info"
 )
 
 func (nodeSet *ChainNodeSet) GetNamespacedName() string {
@@ -241,4 +243,91 @@ func (gi *GlobalIngressConfig) HasGroup(name string) bool {
 		}
 	}
 	return false
+}
+
+// Cosmoseed Helper Methods
+
+func (cs *CosmoseedConfig) IsEnabled() bool {
+	if cs != nil && cs.Enabled != nil {
+		return *cs.Enabled
+	}
+	return false
+}
+
+func (cs *CosmoseedConfig) GetInstances() int {
+	if !cs.IsEnabled() {
+		return 0
+	}
+	if cs != nil && cs.Instances != nil {
+		return *cs.Instances
+	}
+	return 1
+}
+
+func (cs *CosmoseedConfig) GetMaxInboundPeers() int {
+	if cs != nil && cs.MaxInboundPeers != nil {
+		return *cs.MaxInboundPeers
+	}
+	return 2000
+}
+
+func (cs *CosmoseedConfig) GetMaxOutboundPeers() int {
+	if cs != nil && cs.MaxOutboundPeers != nil {
+		return *cs.MaxOutboundPeers
+	}
+	return 20
+}
+
+func (cs *CosmoseedConfig) GetMaxPacketMsgPayloadSize() int {
+	if cs != nil && cs.MaxPacketMsgPayloadSize != nil {
+		return *cs.MaxPacketMsgPayloadSize
+	}
+	return 1024
+}
+
+func (cs *CosmoseedConfig) GetPeerQueueSize() int {
+	if cs != nil && cs.PeerQueueSize != nil {
+		return *cs.PeerQueueSize
+	}
+	return 1000
+}
+
+func (cs *CosmoseedConfig) GetDialWorkers() int {
+	if cs != nil && cs.DialWorkers != nil {
+		return *cs.DialWorkers
+	}
+	return 20
+}
+
+func (cs *CosmoseedConfig) GetLogLevel() string {
+	if cs != nil && cs.LogLevel != nil {
+		return *cs.LogLevel
+	}
+	return DefaultCosmoseedLogLevel
+}
+
+func (cs *CosmoseedConfig) GetAddressbookStrict() bool {
+	if cs != nil && cs.AddrBookStrict != nil {
+		return *cs.AddrBookStrict
+	}
+	return true
+}
+
+func (cs *CosmoseedConfig) GetCosmoseedConfig(chainID, seeds string) (*cosmoseed.Config, error) {
+	cfg, err := cosmoseed.DefaultConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.ChainID = chainID
+	cfg.Seeds = seeds
+
+	cfg.AddrBookStrict = cs.GetAddressbookStrict()
+	cfg.MaxOutboundPeers = cs.GetMaxOutboundPeers()
+	cfg.MaxInboundPeers = cs.GetMaxInboundPeers()
+	cfg.MaxPacketMsgPayloadSize = cs.GetMaxPacketMsgPayloadSize()
+	cfg.PeerQueueSize = cs.GetPeerQueueSize()
+	cfg.DialWorkers = cs.GetDialWorkers()
+
+	return cfg, nil
 }
