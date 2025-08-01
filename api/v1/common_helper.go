@@ -610,3 +610,7 @@ func (p PeerList) ExcludeSeeds() PeerList {
 	}
 	return l
 }
+
+func (p PeerList) Append(l PeerList) PeerList {
+	return append(p, l...)
+}

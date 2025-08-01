@@ -217,7 +217,18 @@ func (r *Reconciler) getCosmoseedConfigMap(ctx context.Context, nodeSet *v1.Chai
 		return "", nil, err
 	}
 
-	cfg, err := nodeSet.Spec.Cosmoseed.GetCosmoseedConfig(nodeSet.Status.ChainID, peers.ExcludeSeeds().String())
+	var publicPeers []v1.Peer
+	for _, node := range nodeSet.Status.Nodes {
+		if node.Public {
+			publicPeers = append(publicPeers, v1.Peer{
+				ID:      node.ID,
+				Address: node.PublicAddress,
+				Port:    &node.PublicPort,
+			})
+		}
+	}
+
+	cfg, err := nodeSet.Spec.Cosmoseed.GetCosmoseedConfig(nodeSet.Status.ChainID, peers.ExcludeSeeds().Append(publicPeers).String())
 	if err != nil {
 		return "", nil, err
 	}
