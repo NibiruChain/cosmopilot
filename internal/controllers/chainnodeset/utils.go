@@ -3,6 +3,7 @@ package chainnodeset
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	appsv1 "k8s.io/api/apps/v1"
@@ -139,4 +140,20 @@ func (r *Reconciler) ensureStatefulSet(ctx context.Context, ss *appsv1.StatefulS
 
 	*ss = *currentStatefulset
 	return nil
+}
+
+func AddressWithPortFromFullAddress(fullAddress string) string {
+	parts := strings.Split(fullAddress, "@")
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return fullAddress
+}
+
+func RemoveIdFromFullAddresses(fullAddresses []string) []string {
+	result := make([]string, len(fullAddresses))
+	for i, address := range fullAddresses {
+		result[i] = AddressWithPortFromFullAddress(address)
+	}
+	return result
 }

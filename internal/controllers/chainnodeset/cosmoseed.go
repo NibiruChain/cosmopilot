@@ -6,6 +6,7 @@ import (
 	"path"
 	"reflect"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
@@ -61,7 +62,7 @@ func (r *Reconciler) ensureSeedNodes(ctx context.Context, nodeSet *v1.ChainNodeS
 		}
 	}
 
-	ss, err := r.getStatefulSet(nodeSet, configHash)
+	ss, err := r.getStatefulSet(nodeSet, configHash, RemoveIdFromFullAddresses(publicAddresses))
 	if err != nil {
 		return err
 	}
@@ -286,7 +287,7 @@ func (r *Reconciler) listChainPeers(ctx context.Context, chainID string) (v1.Pee
 	return peers, nil
 }
 
-func (r *Reconciler) getStatefulSet(nodeSet *v1.ChainNodeSet, configHash string) (*appsv1.StatefulSet, error) {
+func (r *Reconciler) getStatefulSet(nodeSet *v1.ChainNodeSet, configHash string, publicAddresses []string) (*appsv1.StatefulSet, error) {
 	replicas := int32(nodeSet.Spec.Cosmoseed.GetInstances())
 
 	labels := map[string]string{
@@ -355,12 +356,16 @@ func (r *Reconciler) getStatefulSet(nodeSet *v1.ChainNodeSet, configHash string)
 							},
 							Env: []corev1.EnvVar{
 								{
-									Name: "NODE_KEY_FILE",
+									Name: "POD_NAME",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.name",
 										},
 									},
+								},
+								{
+									Name:  "EXTERNAL_ADDRESS",
+									Value: strings.Join(publicAddresses, ","),
 								},
 							},
 							Resources: nodeSet.Spec.Cosmoseed.Resources,
