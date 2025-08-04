@@ -208,6 +208,9 @@ func (chainNode *ChainNode) GetMoniker() string {
 }
 
 func (chainNode *ChainNode) GetAppVersion() string {
+	if chainNode.Spec.OverrideVersion != nil {
+		return *chainNode.Spec.OverrideVersion
+	}
 	version := chainNode.Spec.App.GetImageVersion()
 	var h int64 = 0
 	for _, u := range chainNode.Status.Upgrades {
@@ -220,6 +223,9 @@ func (chainNode *ChainNode) GetAppVersion() string {
 }
 
 func (chainNode *ChainNode) GetLatestVersion() string {
+	if chainNode.Spec.OverrideVersion != nil {
+		return *chainNode.Spec.OverrideVersion
+	}
 	version := chainNode.Spec.App.GetImageVersion()
 	var h int64 = 0
 	for _, u := range chainNode.Status.Upgrades {

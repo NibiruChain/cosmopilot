@@ -98,6 +98,7 @@ ChainNodeSpec defines the desired state of ChainNode.
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
+| overrideVersion | OverrideVersion will force this node to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version based on upgrade history. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -314,6 +315,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 | pdb | Pod Disruption Budget configuration for this group. | *[PdbConfig](#pdbconfig) | false |
 | snapshotNodeIndex | Index of the node in the group to take volume snapshots from (if enabled). Defaults to `0`. | *int | false |
+| overrideVersion | OverrideVersion will force this group to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the nodes, nor will set the version based on upgrade history. For unsetting this, you will have to do it here and individually per ChainNode | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 

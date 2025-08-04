@@ -298,6 +298,13 @@ type NodeGroupSpec struct {
 	// +default=0
 	// +kubebuilder:validation:Minimum=0
 	SnapshotNodeIndex *int `json:"snapshotNodeIndex,omitempty"`
+
+	// OverrideVersion will force this group to use the specified version.
+	// NOTE: when this is set, cosmopilot will not upgrade the nodes, nor will set the version
+	// based on upgrade history. For unsetting this, you will have to do it here and individually
+	// per ChainNode
+	// +optional
+	OverrideVersion *string `json:"overrideVersion,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints.

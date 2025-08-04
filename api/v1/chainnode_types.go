@@ -125,6 +125,12 @@ type ChainNodeSpec struct {
 	// Vertical Pod Autoscaling configuration for this node.
 	// +optional
 	VPA *VerticalAutoscalingConfig `json:"vpa,omitempty"`
+
+	// OverrideVersion will force this node to use the specified version.
+	// NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version
+	// based on upgrade history.
+	// +optional
+	OverrideVersion *string `json:"overrideVersion,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode

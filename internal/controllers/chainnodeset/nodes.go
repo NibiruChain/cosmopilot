@@ -183,6 +183,11 @@ func (r *Reconciler) ensureNode(ctx context.Context, nodeSet *appsv1.ChainNodeSe
 		return err
 	}
 
+	// Require overrideVersion to be removed individually from each node
+	if currentNode.Spec.OverrideVersion != nil && node.Spec.OverrideVersion == nil {
+		node.Spec.OverrideVersion = currentNode.Spec.OverrideVersion
+	}
+
 	if !currentNode.Equal(node) {
 		logger.Info("updating chainnode", "chainnode", node.GetName())
 		node.ObjectMeta.ResourceVersion = currentNode.ObjectMeta.ResourceVersion
@@ -256,6 +261,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			StateSyncRestore:              group.StateSyncRestore,
 			IgnoreGroupOnDisruptionChecks: group.IgnoreGroupOnDisruptionChecks,
 			VPA:                           group.VPA,
+			OverrideVersion:               group.OverrideVersion,
 		},
 	}
 

@@ -2176,6 +2176,13 @@ spec:
                         Selector which must be true for the pod to fit on a node.
                         Selector which must match a node's labels for the pod to be scheduled on that node.
                       type: object
+                    overrideVersion:
+                      description: |-
+                        OverrideVersion will force this group to use the specified version.
+                        NOTE: when this is set, cosmopilot will not upgrade the nodes, nor will set the version
+                        based on upgrade history. For unsetting this, you will have to do it here and individually
+                        per ChainNode
+                      type: string
                     pdb:
                       description: Pod Disruption Budget configuration for this group.
                       properties:

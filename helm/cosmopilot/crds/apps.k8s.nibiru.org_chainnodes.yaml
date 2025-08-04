@@ -1894,6 +1894,12 @@ spec:
                   Selector which must be true for the pod to fit on a node.
                   Selector which must match a node's labels for the pod to be scheduled on that node.
                 type: object
+              overrideVersion:
+                description: |-
+                  OverrideVersion will force this node to use the specified version.
+                  NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version
+                  based on upgrade history.
+                type: string
               peers:
                 description: Additional persistent peers that should be added to this
                   node.
