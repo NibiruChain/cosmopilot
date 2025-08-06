@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/NibiruChain/cosmoseed/pkg/cosmoseed"
 	"github.com/goccy/go-json"
@@ -17,6 +18,7 @@ const (
 	DefaultGroupInstances        = 1
 	DefaultCosmoseedLogLevel     = "info"
 	DefaultCosmoseedAddrBookFile = "data/addrbook.json"
+	DefaultIngressClass          = "nginx"
 )
 
 func (nodeSet *ChainNodeSet) GetNamespacedName() string {
@@ -102,7 +104,36 @@ func (group *NodeGroupSpec) GetIngressSecretName(owner client.Object) string {
 	return fmt.Sprintf("%s-%s-tls", owner.GetName(), group.Name)
 }
 
+func (group *NodeGroupSpec) GetIngressClass() string {
+	if group.Ingress != nil && group.Ingress.IngressClass != nil {
+		return *group.Ingress.IngressClass
+	}
+	return DefaultIngressClass
+}
+
+func (group *NodeGroupSpec) GetGrpcAnnotations() map[string]string {
+	if group.Ingress != nil && group.Ingress.GrpcAnnotations != nil {
+		return group.Ingress.GrpcAnnotations
+	}
+	if strings.Contains(group.GetIngressClass(), DefaultIngressClass) {
+		return map[string]string{
+			"nginx.ingress.kubernetes.io/backend-protocol": "GRPC",
+		}
+	}
+	return nil
+}
+
+func (group *NodeGroupSpec) UseInternal() bool {
+	if group.Ingress != nil && group.Ingress.UseInternalServices != nil {
+		return *group.Ingress.UseInternalServices
+	}
+	return false
+}
+
 func (group *NodeGroupSpec) GetServiceName(owner client.Object) string {
+	if group.UseInternal() {
+		return fmt.Sprintf("%s-%s-internal", owner.GetName(), group.Name)
+	}
 	return fmt.Sprintf("%s-%s", owner.GetName(), group.Name)
 }
 
@@ -206,6 +237,13 @@ func (gi *GlobalIngressConfig) GetName(owner client.Object) string {
 	return fmt.Sprintf("%s-global-%s", owner.GetName(), gi.Name)
 }
 
+func (gi *GlobalIngressConfig) GetServiceName(owner client.Object) string {
+	if gi.UseInternal() {
+		return fmt.Sprintf("%s-global-%s-internal", owner.GetName(), gi.Name)
+	}
+	return fmt.Sprintf("%s-global-%s", owner.GetName(), gi.Name)
+}
+
 func (gi *GlobalIngressConfig) GetGrpcName(owner client.Object) string {
 	return fmt.Sprintf("%s-global-%s-grpc", owner.GetName(), gi.Name)
 }
@@ -235,6 +273,34 @@ func (gi *GlobalIngressConfig) HasGroup(name string) bool {
 		if groupName == name {
 			return true
 		}
+	}
+	return false
+}
+
+func (gi *GlobalIngressConfig) GetIngressClass() string {
+	if gi != nil && gi.IngressClass != nil {
+		return *gi.IngressClass
+	}
+	return DefaultIngressClass
+}
+
+func (gi *GlobalIngressConfig) GetGrpcAnnotations() map[string]string {
+	if gi != nil && gi.GrpcAnnotations != nil {
+		return gi.GrpcAnnotations
+	}
+
+	if strings.Contains(gi.GetIngressClass(), DefaultIngressClass) {
+		return map[string]string{
+			"nginx.ingress.kubernetes.io/backend-protocol": "GRPC",
+		}
+	}
+
+	return nil
+}
+
+func (gi *GlobalIngressConfig) UseInternal() bool {
+	if gi != nil && gi.UseInternalServices != nil {
+		return *gi.UseInternalServices
 	}
 	return false
 }
@@ -325,4 +391,11 @@ func (cs *CosmoseedConfig) GetCosmoseedConfig(chainID, seeds string) (*cosmoseed
 	cfg.LogLevel = cs.GetLogLevel()
 	cfg.AddrBookFile = DefaultCosmoseedAddrBookFile
 	return cfg, nil
+}
+
+func (csi *CosmoseedIngressConfig) GetIngressClass() string {
+	if csi != nil && csi.IngressClass != nil {
+		return *csi.IngressClass
+	}
+	return DefaultIngressClass
 }

@@ -194,6 +194,11 @@ spec:
                       host:
                         description: Host in which cosmoseed nodes will be exposed.
                         type: string
+                      ingressClass:
+                        default: nginx
+                        description: IngressClass specifies the ingress class to be
+                          used on ingresses
+                        type: string
                       tlsSecretName:
                         description: Name of the secret containing TLS certificate.
                         type: string
@@ -354,7 +359,7 @@ spec:
                     annotations:
                       additionalProperties:
                         type: string
-                      description: Annotations to be appended to the ingress.
+                      description: Annotations to be set on ingress resource.
                       type: object
                     disableTLS:
                       description: Whether to disable TLS on ingress resource.
@@ -381,11 +386,24 @@ spec:
                         type: string
                       minItems: 1
                       type: array
+                    grpcAnnotations:
+                      additionalProperties:
+                        type: string
+                      description: |-
+                        GrpcAnnotations to be set on grpc ingress resource.
+                        Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC`
+                        if nginx ingress class is used.
+                      type: object
                     host:
                       description: |-
                         Host in which endpoints will be exposed. Endpoints are exposed on corresponding
                         subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
                         `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+                      type: string
+                    ingressClass:
+                      default: nginx
+                      description: IngressClass specifies the ingress class to be
+                        used on ingresses
                       type: string
                     name:
                       description: The name of this ingress
@@ -394,6 +412,13 @@ spec:
                     tlsSecretName:
                       description: Name of the secret containing TLS certificate.
                       type: string
+                    useInternalServices:
+                      default: false
+                      description: |-
+                        UseInternalServices configures Ingress to route traffic directly to the node services,
+                        bypassing Cosmoguard and any readiness checks. This is only recommended for debugging
+                        or for private/internal traffic (e.g., when accessing the cluster over a VPN).
+                      type: boolean
                   required:
                   - groups
                   - host
@@ -2144,15 +2169,35 @@ spec:
                         enableRPC:
                           description: Enable RPC endpoint.
                           type: boolean
+                        grpcAnnotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            GrpcAnnotations to be set on grpc ingress resource.
+                            Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC`
+                            if nginx ingress class is used.
+                          type: object
                         host:
                           description: |-
                             Host in which endpoints will be exposed. Endpoints are exposed on corresponding
                             subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
                             `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
                           type: string
+                        ingressClass:
+                          default: nginx
+                          description: IngressClass specifies the ingress class to
+                            be used on ingresses
+                          type: string
                         tlsSecretName:
                           description: Name of the secret containing TLS certificate.
                           type: string
+                        useInternalServices:
+                          default: false
+                          description: |-
+                            UseInternalServices configures Ingress to route traffic directly to the node services,
+                            bypassing Cosmoguard and any readiness checks. This is only recommended for debugging
+                            or for private/internal traffic (e.g., when accessing the cluster over a VPN).
+                          type: boolean
                       required:
                       - host
                       type: object

@@ -717,7 +717,7 @@ func (r *Reconciler) getCosmoseedIngress(nodeSet *v1.ChainNodeSet) (*netv1.Ingre
 			Annotations: nodeSet.Spec.Cosmoseed.Ingress.Annotations,
 		},
 		Spec: netv1.IngressSpec{
-			IngressClassName: pointer.String(ingressClassNameNginx),
+			IngressClassName: pointer.String(nodeSet.Spec.Cosmoseed.Ingress.GetIngressClass()),
 			Rules: []netv1.IngressRule{
 				{
 					Host: nodeSet.Spec.Cosmoseed.Ingress.Host,

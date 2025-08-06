@@ -337,6 +337,24 @@ type IngressConfig struct {
 	// Name of the secret containing TLS certificate.
 	// +optional
 	TlsSecretName *string `json:"tlsSecretName,omitempty"`
+
+	// GrpcAnnotations to be set on grpc ingress resource.
+	// Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC`
+	// if nginx ingress class is used.
+	// +optional
+	GrpcAnnotations map[string]string `json:"grpcAnnotations,omitempty"`
+
+	// IngressClass specifies the ingress class to be used on ingresses
+	// +optional
+	// +default="nginx"
+	IngressClass *string `json:"ingressClass,omitempty"`
+
+	// UseInternalServices configures Ingress to route traffic directly to the node services,
+	// bypassing Cosmoguard and any readiness checks. This is only recommended for debugging
+	// or for private/internal traffic (e.g., when accessing the cluster over a VPN).
+	// +optional
+	// +default=false
+	UseInternalServices *bool `json:"useInternalServices,omitempty"`
 }
 
 // GlobalIngressConfig specifies configurations for ingress to expose API endpoints of several groups of nodes.
@@ -374,7 +392,7 @@ type GlobalIngressConfig struct {
 	// `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
 	Host string `json:"host"`
 
-	// Annotations to be appended to the ingress.
+	// Annotations to be set on ingress resource.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
@@ -385,6 +403,24 @@ type GlobalIngressConfig struct {
 	// Name of the secret containing TLS certificate.
 	// +optional
 	TlsSecretName *string `json:"tlsSecretName,omitempty"`
+
+	// GrpcAnnotations to be set on grpc ingress resource.
+	// Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC`
+	// if nginx ingress class is used.
+	// +optional
+	GrpcAnnotations map[string]string `json:"grpcAnnotations,omitempty"`
+
+	// IngressClass specifies the ingress class to be used on ingresses
+	// +optional
+	// +default="nginx"
+	IngressClass *string `json:"ingressClass,omitempty"`
+
+	// UseInternalServices configures Ingress to route traffic directly to the node services,
+	// bypassing Cosmoguard and any readiness checks. This is only recommended for debugging
+	// or for private/internal traffic (e.g., when accessing the cluster over a VPN).
+	// +optional
+	// +default=false
+	UseInternalServices *bool `json:"useInternalServices,omitempty"`
 }
 
 type PdbConfig struct {
@@ -498,4 +534,9 @@ type CosmoseedIngressConfig struct {
 	// Name of the secret containing TLS certificate.
 	// +optional
 	TlsSecretName *string `json:"tlsSecretName,omitempty"`
+
+	// IngressClass specifies the ingress class to be used on ingresses
+	// +optional
+	// +default="nginx"
+	IngressClass *string `json:"ingressClass,omitempty"`
 }

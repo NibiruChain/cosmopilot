@@ -182,7 +182,7 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 			Annotations: group.Ingress.Annotations,
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(ingressClassNameNginx),
+			IngressClassName: pointer.String(group.GetIngressClass()),
 			Rules:            make([]v1.IngressRule, 0),
 		},
 	}
@@ -330,10 +330,10 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 				controllers.LabelChainNodeSetGroup: group.Name,
 				controllers.LabelScope:             scopeGroup,
 			}),
-			Annotations: nginxGrpcAnnotations,
+			Annotations: group.GetGrpcAnnotations(),
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(ingressClassNameNginx),
+			IngressClassName: pointer.String(group.GetIngressClass()),
 			Rules: []v1.IngressRule{
 				{
 					Host: fmt.Sprintf("grpc.%s", group.Ingress.Host),
@@ -380,7 +380,7 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 			Annotations: globalIngress.Annotations,
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(ingressClassNameNginx),
+			IngressClassName: pointer.String(globalIngress.GetIngressClass()),
 			Rules:            make([]v1.IngressRule, 0),
 		},
 	}
@@ -410,7 +410,7 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 							PathType: &pathType,
 							Backend: v1.IngressBackend{
 								Service: &v1.IngressServiceBackend{
-									Name: globalIngress.GetName(nodeSet),
+									Name: globalIngress.GetServiceName(nodeSet),
 									Port: v1.ServiceBackendPort{
 										Number: chainutils.RpcPort,
 									},
@@ -438,7 +438,7 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 							PathType: &pathType,
 							Backend: v1.IngressBackend{
 								Service: &v1.IngressServiceBackend{
-									Name: globalIngress.GetName(nodeSet),
+									Name: globalIngress.GetServiceName(nodeSet),
 									Port: v1.ServiceBackendPort{
 										Number: chainutils.LcdPort,
 									},
@@ -466,7 +466,7 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 							PathType: &pathType,
 							Backend: v1.IngressBackend{
 								Service: &v1.IngressServiceBackend{
-									Name: globalIngress.GetName(nodeSet),
+									Name: globalIngress.GetServiceName(nodeSet),
 									Port: v1.ServiceBackendPort{
 										Number: controllers.EvmRpcPort,
 									},
@@ -494,7 +494,7 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 							PathType: &pathType,
 							Backend: v1.IngressBackend{
 								Service: &v1.IngressServiceBackend{
-									Name: globalIngress.GetName(nodeSet),
+									Name: globalIngress.GetServiceName(nodeSet),
 									Port: v1.ServiceBackendPort{
 										Number: controllers.EvmRpcWsPort,
 									},
@@ -528,10 +528,10 @@ func (r *Reconciler) getGrpcGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, glob
 				controllers.LabelGlobalIngress: globalIngress.Name,
 				controllers.LabelScope:         scopeGlobal,
 			}),
-			Annotations: nginxGrpcAnnotations,
+			Annotations: globalIngress.GetGrpcAnnotations(),
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(ingressClassNameNginx),
+			IngressClassName: pointer.String(globalIngress.GetIngressClass()),
 			Rules: []v1.IngressRule{
 				{
 					Host: fmt.Sprintf("grpc.%s", globalIngress.Host),
@@ -541,7 +541,7 @@ func (r *Reconciler) getGrpcGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, glob
 								PathType: &pathType,
 								Backend: v1.IngressBackend{
 									Service: &v1.IngressServiceBackend{
-										Name: globalIngress.GetName(nodeSet),
+										Name: globalIngress.GetServiceName(nodeSet),
 										Port: v1.ServiceBackendPort{
 											Number: chainutils.GrpcPort,
 										},
