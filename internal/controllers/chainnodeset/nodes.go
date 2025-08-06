@@ -128,7 +128,7 @@ func (r *Reconciler) ensureNodeGroup(ctx context.Context, nodeSet *appsv1.ChainN
 		if err != nil {
 			return err
 		}
-		if err := r.ensureNode(ctx, nodeSet, node, nodeSet.RollingUpdatesEnabled()); err != nil {
+		if err := r.ensureNode(ctx, nodeSet, node, false); err != nil {
 			return err
 		}
 

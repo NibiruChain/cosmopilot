@@ -194,7 +194,6 @@ ChainNodeSetSpec defines the desired state of ChainNode.
 | genesis | Indicates where this node will get the genesis from. Can be omitted when .spec.validator.init is specified. | *[GenesisConfig](#genesisconfig) | true |
 | validator | Indicates this node set will run a validator and allows configuring it. | *[NodeSetValidatorConfig](#nodesetvalidatorconfig) | false |
 | nodes | List of groups of ChainNodes to be run. | [][NodeGroupSpec](#nodegroupspec) | true |
-| rollingUpdates | Ensures that changes to ChainNodeSet are propagated to ChainNode resources one at a time. Cosmopilot will wait for each ChainNode to be in either Running or Syncing state before proceeding to the next one. Note that this does not apply to upgrades, as those are handled directly by the ChainNode controller. Defaults to `false`. Deprecated: recent versions of `cosmopilot` includes disruption checks when handling pods of the same group. If you need more control over it, please use `.spec.nodes[].pdb` instead. | *bool | false |
 | ingresses | List of ingresses to create for this ChainNodeSet. This allows to create ingresses targeting multiple groups of nodes. | [][GlobalIngressConfig](#globalingressconfig) | false |
 | cosmoseed | Allows deploying seed nodes using Cosmoseed. | *[CosmoseedConfig](#cosmoseedconfig) | false |
 

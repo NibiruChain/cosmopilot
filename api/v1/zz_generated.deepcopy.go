@@ -242,11 +242,6 @@ func (in *ChainNodeSetSpec) DeepCopyInto(out *ChainNodeSetSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.RollingUpdates != nil {
-		in, out := &in.RollingUpdates, &out.RollingUpdates
-		*out = new(bool)
-		**out = **in
-	}
 	if in.Ingresses != nil {
 		in, out := &in.Ingresses, &out.Ingresses
 		*out = make([]GlobalIngressConfig, len(*in))

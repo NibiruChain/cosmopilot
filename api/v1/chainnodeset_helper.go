@@ -70,13 +70,6 @@ func (nodeSet *ChainNodeSet) GetAppSpecWithUpgrades() AppSpec {
 	return *spec
 }
 
-func (nodeSet *ChainNodeSet) RollingUpdatesEnabled() bool {
-	if nodeSet.Spec.RollingUpdates != nil {
-		return *nodeSet.Spec.RollingUpdates
-	}
-	return false
-}
-
 func (nodeSet *ChainNodeSet) GetValidatorMinimumGasPrices() string {
 	if nodeSet.HasValidator() && nodeSet.Spec.Validator.Config != nil && nodeSet.Spec.Validator.Config.Override != nil {
 		cfgOverride := *nodeSet.Spec.Validator.Config.Override
