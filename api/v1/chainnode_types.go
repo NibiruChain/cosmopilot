@@ -131,6 +131,10 @@ type ChainNodeSpec struct {
 	// based on upgrade history.
 	// +optional
 	OverrideVersion *string `json:"overrideVersion,omitempty"`
+
+	// Indicates if an ingress should be created to access API endpoints of this node and configures it.
+	// +optional
+	Ingress *IngressConfig `json:"ingress,omitempty"`
 }
 
 // ChainNodeStatus defines the observed state of ChainNode

@@ -1887,6 +1887,65 @@ spec:
                   This is useful to ensure no downtime globally or per global ingress, instead of just per group.
                   Defaults to `false`.
                 type: boolean
+              ingress:
+                description: Indicates if an ingress should be created to access API
+                  endpoints of this node and configures it.
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations to be appended to the ingress.
+                    type: object
+                  disableTLS:
+                    description: Whether to disable TLS on ingress resource.
+                    type: boolean
+                  enableEvmRPC:
+                    description: Enable EVM RPC endpoint.
+                    type: boolean
+                  enableEvmRpcWS:
+                    description: Enable EVM RPC Websocket endpoint.
+                    type: boolean
+                  enableGRPC:
+                    description: Enable gRPC endpoint.
+                    type: boolean
+                  enableLCD:
+                    description: Enable LCD endpoint.
+                    type: boolean
+                  enableRPC:
+                    description: Enable RPC endpoint.
+                    type: boolean
+                  grpcAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      GrpcAnnotations to be set on grpc ingress resource.
+                      Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC`
+                      if nginx ingress class is used.
+                    type: object
+                  host:
+                    description: |-
+                      Host in which endpoints will be exposed. Endpoints are exposed on corresponding
+                      subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
+                      `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+                    type: string
+                  ingressClass:
+                    default: nginx
+                    description: IngressClass specifies the ingress class to be used
+                      on ingresses
+                    type: string
+                  tlsSecretName:
+                    description: Name of the secret containing TLS certificate.
+                    type: string
+                  useInternalServices:
+                    default: false
+                    description: |-
+                      UseInternalServices configures Ingress to route traffic directly to the node services,
+                      bypassing Cosmoguard and any readiness checks. This is only recommended for debugging
+                      or for private/internal traffic (e.g., when accessing the cluster over a VPN).
+                    type: boolean
+                required:
+                - host
+                type: object
               nodeSelector:
                 additionalProperties:
                   type: string

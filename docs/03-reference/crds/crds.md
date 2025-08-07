@@ -99,6 +99,7 @@ ChainNodeSpec defines the desired state of ChainNode.
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 | overrideVersion | OverrideVersion will force this node to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version based on upgrade history. | *string | false |
+| ingress | Indicates if an ingress should be created to access API endpoints of this node and configures it. | *[IngressConfig](#ingressconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -57,12 +57,7 @@ func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainN
 			}
 
 			if !group.Ingress.EnableGRPC {
-				if err = r.Delete(ctx, &v1.Ingress{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("%s-%s-grpc", nodeSet.GetName(), group.Name),
-						Namespace: nodeSet.Namespace,
-					},
-				}); err != nil && !errors.IsNotFound(err) {
+				if err = r.Delete(ctx, grpcIngress); err != nil && !errors.IsNotFound(err) {
 					return err
 				}
 			} else {

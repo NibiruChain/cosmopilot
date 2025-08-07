@@ -221,6 +221,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{RequeueAfter: chainNode.GetReconcilePeriod()}, nil
 	}
 
+	logger.V(1).Info("ensure ingresses")
+	if err = r.ensureIngresses(ctx, chainNode); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	logger.V(1).Info("ensure pvc updates")
 	if err = r.ensurePvcUpdates(ctx, chainNode, pvc); err != nil {
 		return ctrl.Result{}, err

@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -12,8 +13,7 @@ import (
 )
 
 const (
-	DefaultPersistenceSize = "50Gi"
-
+	DefaultPersistenceSize     = "50Gi"
 	DefaultAutoResize          = true
 	DefaultAutoResizeThreshold = 80
 	DefaultAutoResizeIncrement = "50Gi"
@@ -382,4 +382,46 @@ func (val *ValidatorConfig) GetMinSelfDelegation() *string {
 		return val.CreateValidator.MinSelfDelegation
 	}
 	return pointer.String(DefaultMinimumSelfDelegation)
+}
+
+// ChainNode ingress helper methods
+
+func (chainNode *ChainNode) GetIngressSecretName() string {
+	if chainNode.Spec.Ingress != nil && chainNode.Spec.Ingress.TlsSecretName != nil {
+		return *chainNode.Spec.Ingress.TlsSecretName
+	}
+	return fmt.Sprintf("%s-tls", chainNode.GetName())
+}
+
+func (chainNode *ChainNode) GetIngressClass() string {
+	if chainNode.Spec.Ingress != nil && chainNode.Spec.Ingress.IngressClass != nil {
+		return *chainNode.Spec.Ingress.IngressClass
+	}
+	return DefaultIngressClass
+}
+
+func (chainNode *ChainNode) GetGrpcAnnotations() map[string]string {
+	if chainNode.Spec.Ingress != nil && chainNode.Spec.Ingress.GrpcAnnotations != nil {
+		return chainNode.Spec.Ingress.GrpcAnnotations
+	}
+	if strings.Contains(chainNode.GetIngressClass(), DefaultIngressClass) {
+		return map[string]string{
+			"nginx.ingress.kubernetes.io/backend-protocol": "GRPC",
+		}
+	}
+	return nil
+}
+
+func (chainNode *ChainNode) UseInternal() bool {
+	if chainNode.Spec.Ingress != nil && chainNode.Spec.Ingress.UseInternalServices != nil {
+		return *chainNode.Spec.Ingress.UseInternalServices
+	}
+	return false
+}
+
+func (chainNode *ChainNode) GetServiceName() string {
+	if chainNode.UseInternal() {
+		return fmt.Sprintf("%s-internal", chainNode.GetName())
+	}
+	return fmt.Sprintf("%s", chainNode.GetName())
 }
