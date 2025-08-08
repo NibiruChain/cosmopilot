@@ -213,6 +213,18 @@ type NodeSetValidatorConfig struct {
 	// this is rarely needed.
 	// +optional
 	PDB *PdbConfig `json:"pdb,omitempty"`
+
+	// OverrideVersion will force validator to use the specified version.
+	// NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version
+	// based on upgrade history. For unsetting this, you will have to do it here and on
+	// the ChainNode itself.
+	// +optional
+	OverrideVersion *string `json:"overrideVersion,omitempty"`
+
+	// Indicates if an ingress should be created to access API endpoints of validator node
+	// and configures it.
+	// +optional
+	Ingress *IngressConfig `json:"ingress,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group.
@@ -243,9 +255,27 @@ type NodeGroupSpec struct {
 	// +optional
 	Expose *ExposeConfig `json:"expose,omitempty"`
 
-	// Indicates if an ingress should be created to access API endpoints of these nodes and configures it.
+	// Ingress defines configuration for exposing API endpoints through a single shared Ingress,
+	// which routes traffic to the group Service backing all nodes in this set. This results in
+	// load-balanced access across all nodes (e.g., round-robin).
+	// See IngressConfig for detailed endpoint and TLS settings.
 	// +optional
 	Ingress *IngressConfig `json:"ingress,omitempty"`
+
+	// IndividualIngresses defines configuration for exposing API endpoints through separate
+	// Ingress resources per node in the set. Each Ingress routes traffic directly to its
+	// corresponding node's Service (i.e., no load balancing across nodes).
+	//
+	// The same IngressConfig is reused for all nodes, but the `host` field will be prefixed
+	// with the node index to generate unique subdomains. For example, if
+	// `host = "fullnodes.cosmopilot.local"`, then node ingress domains will be:
+	//   - 0.fullnodes.cosmopilot.local
+	//   - 1.fullnodes.cosmopilot.local
+	//   - etc.
+	//
+	// This mode allows targeting specific nodes individually.
+	// +optional
+	IndividualIngresses *IngressConfig `json:"individualIngresses,omitempty"`
 
 	// Compute Resources required by the app container.
 	// +optional
@@ -421,6 +451,11 @@ type GlobalIngressConfig struct {
 	// +optional
 	// +default=false
 	UseInternalServices *bool `json:"useInternalServices,omitempty"`
+
+	// ServicesOnly indicates that only global services should be created. No ingress resources will be created.
+	// Useful for usage with custom controllers that have their own CRDs.
+	// +optional
+	ServicesOnly *bool `json:"servicesOnly,omitempty"`
 }
 
 type PdbConfig struct {
@@ -539,4 +574,8 @@ type CosmoseedIngressConfig struct {
 	// +optional
 	// +default="nginx"
 	IngressClass *string `json:"ingressClass,omitempty"`
+}
+
+type IndividualIngressConfig struct {
+	Host string `json:"host"`
 }

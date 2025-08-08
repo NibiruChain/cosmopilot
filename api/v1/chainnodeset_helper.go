@@ -305,6 +305,13 @@ func (gi *GlobalIngressConfig) UseInternal() bool {
 	return false
 }
 
+func (gi *GlobalIngressConfig) CreateServicesOnly() bool {
+	if gi != nil && gi.ServicesOnly != nil {
+		return *gi.ServicesOnly
+	}
+	return false
+}
+
 // Cosmoseed Helper Methods
 
 func (cs *CosmoseedConfig) IsEnabled() bool {

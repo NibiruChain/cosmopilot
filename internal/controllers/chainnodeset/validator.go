@@ -102,6 +102,8 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 			NodeSelector:     nodeSet.Spec.Validator.NodeSelector,
 			StateSyncRestore: nodeSet.Spec.Validator.StateSyncRestore,
 			VPA:              nodeSet.Spec.Validator.VPA,
+			OverrideVersion:  nodeSet.Spec.Validator.OverrideVersion,
+			Ingress:          nodeSet.Spec.Validator.Ingress,
 		},
 	}
 	return validator, controllerutil.SetControllerReference(nodeSet, validator, r.Scheme)

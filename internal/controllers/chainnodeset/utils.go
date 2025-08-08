@@ -68,10 +68,15 @@ func ContainsGroup(groups []v1.NodeGroupSpec, groupName string) bool {
 	return false
 }
 
-func ContainsGlobalIngress(ingresses []v1.GlobalIngressConfig, ingressName string) bool {
+func ContainsGlobalIngress(ingresses []v1.GlobalIngressConfig, ingressName string, ignoreServicesOnly bool) bool {
 	for _, ingress := range ingresses {
 		if ingress.Name == ingressName {
-			return true
+			if !ignoreServicesOnly {
+				return true
+			}
+			if !ingress.CreateServicesOnly() {
+				return true
+			}
 		}
 	}
 	return false

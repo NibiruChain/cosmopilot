@@ -82,7 +82,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, nodeSet *appsv1.ChainNo
 
 	for _, svc := range globalServices.Items {
 		if _, ok := svc.Labels[controllers.LabelGlobalIngress]; !ok ||
-			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, svc.Labels[controllers.LabelGlobalIngress]) {
+			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, svc.Labels[controllers.LabelGlobalIngress], false) {
 			logger.Info("deleting service", "svc", svc.GetName())
 			if err = r.Delete(ctx, &svc); err != nil {
 				return err

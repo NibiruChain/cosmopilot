@@ -409,6 +409,11 @@ spec:
                       description: The name of this ingress
                       minLength: 1
                       type: string
+                    servicesOnly:
+                      description: |-
+                        ServicesOnly indicates that only global services should be created. No ingress resources will be created.
+                        Useful for usage with custom controllers that have their own CRDs.
+                      type: boolean
                     tlsSecretName:
                       description: Name of the secret containing TLS certificate.
                       type: string
@@ -2142,9 +2147,82 @@ spec:
                         This is useful to ensure no downtime globally or per global ingress, instead of just per group.
                         Defaults to `false`.
                       type: boolean
+                    individualIngresses:
+                      description: |-
+                        IndividualIngresses defines configuration for exposing API endpoints through separate
+                        Ingress resources per node in the set. Each Ingress routes traffic directly to its
+                        corresponding node's Service (i.e., no load balancing across nodes).
+
+                        The same IngressConfig is reused for all nodes, but the `host` field will be prefixed
+                        with the node index to generate unique subdomains. For example, if
+                        `host = "fullnodes.cosmopilot.local"`, then node ingress domains will be:
+                          - 0.fullnodes.cosmopilot.local
+                          - 1.fullnodes.cosmopilot.local
+                          - etc.
+
+                        This mode allows targeting specific nodes individually.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations to be appended to the ingress.
+                          type: object
+                        disableTLS:
+                          description: Whether to disable TLS on ingress resource.
+                          type: boolean
+                        enableEvmRPC:
+                          description: Enable EVM RPC endpoint.
+                          type: boolean
+                        enableEvmRpcWS:
+                          description: Enable EVM RPC Websocket endpoint.
+                          type: boolean
+                        enableGRPC:
+                          description: Enable gRPC endpoint.
+                          type: boolean
+                        enableLCD:
+                          description: Enable LCD endpoint.
+                          type: boolean
+                        enableRPC:
+                          description: Enable RPC endpoint.
+                          type: boolean
+                        grpcAnnotations:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            GrpcAnnotations to be set on grpc ingress resource.
+                            Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC`
+                            if nginx ingress class is used.
+                          type: object
+                        host:
+                          description: |-
+                            Host in which endpoints will be exposed. Endpoints are exposed on corresponding
+                            subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
+                            `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+                          type: string
+                        ingressClass:
+                          default: nginx
+                          description: IngressClass specifies the ingress class to
+                            be used on ingresses
+                          type: string
+                        tlsSecretName:
+                          description: Name of the secret containing TLS certificate.
+                          type: string
+                        useInternalServices:
+                          default: false
+                          description: |-
+                            UseInternalServices configures Ingress to route traffic directly to the node services,
+                            bypassing Cosmoguard and any readiness checks. This is only recommended for debugging
+                            or for private/internal traffic (e.g., when accessing the cluster over a VPN).
+                          type: boolean
+                      required:
+                      - host
+                      type: object
                     ingress:
-                      description: Indicates if an ingress should be created to access
-                        API endpoints of these nodes and configures it.
+                      description: |-
+                        Ingress defines configuration for exposing API endpoints through a single shared Ingress,
+                        which routes traffic to the group Service backing all nodes in this set. This results in
+                        load-balanced access across all nodes (e.g., round-robin).
+                        See IngressConfig for detailed endpoint and TLS settings.
                       properties:
                         annotations:
                           additionalProperties:
@@ -4509,6 +4587,66 @@ spec:
                         description: Website of the validator.
                         type: string
                     type: object
+                  ingress:
+                    description: |-
+                      Indicates if an ingress should be created to access API endpoints of validator node
+                      and configures it.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations to be appended to the ingress.
+                        type: object
+                      disableTLS:
+                        description: Whether to disable TLS on ingress resource.
+                        type: boolean
+                      enableEvmRPC:
+                        description: Enable EVM RPC endpoint.
+                        type: boolean
+                      enableEvmRpcWS:
+                        description: Enable EVM RPC Websocket endpoint.
+                        type: boolean
+                      enableGRPC:
+                        description: Enable gRPC endpoint.
+                        type: boolean
+                      enableLCD:
+                        description: Enable LCD endpoint.
+                        type: boolean
+                      enableRPC:
+                        description: Enable RPC endpoint.
+                        type: boolean
+                      grpcAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          GrpcAnnotations to be set on grpc ingress resource.
+                          Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC`
+                          if nginx ingress class is used.
+                        type: object
+                      host:
+                        description: |-
+                          Host in which endpoints will be exposed. Endpoints are exposed on corresponding
+                          subdomain of this host. An example host `nodes.example.com` will have endpoints exposed at
+                          `rpc.nodes.example.com`, `grpc.nodes.example.com` and `lcd.nodes.example.com`.
+                        type: string
+                      ingressClass:
+                        default: nginx
+                        description: IngressClass specifies the ingress class to be
+                          used on ingresses
+                        type: string
+                      tlsSecretName:
+                        description: Name of the secret containing TLS certificate.
+                        type: string
+                      useInternalServices:
+                        default: false
+                        description: |-
+                          UseInternalServices configures Ingress to route traffic directly to the node services,
+                          bypassing Cosmoguard and any readiness checks. This is only recommended for debugging
+                          or for private/internal traffic (e.g., when accessing the cluster over a VPN).
+                        type: boolean
+                    required:
+                    - host
+                    type: object
                   init:
                     description: Specifies configs and initialization commands for
                       creating a new genesis.
@@ -4657,6 +4795,13 @@ spec:
                       Selector which must be true for the pod to fit on a node.
                       Selector which must match a node's labels for the pod to be scheduled on that node.
                     type: object
+                  overrideVersion:
+                    description: |-
+                      OverrideVersion will force validator to use the specified version.
+                      NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version
+                      based on upgrade history. For unsetting this, you will have to do it here and on
+                      the ChainNode itself.
+                    type: string
                   pdb:
                     description: |-
                       Pod Disruption Budget configuration for the validator pod.

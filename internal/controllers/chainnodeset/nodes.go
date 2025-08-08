@@ -265,6 +265,11 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 		},
 	}
 
+	if group.IndividualIngresses != nil {
+		node.Spec.Ingress = group.IndividualIngresses.DeepCopy()
+		node.Spec.Ingress.Host = fmt.Sprintf("%d.%s", index, group.IndividualIngresses.Host)
+	}
+
 	if nodeSet.HasValidator() && group.ShouldInheritValidatorGasPrice() {
 		price := nodeSet.GetValidatorMinimumGasPrices()
 		if price != "" {

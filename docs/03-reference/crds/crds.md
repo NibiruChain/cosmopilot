@@ -19,6 +19,7 @@ This page provides a detailed reference for the available Custom Resource Defini
 * [CosmoseedConfig](#cosmoseedconfig)
 * [CosmoseedIngressConfig](#cosmoseedingressconfig)
 * [GlobalIngressConfig](#globalingressconfig)
+* [IndividualIngressConfig](#individualingressconfig)
 * [IngressConfig](#ingressconfig)
 * [NodeGroupSpec](#nodegroupspec)
 * [NodeSetValidatorConfig](#nodesetvalidatorconfig)
@@ -276,6 +277,17 @@ GlobalIngressConfig specifies configurations for ingress to expose API endpoints
 | grpcAnnotations | GrpcAnnotations to be set on grpc ingress resource. Defaults to nginx annotation `nginx.ingress.kubernetes.io/backend-protocol: GRPC` if nginx ingress class is used. | map[string]string | false |
 | ingressClass | IngressClass specifies the ingress class to be used on ingresses | *string | false |
 | useInternalServices | UseInternalServices configures Ingress to route traffic directly to the node services, bypassing Cosmoguard and any readiness checks. This is only recommended for debugging or for private/internal traffic (e.g., when accessing the cluster over a VPN). | *bool | false |
+| servicesOnly | ServicesOnly indicates that only global services should be created. No ingress resources will be created. Useful for usage with custom controllers that have their own CRDs. | *bool | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### IndividualIngressConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| host |  | string | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -312,7 +324,8 @@ NodeGroupSpec sets chainnode configurations for a group.
 | persistence | Configures PVC for persisting data. Automated data snapshots can also be configured in this section. | *[Persistence](#persistence) | false |
 | peers | Additional persistent peers that should be added to these nodes. | [][Peer](#peer) | false |
 | expose | Allows exposing P2P traffic to public. | *[ExposeConfig](#exposeconfig) | false |
-| ingress | Indicates if an ingress should be created to access API endpoints of these nodes and configures it. | *[IngressConfig](#ingressconfig) | false |
+| ingress | Ingress defines configuration for exposing API endpoints through a single shared Ingress, which routes traffic to the group Service backing all nodes in this set. This results in load-balanced access across all nodes (e.g., round-robin). See IngressConfig for detailed endpoint and TLS settings. | *[IngressConfig](#ingressconfig) | false |
+| individualIngresses | IndividualIngresses defines configuration for exposing API endpoints through separate Ingress resources per node in the set. Each Ingress routes traffic directly to its corresponding node's Service (i.e., no load balancing across nodes).\n\nThe same IngressConfig is reused for all nodes, but the `host` field will be prefixed with the node index to generate unique subdomains. For example, if `host = \"fullnodes.cosmopilot.local\"`, then node ingress domains will be:\n  - 0.fullnodes.cosmopilot.local\n  - 1.fullnodes.cosmopilot.local\n  - etc.\n\nThis mode allows targeting specific nodes individually. | *[IngressConfig](#ingressconfig) | false |
 | resources | Compute Resources required by the app container. | corev1.ResourceRequirements | false |
 | nodeSelector | Selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. | map[string]string | false |
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
@@ -345,6 +358,8 @@ NodeSetValidatorConfig contains validator configurations.
 | createValidator | Indicates cosmopilot should run create-validator tx to make this node a validator. | *[CreateValidatorConfig](#createvalidatorconfig) | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 | pdb | Pod Disruption Budget configuration for the validator pod. This is mainly useful in testnets where multiple validators might run in the same namespace. In production mainnet environments, where typically only one validator runs per namespace, this is rarely needed. | *[PdbConfig](#pdbconfig) | false |
+| overrideVersion | OverrideVersion will force validator to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version based on upgrade history. For unsetting this, you will have to do it here and on the ChainNode itself. | *string | false |
+| ingress | Indicates if an ingress should be created to access API endpoints of validator node and configures it. | *[IngressConfig](#ingressconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 

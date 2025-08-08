@@ -23,25 +23,7 @@ func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainN
 	logger := log.FromContext(ctx)
 
 	for _, group := range nodeSet.Spec.Nodes {
-		if group.Ingress == nil {
-			// let's try to delete ingresses if they exist
-			if err := r.Delete(ctx, &v1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-%s", nodeSet.GetName(), group.Name),
-					Namespace: nodeSet.Namespace,
-				},
-			}); err != nil && !errors.IsNotFound(err) {
-				return err
-			}
-			if err := r.Delete(ctx, &v1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-%s-grpc", nodeSet.GetName(), group.Name),
-					Namespace: nodeSet.Namespace,
-				},
-			}); err != nil && !errors.IsNotFound(err) {
-				return err
-			}
-		} else {
+		if group.Ingress != nil {
 			ingress, err := r.getIngressSpec(nodeSet, group)
 			if err != nil {
 				return err
@@ -69,32 +51,34 @@ func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainN
 	}
 
 	for _, globalIngress := range nodeSet.Spec.Ingresses {
-		ingress, err := r.getGlobalIngressSpec(nodeSet, globalIngress)
-		if err != nil {
-			return err
-		}
-
-		if err = r.ensureIngress(ctx, ingress); err != nil {
-			return err
-		}
-
-		grpcIngress, err := r.getGrpcGlobalIngressSpec(nodeSet, globalIngress)
-		if err != nil {
-			return err
-		}
-
-		if !globalIngress.EnableGRPC {
-			if err = r.Delete(ctx, &v1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      globalIngress.GetGrpcName(nodeSet),
-					Namespace: nodeSet.Namespace,
-				},
-			}); err != nil && !errors.IsNotFound(err) {
+		if !globalIngress.CreateServicesOnly() {
+			ingress, err := r.getGlobalIngressSpec(nodeSet, globalIngress)
+			if err != nil {
 				return err
 			}
-		} else {
-			if err = r.ensureIngress(ctx, grpcIngress); err != nil {
+
+			if err = r.ensureIngress(ctx, ingress); err != nil {
 				return err
+			}
+
+			grpcIngress, err := r.getGrpcGlobalIngressSpec(nodeSet, globalIngress)
+			if err != nil {
+				return err
+			}
+
+			if !globalIngress.EnableGRPC {
+				if err = r.Delete(ctx, &v1.Ingress{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      globalIngress.GetGrpcName(nodeSet),
+						Namespace: nodeSet.Namespace,
+					},
+				}); err != nil && !errors.IsNotFound(err) {
+					return err
+				}
+			} else {
+				if err = r.ensureIngress(ctx, grpcIngress); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -122,7 +106,7 @@ func (r *Reconciler) ensureIngresses(ctx context.Context, nodeSet *appsv1.ChainN
 
 	for _, ing := range globalIngresses.Items {
 		if _, ok := ing.Labels[controllers.LabelGlobalIngress]; !ok ||
-			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, ing.Labels[controllers.LabelGlobalIngress]) {
+			!ContainsGlobalIngress(nodeSet.Spec.Ingresses, ing.Labels[controllers.LabelGlobalIngress], true) {
 			logger.Info("deleting ingress", "ingress", ing.GetName())
 			if err = r.Delete(ctx, &ing); err != nil {
 				return err
