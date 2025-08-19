@@ -2148,8 +2148,8 @@ spec:
                         format: duration
                         type: string
                       resources:
-                        description: Resources to apply to integrity check job when
-                          `verify` is true.
+                        description: Compute resources for the integrity-check job
+                          pod (applied only when `verify` is true).
                         properties:
                           claims:
                             description: |-

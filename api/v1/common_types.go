@@ -733,7 +733,7 @@ type VolumeSnapshotsConfig struct {
 	// +default=true
 	DisableWhileSyncing *bool `json:"disableWhileSyncing,omitempty"`
 
-	// Resources to apply to integrity check job when `verify` is true.
+	// Compute resources for the integrity-check job pod (applied only when `verify` is true).
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
