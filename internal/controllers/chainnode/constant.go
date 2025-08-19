@@ -40,6 +40,9 @@ const (
 	initContainerCPU    = "100m"
 	initContainerMemory = "250Mi"
 
+	lightContainerCPU    = "50m"
+	lightContainerMemory = "52Mi"
+
 	volumeSnapshot = "volume-snapshot"
 
 	VolumeSnapshotDataSourceKind     = "VolumeSnapshot"
@@ -52,4 +55,7 @@ const (
 var (
 	initContainerCpuResources    = resource.MustParse(initContainerCPU)
 	initContainerMemoryResources = resource.MustParse(initContainerMemory)
+
+	lightContainerCpuResources    = resource.MustParse(lightContainerCPU)
+	lightContainerMemoryResources = resource.MustParse(lightContainerMemory)
 )

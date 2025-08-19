@@ -651,7 +651,16 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 									MountPath: "/node-config",
 								},
 							},
-							Resources: chainNode.Spec.Persistence.Snapshots.Resources,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    lightContainerCpuResources,
+									corev1.ResourceMemory: lightContainerMemoryResources,
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    lightContainerCpuResources,
+									corev1.ResourceMemory: lightContainerMemoryResources,
+								},
+							},
 						},
 						{
 							Name:            chainNode.Spec.App.App,
@@ -670,6 +679,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 									MountPath: "/home/app/config",
 								},
 							},
+							Resources: chainNode.Spec.Persistence.Snapshots.Resources,
 						},
 					},
 					Containers: []corev1.Container{
@@ -694,6 +704,16 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 									"fi; " +
 									"sleep 2; " +
 									"done",
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    lightContainerCpuResources,
+									corev1.ResourceMemory: lightContainerMemoryResources,
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    lightContainerCpuResources,
+									corev1.ResourceMemory: lightContainerMemoryResources,
+								},
 							},
 						},
 					},
