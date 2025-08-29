@@ -14,21 +14,42 @@ type ChainNodePhase string
 
 // These are the valid phases for ChainNodes.
 const (
-	PhaseChainNodeInitData     ChainNodePhase = "InitializingData"
-	PhaseChainNodeInitGenesis  ChainNodePhase = "InitGenesis"
-	PhaseChainNodeStarting     ChainNodePhase = "Starting"
-	PhaseChainNodeRunning      ChainNodePhase = "Running"
-	PhaseChainNodeSyncing      ChainNodePhase = "Syncing"
-	PhaseChainNodeRestarting   ChainNodePhase = "Restarting"
-	PhaseChainNodeStopped      ChainNodePhase = "Stopped"
-	PhaseChainNodeError        ChainNodePhase = "Error"
+	// PhaseChainNodeInitData indicates that the node data is being initialized.
+	PhaseChainNodeInitData ChainNodePhase = "InitializingData"
+
+	// PhaseChainNodeInitGenesis indicates that the genesis is being initialized.
+	PhaseChainNodeInitGenesis ChainNodePhase = "InitGenesis"
+
+	// PhaseChainNodeStarting indicates that the node is starting.
+	PhaseChainNodeStarting ChainNodePhase = "Starting"
+
+	// PhaseChainNodeRunning indicates that the node is running.
+	PhaseChainNodeRunning ChainNodePhase = "Running"
+
+	// PhaseChainNodeSyncing indicates that the node is syncing blocks.
+	PhaseChainNodeSyncing ChainNodePhase = "Syncing"
+
+	// PhaseChainNodeRestarting indicates that the node is restarting.
+	PhaseChainNodeRestarting ChainNodePhase = "Restarting"
+
+	// PhaseChainNodeStopped indicates that the node has stopped.
+	PhaseChainNodeStopped ChainNodePhase = "Stopped"
+
+	// PhaseChainNodeError indicates that the node encountered an error.
+	PhaseChainNodeError ChainNodePhase = "Error"
+
+	// PhaseChainNodeSnapshotting indicates that the node is creating a snapshot.
 	PhaseChainNodeSnapshotting ChainNodePhase = "Snapshotting"
-	PhaseChainNodeUpgrading    ChainNodePhase = "Upgrading"
+
+	// PhaseChainNodeUpgrading indicates that the node is undergoing an upgrade.
+	PhaseChainNodeUpgrading ChainNodePhase = "Upgrading"
 )
 
 const (
+	// ConditionUpgrade indicates an upgrade condition.
 	ConditionUpgrade = "Upgrade"
 
+	// ReasonUpgradeSuccess indicates that the upgrade completed successfully.
 	ReasonUpgradeSuccess = "UpgradeSuccessful"
 )
 

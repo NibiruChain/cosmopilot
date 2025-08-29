@@ -8,7 +8,7 @@ import (
 	"github.com/NibiruChain/cosmopilot/internal/tmkms"
 )
 
-// Reasons for events
+// Reasons for events.
 const (
 	ReasonPvcResized             = "PvcResized"
 	ReasonPvcMaxReached          = "PvcMaxSizeReached"
@@ -231,6 +231,7 @@ type Config struct {
 	HaltHeight *int64 `json:"haltHeight,omitempty"`
 }
 
+// VolumeSpec describes an additional volume to mount on a node.
 type VolumeSpec struct {
 	// The name of the volume.
 	Name string `json:"name"`
@@ -238,7 +239,7 @@ type VolumeSpec struct {
 	// Size of the volume.
 	Size string `json:"size"`
 
-	// The path at which this volume should be mounted
+	// Path specifies where this volume should be mounted.
 	Path string `json:"path"`
 
 	// Name of the storage class to use for this volume. Uses the default class if not specified.
@@ -255,7 +256,7 @@ type CosmoGuardConfig struct {
 	// Whether to enable CosmoGuard on this node.
 	Enable bool `json:"enable"`
 
-	// ConfigMap which CosmoGuard configuration for this node.
+	// ConfigMap containing the CosmoGuard configuration for this node.
 	Config *corev1.ConfigMapKeySelector `json:"config"`
 
 	// Whether the node's pod should be restarted when CosmoGuard fails.
@@ -487,6 +488,7 @@ type GenesisConfig struct {
 	ChainID *string `json:"chainID,omitempty"`
 }
 
+// PeerList defines a list of peers.
 type PeerList []Peer
 
 // Peer represents a peer.
@@ -567,13 +569,13 @@ type TmKMS struct {
 
 // TmKmsKeyFormat represents key format for tmKMS.
 type TmKmsKeyFormat struct {
-	// Key type
+	// Type specifies the key format type.
 	Type string `json:"type"`
 
-	// Account keys prefixes
+	// AccountKeyPrefix is the prefix used for account keys.
 	AccountKeyPrefix string `json:"account_key_prefix"`
 
-	// Consensus keys prefix
+	// ConsensusKeyPrefix is the prefix used for consensus keys.
 	ConsensusKeyPrefix string `json:"consensus_key_prefix"`
 }
 
@@ -632,7 +634,7 @@ type FromNodeRPCConfig struct {
 	// +default=false
 	Secure bool `json:"secure,omitempty"`
 
-	// Hostname or IP address of the RPC server
+	// Hostname or IP address of the RPC server.
 	// +kubebuilder:validation:MinLength=1
 	Hostname string `json:"hostname"`
 

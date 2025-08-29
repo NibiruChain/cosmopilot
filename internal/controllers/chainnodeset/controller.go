@@ -106,7 +106,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if nodeSet.Status.ChainID == "" {
-		if err := r.updatePhase(ctx, nodeSet, appsv1.PhaseChainNodeSetInitialing); err != nil {
+		if err := r.updatePhase(ctx, nodeSet, appsv1.PhaseChainNodeSetInitializing); err != nil {
 			return ctrl.Result{}, err
 		}
 	}

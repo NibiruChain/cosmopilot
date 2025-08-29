@@ -320,7 +320,7 @@ spec:
                       endpoint.
                     properties:
                       hostname:
-                        description: Hostname or IP address of the RPC server
+                        description: Hostname or IP address of the RPC server.
                         minLength: 1
                         type: string
                       port:
@@ -406,7 +406,7 @@ spec:
                         used on ingresses
                       type: string
                     name:
-                      description: The name of this ingress
+                      description: The name of this ingress.
                       minLength: 1
                       type: string
                     servicesOnly:
@@ -1344,7 +1344,7 @@ spec:
                             of the node.
                           properties:
                             config:
-                              description: ConfigMap which CosmoGuard configuration
+                              description: ConfigMap containing the CosmoGuard configuration
                                 for this node.
                               properties:
                                 key:
@@ -2093,6 +2093,8 @@ spec:
                           description: Additional volumes to be created and mounted
                             on this node.
                           items:
+                            description: VolumeSpec describes an additional volume
+                              to mount on a node.
                             properties:
                               deleteWithNode:
                                 description: Whether this volume should be deleted
@@ -2102,8 +2104,8 @@ spec:
                                 description: The name of the volume.
                                 type: string
                               path:
-                                description: The path at which this volume should
-                                  be mounted
+                                description: Path specifies where this volume should
+                                  be mounted.
                                 type: string
                               size:
                                 description: Size of the volume.
@@ -2310,7 +2312,8 @@ spec:
                       description: Pod Disruption Budget configuration for this group.
                       properties:
                         enabled:
-                          description: Whether to deploy a Pod Disruption Budget
+                          description: Enabled specifies whether to deploy a Pod Disruption
+                            Budget.
                           type: boolean
                         minAvailable:
                           description: |-
@@ -3799,7 +3802,7 @@ spec:
                           the node.
                         properties:
                           config:
-                            description: ConfigMap which CosmoGuard configuration
+                            description: ConfigMap containing the CosmoGuard configuration
                               for this node.
                             properties:
                               key:
@@ -4546,6 +4549,8 @@ spec:
                         description: Additional volumes to be created and mounted
                           on this node.
                         items:
+                          description: VolumeSpec describes an additional volume to
+                            mount on a node.
                           properties:
                             deleteWithNode:
                               description: Whether this volume should be deleted when
@@ -4555,8 +4560,8 @@ spec:
                               description: The name of the volume.
                               type: string
                             path:
-                              description: The path at which this volume should be
-                                mounted
+                              description: Path specifies where this volume should
+                                be mounted.
                               type: string
                             size:
                               description: Size of the volume.
@@ -4865,7 +4870,8 @@ spec:
                       this is rarely needed.
                     properties:
                       enabled:
-                        description: Whether to deploy a Pod Disruption Budget
+                        description: Enabled specifies whether to deploy a Pod Disruption
+                          Budget.
                         type: boolean
                       minAvailable:
                         description: |-
@@ -5195,13 +5201,15 @@ spec:
                           Defaults to `{"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix": "nibivalconspub"}`.
                         properties:
                           account_key_prefix:
-                            description: Account keys prefixes
+                            description: AccountKeyPrefix is the prefix used for account
+                              keys.
                             type: string
                           consensus_key_prefix:
-                            description: Consensus keys prefix
+                            description: ConsensusKeyPrefix is the prefix used for
+                              consensus keys.
                             type: string
                           type:
-                            description: Key type
+                            description: Type specifies the key format type.
                             type: string
                         required:
                         - account_key_prefix
@@ -5648,6 +5656,8 @@ spec:
               seeds:
                 description: Status of seed nodes (cosmoseed)
                 items:
+                  description: SeedStatus contains status information about a cosmoseed
+                    node.
                   properties:
                     id:
                       type: string
@@ -5661,8 +5671,8 @@ spec:
                   type: object
                 type: array
               upgrades:
-                description: All scheduled/completed upgrades performed by cosmopilot
-                  on ChainNodes of this CHainNodeSet.
+                description: All scheduled or completed upgrades performed by cosmopilot
+                  on ChainNodes of this ChainNodeSet.
                 items:
                   description: Upgrade represents an upgrade processed by cosmopilot
                     and added to status.

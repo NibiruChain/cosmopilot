@@ -15,10 +15,17 @@ import (
 )
 
 const (
-	DefaultGroupInstances        = 1
-	DefaultCosmoseedLogLevel     = "info"
+	// DefaultGroupInstances is the default number of nodes in a group.
+	DefaultGroupInstances = 1
+
+	// DefaultCosmoseedLogLevel is the log level used by Cosmoseed when none is specified.
+	DefaultCosmoseedLogLevel = "info"
+
+	// DefaultCosmoseedAddrBookFile is the path to the Cosmoseed address book file.
 	DefaultCosmoseedAddrBookFile = "data/addrbook.json"
-	DefaultIngressClass          = "nginx"
+
+	// DefaultIngressClass is the default ingress class name.
+	DefaultIngressClass = "nginx"
 )
 
 func (nodeSet *ChainNodeSet) GetNamespacedName() string {

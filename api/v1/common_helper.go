@@ -14,31 +14,80 @@ import (
 )
 
 const (
-	DefaultReconcilePeriod         = 15 * time.Second
-	DefaultImageVersion            = "latest"
-	DefaultBlockThreshold          = "15s"
-	DefaultStartupTime             = time.Hour
-	DefaultNodeUtilsLogLevel       = "info"
-	DefaultP2pExpose               = false
-	DefaultP2pServiceType          = corev1.ServiceTypeNodePort
-	DefaultUnbondingTime           = "1814400s"
-	DefaultVotingPeriod            = "120h"
-	DefaultHDPath                  = "m/44'/118'/0'/0/0"
-	DefaultAccountPrefix           = "nibi"
-	DefaultValPrefix               = "nibivaloper"
-	DefaultP2pPort                 = 26656
-	DefaultStateSyncKeepRecent     = 2
-	DefaultSdkVersion              = V0_47
+	// DefaultReconcilePeriod is the default interval between reconciliation loops.
+	DefaultReconcilePeriod = 15 * time.Second
+
+	// DefaultImageVersion is the image tag used when none is specified.
+	DefaultImageVersion = "latest"
+
+	// DefaultBlockThreshold is the duration to wait for a block before marking the node unhealthy.
+	DefaultBlockThreshold = "15s"
+
+	// DefaultStartupTime is the time after which a node is restarted if it fails to start.
+	DefaultStartupTime = time.Hour
+
+	// DefaultNodeUtilsLogLevel is the log level for the node-utils container.
+	DefaultNodeUtilsLogLevel = "info"
+
+	// DefaultP2pExpose indicates whether to expose the P2P endpoint.
+	DefaultP2pExpose = false
+
+	// DefaultP2pServiceType is the default service type for exposing the P2P port.
+	DefaultP2pServiceType = corev1.ServiceTypeNodePort
+
+	// DefaultUnbondingTime is the default unbonding period for a validator.
+	DefaultUnbondingTime = "1814400s"
+
+	// DefaultVotingPeriod is the default duration of a voting period.
+	DefaultVotingPeriod = "120h"
+
+	// DefaultHDPath is the default derivation path for accounts.
+	DefaultHDPath = "m/44'/118'/0'/0/0"
+
+	// DefaultAccountPrefix is the default bech32 prefix for accounts.
+	DefaultAccountPrefix = "nibi"
+
+	// DefaultValPrefix is the default bech32 prefix for validator operator accounts.
+	DefaultValPrefix = "nibivaloper"
+
+	// DefaultP2pPort is the default port used for P2P connections.
+	DefaultP2pPort = 26656
+
+	// DefaultStateSyncKeepRecent is the number of snapshots to keep for state sync.
+	DefaultStateSyncKeepRecent = 2
+
+	// DefaultSdkVersion is the default Cosmos SDK version.
+	DefaultSdkVersion = V0_47
+
+	// DefaultCommissionMaxChangeRate is the default maximum commission change rate.
 	DefaultCommissionMaxChangeRate = "0.1"
-	DefaultCommissionMaxRate       = "0.1"
-	DefaultCommissionRate          = "0.1"
-	DefaultMinimumSelfDelegation   = "1"
-	DefaultNodeUtilsCPU            = "300m"
-	DefaultNodeUtilsMemory         = "100Mi"
-	DefaultCosmoGuardCPU           = "200m"
-	DefaultCosmoGuardMemory        = "250Mi"
-	DefaultVpaCooldown             = 5 * time.Minute
-	DefaultLimitPercentage         = 150
+
+	// DefaultCommissionMaxRate is the default maximum commission rate.
+	DefaultCommissionMaxRate = "0.1"
+
+	// DefaultCommissionRate is the default initial commission rate.
+	DefaultCommissionRate = "0.1"
+
+	// DefaultMinimumSelfDelegation is the default minimum self-delegation for validators.
+	DefaultMinimumSelfDelegation = "1"
+
+	// DefaultNodeUtilsCPU is the default CPU request for the node-utils container.
+	DefaultNodeUtilsCPU = "300m"
+
+	// DefaultNodeUtilsMemory is the default memory request for the node-utils container.
+	DefaultNodeUtilsMemory = "100Mi"
+
+	// DefaultCosmoGuardCPU is the default CPU request for the CosmoGuard container.
+	DefaultCosmoGuardCPU = "200m"
+
+	// DefaultCosmoGuardMemory is the default memory request for the CosmoGuard container.
+	DefaultCosmoGuardMemory = "250Mi"
+
+	// DefaultVpaCooldown is the default cooldown period for VPA scaling actions.
+	DefaultVpaCooldown = 5 * time.Minute
+
+	// DefaultLimitPercentage is the default percentage used when applying limit-based scaling strategies.
+	DefaultLimitPercentage = 150
 )
 
 var (

@@ -13,11 +13,20 @@ import (
 )
 
 const (
-	DefaultPersistenceSize     = "50Gi"
-	DefaultAutoResize          = true
+	// DefaultPersistenceSize is the default size of the data PVC.
+	DefaultPersistenceSize = "50Gi"
+
+	// DefaultAutoResize indicates whether auto-resize is enabled by default.
+	DefaultAutoResize = true
+
+	// DefaultAutoResizeThreshold is the usage percentage that triggers PVC auto-resize.
 	DefaultAutoResizeThreshold = 80
+
+	// DefaultAutoResizeIncrement is the amount by which the PVC grows when resized.
 	DefaultAutoResizeIncrement = "50Gi"
-	DefaultAutoResizeMaxSize   = "2Ti"
+
+	// DefaultAutoResizeMaxSize is the maximum size to which the PVC can auto-resize.
+	DefaultAutoResizeMaxSize = "2Ti"
 )
 
 func (chainNode *ChainNode) Equal(n *ChainNode) bool {
@@ -56,7 +65,7 @@ func (chainNode *ChainNode) GetPersistenceSize() string {
 	return DefaultPersistenceSize
 }
 
-// GetPersistenceStorageClass returns the configured storage class to be used in pvc, or nil if not specified.
+// GetPersistenceStorageClass returns the configured storage class name for the PVC, or nil if not specified.
 func (chainNode *ChainNode) GetPersistenceStorageClass() *string {
 	if chainNode.Spec.Persistence == nil {
 		return nil

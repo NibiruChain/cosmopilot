@@ -14,8 +14,11 @@ type ChainNodeSetPhase string
 
 // These are the valid phases for ChainNodeSets.
 const (
-	PhaseChainNodeSetRunning    ChainNodeSetPhase = "Running"
-	PhaseChainNodeSetInitialing ChainNodeSetPhase = "Initializing"
+	// PhaseChainNodeSetRunning indicates that the node set is running.
+	PhaseChainNodeSetRunning ChainNodeSetPhase = "Running"
+
+	// PhaseChainNodeSetInitializing indicates that the node set is initializing.
+	PhaseChainNodeSetInitializing ChainNodeSetPhase = "Initializing"
 )
 
 //+kubebuilder:object:root=true
@@ -107,7 +110,7 @@ type ChainNodeSetStatus struct {
 	// +optional
 	PubKey string `json:"pubKey,omitempty"`
 
-	// All scheduled/completed upgrades performed by cosmopilot on ChainNodes of this CHainNodeSet.
+	// All scheduled or completed upgrades performed by cosmopilot on ChainNodes of this ChainNodeSet.
 	// +optional
 	Upgrades []Upgrade `json:"upgrades,omitempty"`
 
@@ -389,7 +392,7 @@ type IngressConfig struct {
 
 // GlobalIngressConfig specifies configurations for ingress to expose API endpoints of several groups of nodes.
 type GlobalIngressConfig struct {
-	// The name of this ingress
+	// The name of this ingress.
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 
@@ -458,8 +461,9 @@ type GlobalIngressConfig struct {
 	ServicesOnly *bool `json:"servicesOnly,omitempty"`
 }
 
+// PdbConfig configures the Pod Disruption Budget for a pod.
 type PdbConfig struct {
-	// Whether to deploy a Pod Disruption Budget
+	// Enabled specifies whether to deploy a Pod Disruption Budget.
 	Enabled bool `json:"enabled"`
 
 	// MinAvailable indicates minAvailable field set in PDB.
@@ -469,6 +473,7 @@ type PdbConfig struct {
 	MinAvailable *int `json:"minAvailable,omitempty"`
 }
 
+// CosmoseedConfig defines settings for deploying seed nodes via Cosmoseed.
 type CosmoseedConfig struct {
 	// Whether to enable deployment of Cosmoseed.
 	// If false or unset, no seed node instances will be created.
@@ -548,12 +553,14 @@ type CosmoseedConfig struct {
 	Ingress *CosmoseedIngressConfig `json:"ingress,omitempty"`
 }
 
+// SeedStatus contains status information about a cosmoseed node.
 type SeedStatus struct {
 	Name          string `json:"name"`
 	ID            string `json:"id"`
 	PublicAddress string `json:"publicAddress,omitempty"`
 }
 
+// CosmoseedIngressConfig configures ingress for cosmoseed nodes.
 type CosmoseedIngressConfig struct {
 	// Host in which cosmoseed nodes will be exposed.
 	Host string `json:"host"`
@@ -576,6 +583,7 @@ type CosmoseedIngressConfig struct {
 	IngressClass *string `json:"ingressClass,omitempty"`
 }
 
+// IndividualIngressConfig provides host configuration for individual node ingresses.
 type IndividualIngressConfig struct {
 	Host string `json:"host"`
 }

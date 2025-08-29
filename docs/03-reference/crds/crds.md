@@ -215,7 +215,7 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet.
 | validatorAddress | Validator address of the validator in this ChainNodeSet if one is available. Omitted when no validator is present in the ChainNodeSet. | string | false |
 | validatorStatus | Current status of validator if this ChainNodeSet has one. | ValidatorStatus | false |
 | pubKey | Public key of the validator if this ChainNodeSet has one. | string | false |
-| upgrades | All scheduled/completed upgrades performed by cosmopilot on ChainNodes of this CHainNodeSet. | [][Upgrade](#upgrade) | false |
+| upgrades | All scheduled or completed upgrades performed by cosmopilot on ChainNodes of this ChainNodeSet. | [][Upgrade](#upgrade) | false |
 | latestHeight | Last height read on the nodes by cosmopilot. | int64 | false |
 | seeds | Status of seed nodes (cosmoseed) | [][SeedStatus](#seedstatus) | false |
 
@@ -223,7 +223,7 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet.
 
 #### CosmoseedConfig
 
-
+CosmoseedConfig defines settings for deploying seed nodes via Cosmoseed.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -245,7 +245,7 @@ ChainNodeSetStatus defines the observed state of ChainNodeSet.
 
 #### CosmoseedIngressConfig
 
-
+CosmoseedIngressConfig configures ingress for cosmoseed nodes.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -263,7 +263,7 @@ GlobalIngressConfig specifies configurations for ingress to expose API endpoints
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| name | The name of this ingress | string | true |
+| name | The name of this ingress. | string | true |
 | groups | Groups of nodes to which this ingress will point to. | []string | true |
 | enableRPC | Enable RPC endpoint. | bool | false |
 | enableGRPC | Enable gRPC endpoint. | bool | false |
@@ -283,7 +283,7 @@ GlobalIngressConfig specifies configurations for ingress to expose API endpoints
 
 #### IndividualIngressConfig
 
-
+IndividualIngressConfig provides host configuration for individual node ingresses.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -365,18 +365,18 @@ NodeSetValidatorConfig contains validator configurations.
 
 #### PdbConfig
 
-
+PdbConfig configures the Pod Disruption Budget for a pod.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| enabled | Whether to deploy a Pod Disruption Budget | bool | true |
+| enabled | Enabled specifies whether to deploy a Pod Disruption Budget. | bool | true |
 | minAvailable | MinAvailable indicates minAvailable field set in PDB. Defaults to the number of instances in the group minus 1, i.e. it allows only a single disruption. | *int | false |
 
 [Back to Custom Resources](#custom-resources)
 
 #### SeedStatus
 
-
+SeedStatus contains status information about a cosmoseed node.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -461,7 +461,7 @@ CosmoGuardConfig allows configuring CosmoGuard rules.
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | enable | Whether to enable CosmoGuard on this node. | bool | true |
-| config | ConfigMap which CosmoGuard configuration for this node. | *corev1.ConfigMapKeySelector | true |
+| config | ConfigMap containing the CosmoGuard configuration for this node. | *corev1.ConfigMapKeySelector | true |
 | restartPodOnFailure | Whether the node's pod should be restarted when CosmoGuard fails. | *bool | false |
 | resources | Compute Resources for CosmoGuard container. | *corev1.ResourceRequirements | false |
 
@@ -517,7 +517,7 @@ FromNodeRPCConfig holds configuration to retrieve genesis from an existing node 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | secure | Defines protocol to use. Defaults to `false`. | bool | false |
-| hostname | Hostname or IP address of the RPC server | string | true |
+| hostname | Hostname or IP address of the RPC server. | string | true |
 | port | TCP port used for RPC queries on the RPC server. Defaults to `26657`. | *int | false |
 
 [Back to Custom Resources](#custom-resources)
@@ -702,9 +702,9 @@ TmKmsKeyFormat represents key format for tmKMS.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| type | Key type | string | true |
-| account_key_prefix | Account keys prefixes | string | true |
-| consensus_key_prefix | Consensus keys prefix | string | true |
+| type | Type specifies the key format type. | string | true |
+| account_key_prefix | AccountKeyPrefix is the prefix used for account keys. | string | true |
+| consensus_key_prefix | ConsensusKeyPrefix is the prefix used for consensus keys. | string | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -816,13 +816,13 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 
 #### VolumeSpec
 
-
+VolumeSpec describes an additional volume to mount on a node.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | name | The name of the volume. | string | true |
 | size | Size of the volume. | string | true |
-| path | The path at which this volume should be mounted | string | true |
+| path | Path specifies where this volume should be mounted. | string | true |
 | storageClass | Name of the storage class to use for this volume. Uses the default class if not specified. | *string | false |
 | deleteWithNode | Whether this volume should be deleted when node is deleted. Defaults to `false`. | *bool | false |
 
