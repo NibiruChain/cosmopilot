@@ -3,25 +3,11 @@ name: Publish OCI Helm Chart
 on:
   push:
     tags:
-      - "v*"
+      - "chart/v*"
 
 jobs:
-  version:
-    name: Extract Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.extract.outputs.version }}
-    steps:
-      - name: Extract version from tag
-        id: extract
-        run: |
-          TAG_REF="${GITHUB_REF#refs/tags/}"
-          VERSION_WITHOUT_V="${TAG_REF#v}"
-          echo "version=$VERSION_WITHOUT_V" >> "$GITHUB_OUTPUT"
   publish:
     runs-on: ubuntu-latest
-    needs:
-      - version
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -30,18 +16,14 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get version
-        id: get_version
-        uses: battila7/get-version-action@v2
-
       - name: Login to Github Packages
         run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.repository_owner }} --password-stdin ghcr.io
 
       - name: Package Chart
-        run: helm package helm/cosmopilot --version ${{ needs.version.outputs.version }} --app-version ${{ needs.version.outputs.version }}
+        run: make helm.package
 
       - name: Push Chart
-        run: helm push cosmopilot-${{ needs.version.outputs.version }}.tgz oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/helm
+        run: helm push build/cosmopilot-*.tgz oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/helm
 
       - name: Logout
         run: helm registry logout ghcr.io

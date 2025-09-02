@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  release:
+    name: Create GitHub Release with image digests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: ver
+        run: |
+          TAG_REF="${GITHUB_REF#refs/tags/}"
+          VERSION_WITHOUT_V="${TAG_REF#v}"
+          echo "version=$VERSION_WITHOUT_V" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG_REF" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx (for imagetools)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Inspect multi-arch manifest digest
+        id: digests
+        run: |
+          IMG="${{ steps.ver.outputs.image }}"
+          VER="${{ steps.ver.outputs.version }}"
+          MANIFEST_JSON="$(docker buildx imagetools inspect "${IMG}:${VER}" --format '{{json .}}')"
+          MANIFEST_DIGEST="$(jq -r '.descriptor.digest' <<< "${MANIFEST_JSON}")"
+
+          AMD64_JSON="$(docker buildx imagetools inspect "${IMG}:${VER}-amd64" --format '{{json .}}')"
+          AMD64_DIGEST="$(jq -r '.descriptor.digest' <<< "${AMD64_JSON}")"
+
+          ARM64_JSON="$(docker buildx imagetools inspect "${IMG}:${VER}-arm64" --format '{{json .}}')"
+          ARM64_DIGEST="$(jq -r '.descriptor.digest' <<< "${ARM64_JSON}")"
+
+          echo "manifest=${MANIFEST_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "amd64=${AMD64_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "arm64=${ARM64_DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changes
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate | grep -Ev 'node|chart|vault|dataexporter|alpha|beta|rc' | sed -n '2p')
+          echo "Previous tag: $PREV_TAG"
+
+          CHANGELOG=$(git log "$PREV_TAG"..HEAD --pretty=format:'- %h %s')
+          echo "$CHANGELOG"
+
+          echo "changes<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Compose release notes
+        id: notes
+        env:
+          IMG: ${{ steps.ver.outputs.image }}
+          VER: ${{ steps.ver.outputs.version }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          MANIFEST_DIGEST: ${{ steps.digests.outputs.manifest }}
+          AMD64_DIGEST: ${{ steps.digests.outputs.amd64 }}
+          ARM64_DIGEST: ${{ steps.digests.outputs.arm64 }}
+        run: |
+          cat > RELEASE_NOTES.md << 'EOF'
+          ## Cosmopilot v${VER}
+
+          **Container images**
+          - Multi-arch manifest: `${IMG}:${VER}@${MANIFEST_DIGEST}`
+          - linux/amd64: `${IMG}:${VER}-amd64@${AMD64_DIGEST}`
+          - linux/arm64: `${IMG}:${VER}-arm64@${ARM64_DIGEST}`
+
+          **Install / upgrade with Helm (from OCI)**
+          ```bash
+          helm install cosmopilot oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/helm/cosmopilot
+          ```
+          
+          **Changelog**
+          EOF
+          echo "${{ steps.changes.outputs.changes }}" >> RELEASE_NOTES.md
+          echo "body_path=RELEASE_NOTES.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ${{ steps.notes.outputs.body_path }}
+          prerelease: ${{ contains(steps.ver.outputs.tag, '-rc') || contains(steps.ver.outputs.tag, '-beta') || contains(steps.ver.outputs.tag, '-alpha') }}

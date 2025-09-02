@@ -1,10 +1,13 @@
 NAME 	?= ghcr.io/nibiruchain/cosmopilot
-VERSION ?= $(shell git describe --tags --exclude 'node-*/*' --exclude 'vault-*/*' --abbrev=0)
+VERSION ?= $(shell git describe --tags --exclude 'node-*/*' --exclude 'vault-*/*' --exclude 'chart/*' --exclude 'dataexporter/*' --abbrev=0)
 IMG 	?= $(NAME):$(VERSION:v%=%)
 
 NODE_UTILS_NAME    ?= ghcr.io/nibiruchain/node-utils
 NODE_UTILS_VERSION ?= $(shell git describe --tags --match 'node-utils/*' --abbrev=0)
 NODE_UTILS_IMG 	   ?= $(NODE_UTILS_NAME):$(NODE_UTILS_VERSION:node-utils/v%=%)
+
+HELM_CHART_LATEST_TAG ?= $(shell git describe --tags --match 'chart/*' --abbrev=0)
+HELM_CHART_VERSION = $(HELM_CHART_LATEST_TAG:chart/v%=%)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -36,18 +39,9 @@ all: build
 
 .PHONY: help
 help: ## Display this help.
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-.PHONY: docs
-docs: crd-to-markdown
-	@mkdir -p ./docs/03-reference/crds
-	@$(CRD_TO_MARKDOWN) \
-		-f ./api/v1/chainnode_types.go \
-		-f ./api/v1/chainnodeset_types.go \
-		-f ./api/v1/common_types.go \
-		--header ./docs/03-reference/crds/header.md \
-		-n ChainNode \
-		-n ChainNodeSet > ./docs/03-reference/crds/crds.md
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} \
+/^[a-zA-Z0-9_.-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } \
+/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
 
 ##@ Development
 
@@ -70,6 +64,19 @@ fmt: ## Run go fmt against code.
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
+
+.PHONY: docs
+docs: crd-to-markdown ## Generate markdown docs of CRD spec.
+	@mkdir -p ./docs/03-reference/crds
+	@$(CRD_TO_MARKDOWN) \
+		-f ./api/v1/chainnode_types.go \
+		-f ./api/v1/chainnodeset_types.go \
+		-f ./api/v1/common_types.go \
+		--header ./docs/03-reference/crds/header.md \
+		-n ChainNode \
+		-n ChainNodeSet > ./docs/03-reference/crds/crds.md
+
+##@ Tests
 
 .PHONY: test.unit
 test.unit: manifests generate fmt vet ## Run unit tests.
@@ -105,17 +112,34 @@ test.e2e: manifests generate fmt vet mirrord setup-test-env install ## Run integ
 			--ginkgo.focus=$(FOCUS) \
 			--ginkgo.skip=$(SKIP)
 
+.PHONY: setup-test-env
+setup-test-env: CLUSTER_NAME?=cosmopilot-e2e
+setup-test-env: kind kubectl helm ## Setup test environment (kind cluster).
+	@./contrib/scripts/test-env/env.sh up --cluster-name $(CLUSTER_NAME) --issuer-name cosmopilot-e2e --kind-bin $(KIND) --kubectl-bin $(KUBECTL) --helm-bin $(HELM)
+	@sleep 5 #Wait for cert-manager to be available to respond to webhook requests
+
+.PHONY: teardown-test-env
+teardown-test-env: CLUSTER_NAME?=cosmopilot-e2e
+teardown-test-env: kind ## Tear down test environment (kind cluster).
+	@./contrib/scripts/test-env/env.sh down --cluster-name $(CLUSTER_NAME) --kind-bin $(KIND)
+
 
 ##@ Build
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/manager
+	go build -o build/cosmopilot ./cmd/manager
+
+.PHONY: helm.package
+helm.package: manifests helm ## Package helm chart. Final package name is cosmopilot-<<VERSION>>.tgz
+	@$(HELM) package helm/cosmopilot --version $(HELM_CHART_VERSION:v%=%) --app-version $(VERSION:v%=%) -d build
+
+##@ Run
 
 .PHONY: run
 run: WORKER_NAME?=
 run: WORKER_COUNT?=1
-run: manifests generate ## Run a controller from your host.
+run: manifests generate ## Run the controller locally on your host.
 	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)" -worker-count=$(WORKER_COUNT) -debug-mode -disable-webhooks
 
 .PHONY: run.mirrord
@@ -124,7 +148,7 @@ run.mirrord: NAMESPACE?=cosmopilot-system
 run.mirrord: WORKER_NAME?=
 run.mirrord: WORKER_COUNT?=1
 run.mirrord: CERTS_DIR?=/tmp
-run.mirrord: manifests generate mirrord
+run.mirrord: manifests generate mirrord ## Run the controller in a cluster using mirrord.
 	@# Create dummy cosmopilot service just to have all resources. mirrod will steal its traffic then.
 	@$(HELM) get metadata $(RELEASE_NAME) -n $(NAMESPACE) || \
 		$(MAKE) RELEASE_NAME=$(RELEASE_NAME) NAMESPACE=$(NAMESPACE) NAME=nginxinc/nginx-unprivileged VERSION=latest PROBES_ENABLED=false deploy
@@ -150,7 +174,7 @@ attach.mirrord: NAMESPACE?=cosmopilot-system
 attach.mirrord: WORKER_NAME?=
 attach.mirrord: WORKER_COUNT?=1
 attach.mirrord: CERTS_DIR?=/tmp
-attach.mirrord: manifests generate mirrord
+attach.mirrord: manifests generate mirrord ## Run the controller using mirrord by attaching to existing deployment in cluster.
 	@mkdir -p $(CERTS_DIR)
 	@for f in tls.key ca.crt tls.crt; do \
 		$(KUBECTL) -n $(NAMESPACE) get secret $(RELEASE_NAME)-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
@@ -166,22 +190,6 @@ attach.mirrord: manifests generate mirrord
 			-worker-name="$(WORKER_NAME)" \
 			-certs-dir="$(CERTS_DIR)" \
 			-debug-mode
-
-.PHONY: docker-build
-docker-build: test ## Build docker image with the manager.
-	docker build --platform linux/amd64 -t ${IMG} .
-
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
-
-.PHONY: docker-build-utils
-docker-build-utils: test ## Build docker image with the manager.
-	docker build --platform linux/amd64 -f Dockerfile.utils -t ${NODE_UTILS_IMG} .
-
-.PHONY: docker-push-utils
-docker-push-utils: ## Push docker image with the manager.
-	docker push ${NODE_UTILS_IMG}
 
 ##@ Deployment
 
@@ -231,18 +239,6 @@ undeploy: NAMESPACE?=cosmopilot-system
 undeploy: helm ## Undeploy controller from the K8s cluster
 	@$(HELM) uninstall --namespace=$(NAMESPACE) $(RELEASE_NAME)
 
-##@ Test Environment
-
-.PHONY: setup-test-env
-setup-test-env: CLUSTER_NAME?=cosmopilot-e2e
-setup-test-env: kind kubectl helm
-	@./contrib/scripts/test-env/env.sh up --cluster-name $(CLUSTER_NAME) --issuer-name cosmopilot-e2e --kind-bin $(KIND) --kubectl-bin $(KUBECTL) --helm-bin $(HELM)
-	@sleep 5 #Wait for cert-manager to be available to respond to webhook requests
-
-.PHONY: teardown-test-env
-teardown-test-env: CLUSTER_NAME?=cosmopilot-e2e
-teardown-test-env: kind
-	@./contrib/scripts/test-env/env.sh down --cluster-name $(CLUSTER_NAME) --kind-bin $(KIND)
 
 ##@ Build Dependencies
 
@@ -309,7 +305,7 @@ $(CRD_TO_MARKDOWN): $(LOCALBIN)
 
 # find or download kind
 .PHONY: kind
-kind: $(KIND)
+kind: $(KIND) ## Download kind locally if necessary. If wrong version is installed, it will be overwritten.
 $(KIND): $(LOCALBIN)
 	@if test -x $(KIND) && ! $(KIND) version -q | grep -q $(KIND_VERSION); then \
 		echo "$(KIND) version is not expected $(KIND_VERSION). Removing it before installing."; \
@@ -321,7 +317,7 @@ $(KIND): $(LOCALBIN)
 
 # find or download mirrord
 .PHONY: mirrord
-mirrord: $(MIRRORD)
+mirrord: $(MIRRORD) ## Download mirrord locally if necessary. If wrong version is installed, it will be overwritten.
 $(MIRRORD): $(LOCALBIN)
 	@if test -x $(MIRRORD) && ! $(MIRRORD) -V | grep -q $(MIRRORD_VERSION); then \
 		echo "$(MIRRORD) version is not expected $(MIRRORD_VERSION). Removing it before installing."; \
