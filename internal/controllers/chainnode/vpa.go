@@ -24,6 +24,11 @@ func (r *Reconciler) maybeGetVpaResources(ctx context.Context, chainNode *appsv1
 		return chainNode.Spec.Resources, r.clearVpaLastAppliedResources(ctx, chainNode)
 	}
 
+	if chainNode.Status.Phase == appsv1.PhaseChainNodeStateSyncing {
+		logger.Info("Skipping VPA while node is state-syncing")
+		return chainNode.Spec.Resources, nil
+	}
+
 	// Clone the last applied or fallback
 	updated := getVpaLastAppliedResourcesOrFallback(chainNode)
 	var cpuScaleTs, memScaleTs time.Time
