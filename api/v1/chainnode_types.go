@@ -29,6 +29,9 @@ const (
 	// PhaseChainNodeSyncing indicates that the node is syncing blocks.
 	PhaseChainNodeSyncing ChainNodePhase = "Syncing"
 
+	// PhaseChainNodeStateSyncing indicates that the node is state-syncing.
+	PhaseChainNodeStateSyncing ChainNodePhase = "StateSyncing"
+
 	// PhaseChainNodeRestarting indicates that the node is restarting.
 	PhaseChainNodeRestarting ChainNodePhase = "Restarting"
 

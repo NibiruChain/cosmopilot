@@ -27,6 +27,7 @@ const (
 	ReasonNodeRestarted          = "NodeRestarted"
 	ReasonNodeError              = "NodeError"
 	ReasonNodeSyncing            = "NodeSyncing"
+	ReasonNodeStateSyncing       = "NodeStateSyncing"
 	ReasonNodeRunning            = "NodeRunning"
 	ReasonValidatorJailed        = "ValidatorJailed"
 	ReasonValidatorUnjailed      = "ValidatorUnjailed"
