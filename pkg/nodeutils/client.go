@@ -166,3 +166,22 @@ func (c *Client) GetMemoryStats(since time.Duration) (uint64, error) {
 
 	return val, nil
 }
+
+func (c *Client) IsStateSyncing() (bool, error) {
+	resp, err := http.Get(c.url + "/state_syncing")
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("%s", string(body))
+	}
+
+	return strconv.ParseBool(string(body))
+}

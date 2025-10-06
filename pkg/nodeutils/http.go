@@ -1,6 +1,7 @@
 package nodeutils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,6 +30,7 @@ func (s *NodeUtils) registerRoutes() {
 	s.router.HandleFunc("/stats", s.stats).Methods(http.MethodGet)
 	s.router.HandleFunc("/stats/cpu", s.statsCPU).Methods(http.MethodGet)
 	s.router.HandleFunc("/stats/memory", s.statsMemory).Methods(http.MethodGet)
+	s.router.HandleFunc("/state_syncing", s.stateSyncing).Methods(http.MethodGet)
 }
 
 func writeError(w http.ResponseWriter, format string, args ...interface{}) {
@@ -256,4 +258,46 @@ func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
 	collector := s.selectCollector(dur)
 	avg := collector.AverageMemoryUsage(dur)
 	w.Write([]byte(strconv.FormatUint(avg, 10)))
+}
+
+func (s *NodeUtils) stateSyncing(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	abciInfo, err := s.client.GetAbciInfo(ctx)
+	if err != nil {
+		writeError(w, "error getting abci info from node: %v", err)
+		return
+	}
+
+	// If ABCI height > 0, snapshot restore has finished (if it happened),
+	// so it's NOT currently state-syncing.
+	if abciInfo.LastBlockHeight > 0 {
+		log.WithField("abci-last-block-height", abciInfo.LastBlockHeight).
+			Info("checked if node is restoring from state-sync snapshot")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`false`))
+		return
+	}
+
+	// Scrape metrics with a short timeout so requests don’t hang
+	metricsCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	isStateSyncing, err := StateSyncChunkMetricsExist(metricsCtx, "http://localhost:26660/metrics")
+	if err != nil {
+		writeError(w, "error checking node metrics: %v", err)
+		return
+	}
+
+	log.WithField("state-syncing", isStateSyncing).
+		Info("checked if node is restoring from state-sync snapshot")
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if isStateSyncing {
+		_, _ = w.Write([]byte(`true`))
+	} else {
+		_, _ = w.Write([]byte(`false`))
+	}
 }

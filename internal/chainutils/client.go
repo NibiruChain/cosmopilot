@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/proto/tendermint/p2p"
 	tmtypes "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/cometbft/cometbft/rpc/client/http"
@@ -127,4 +128,12 @@ func (c *Client) GetNextUpgrade(ctx context.Context) (*upgradetypes.Plan, error)
 
 func (c *Client) GetNodeStatus(ctx context.Context) (*coretypes.ResultStatus, error) {
 	return c.rpcClient.Status(ctx)
+}
+
+func (c *Client) GetAbciInfo(ctx context.Context) (abci.ResponseInfo, error) {
+	response, err := c.rpcClient.ABCIInfo(ctx)
+	if err != nil {
+		return abci.ResponseInfo{}, err
+	}
+	return response.Response, err
 }
