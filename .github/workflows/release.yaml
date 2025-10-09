@@ -1,4 +1,4 @@
-name: Release
+name: Release Cosmopilot
 
 on:
   push:
@@ -10,19 +10,16 @@ permissions:
   packages: read
 
 jobs:
-  release:
-    name: Create GitHub Release with image digests
+  version:
+    name: Extract Version
     runs-on: ubuntu-latest
-
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      tag: ${{ steps.extract.outputs.tag }}
+      image: ${{ steps.extract.outputs.image }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
       - name: Extract version from tag
-        id: ver
+        id: extract
         run: |
           TAG_REF="${GITHUB_REF#refs/tags/}"
           VERSION_WITHOUT_V="${TAG_REF#v}"
@@ -30,14 +27,127 @@ jobs:
           echo "tag=$TAG_REF" >> "$GITHUB_OUTPUT"
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
+  build:
+    name: Build and Push Cosmopilot Images
+    needs: [version]
+    strategy:
+      fail-fast: true
+      matrix:
+        build:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.build.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Prepare env vars
+        run: |
+          OS=$(echo "${{ matrix.build.platform }}" | cut -d '/' -f 1)
+          ARCH=$(echo "${{ matrix.build.platform }}" | cut -d '/' -f 2)
+          echo "OS=$OS" >> $GITHUB_ENV
+          echo "ARCH=$ARCH" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR container register
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Go Cache for Docker Build
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            go-build
+            go-pkg-mod
+          key: ${{ runner.os }}-${{ runner.arch }}-cosmopilot-docker-${{ hashFiles('go.sum') }}
+
+      - name: Inject cache
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+        with:
+          cache-map: |
+            {
+              "go-build": "/root/.cache/go-build",
+              "go-pkg-mod": "/go/pkg/mod"
+            }
+          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: ${{ needs.version.outputs.version }}-${{ env.ARCH }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          platforms: ${{ matrix.build.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+
+  merge:
+    name: Create Multi-arch Cosmopilot Image
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: ${{ needs.version.outputs.version }}
+
+      - name: Create manifest list and push
+        run: |
+          image=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON" | cut -d ':' -f 1)
+          TAGS=$(jq -r '.tags[] | "--tag " + .' <<< "$DOCKER_METADATA_OUTPUT_JSON" | tr '\n' ' ')
+          docker buildx imagetools create \
+            $TAGS \
+            "${image}:${{ needs.version.outputs.version }}-amd64" \
+            "${image}:${{ needs.version.outputs.version }}-arm64"
+
+  release:
+    name: Create GitHub Release with image digests
+    needs: [version, merge]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       - name: Set up Docker Buildx (for imagetools)
         uses: docker/setup-buildx-action@v3
 
       - name: Inspect multi-arch manifest digest
         id: digests
+        env:
+          IMG: ${{ needs.version.outputs.image }}
+          VER: ${{ needs.version.outputs.version }}
         run: |
-          IMG="${{ steps.ver.outputs.image }}"
-          VER="${{ steps.ver.outputs.version }}"
           MANIFEST_JSON="$(docker buildx imagetools inspect "${IMG}:${VER}" --format '{{json .}}')"
           MANIFEST_DIGEST="$(jq -r '.descriptor.digest' <<< "${MANIFEST_JSON}")"
 
@@ -67,26 +177,28 @@ jobs:
       - name: Compose release notes
         id: notes
         env:
-          IMG: ${{ steps.ver.outputs.image }}
-          VER: ${{ steps.ver.outputs.version }}
-          TAG: ${{ steps.ver.outputs.tag }}
+          IMG: ${{ needs.version.outputs.image }}
+          VER: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
           MANIFEST_DIGEST: ${{ steps.digests.outputs.manifest }}
           AMD64_DIGEST: ${{ steps.digests.outputs.amd64 }}
           ARM64_DIGEST: ${{ steps.digests.outputs.arm64 }}
         run: |
-          cat > RELEASE_NOTES.md << 'EOF'
+          OWNER_LC="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+
+          cat > RELEASE_NOTES.md <<EOF
           ## Cosmopilot v${VER}
 
           **Container images**
-          - Multi-arch manifest: `${IMG}:${VER}@${MANIFEST_DIGEST}`
-          - linux/amd64: `${IMG}:${VER}-amd64@${AMD64_DIGEST}`
-          - linux/arm64: `${IMG}:${VER}-arm64@${ARM64_DIGEST}`
+          - Multi-arch manifest: \`${IMG}:${VER}@${MANIFEST_DIGEST}\`
+          - linux/amd64: \`${IMG}:${VER}-amd64@${AMD64_DIGEST}\`
+          - linux/arm64: \`${IMG}:${VER}-arm64@${ARM64_DIGEST}\`
 
           **Install / upgrade with Helm (from OCI)**
-          ```bash
-          helm install cosmopilot oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/helm/cosmopilot
-          ```
-          
+          \`\`\`bash
+          helm install cosmopilot oci://ghcr.io/${OWNER_LC}/helm/cosmopilot
+          \`\`\`
+
           **Changelog**
           EOF
           echo "${{ steps.changes.outputs.changes }}" >> RELEASE_NOTES.md
@@ -96,4 +208,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           body_path: ${{ steps.notes.outputs.body_path }}
-          prerelease: ${{ contains(steps.ver.outputs.tag, '-rc') || contains(steps.ver.outputs.tag, '-beta') || contains(steps.ver.outputs.tag, '-alpha') }}
+          prerelease: ${{ contains(needs.version.outputs.tag, '-rc') || contains(needs.version.outputs.tag, '-beta') || contains(needs.version.outputs.tag, '-alpha') }}
