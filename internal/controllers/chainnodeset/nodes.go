@@ -259,6 +259,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			Affinity:                      group.Affinity,
 			NodeSelector:                  group.NodeSelector,
 			StateSyncRestore:              group.StateSyncRestore,
+			StateSyncResources:            group.StateSyncResources,
 			IgnoreGroupOnDisruptionChecks: group.IgnoreGroupOnDisruptionChecks,
 			VPA:                           group.VPA,
 			OverrideVersion:               group.OverrideVersion,

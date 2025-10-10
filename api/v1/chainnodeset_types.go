@@ -202,6 +202,10 @@ type NodeSetValidatorConfig struct {
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 
+	// Compute Resources to be used while the node is state-syncing.
+	// +optional
+	StateSyncResources corev1.ResourceRequirements `json:"stateSyncResources,omitempty"`
+
 	// Indicates cosmopilot should run create-validator tx to make this node a validator.
 	// +optional
 	CreateValidator *CreateValidatorConfig `json:"createValidator,omitempty"`
@@ -297,6 +301,10 @@ type NodeGroupSpec struct {
 	// This is disabled by default.
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
+
+	// Compute Resources to be used while the node is state-syncing.
+	// +optional
+	StateSyncResources corev1.ResourceRequirements `json:"stateSyncResources,omitempty"`
 
 	// Whether these nodes should inherit gas price from validator (if there is not configured on this ChainNodeSet)
 	// Defaults to `true`.

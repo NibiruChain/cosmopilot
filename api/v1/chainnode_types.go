@@ -119,6 +119,10 @@ type ChainNodeSpec struct {
 	// +optional
 	StateSyncRestore *bool `json:"stateSyncRestore,omitempty"`
 
+	// Compute Resources to be used while the node is state-syncing.
+	// +optional
+	StateSyncResources corev1.ResourceRequirements `json:"stateSyncResources,omitempty"`
+
 	// Additional persistent peers that should be added to this node.
 	// +optional
 	Peers []Peer `json:"peers,omitempty"`

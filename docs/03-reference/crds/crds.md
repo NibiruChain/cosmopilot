@@ -92,6 +92,7 @@ ChainNodeSpec defines the desired state of ChainNode.
 | validator | Indicates this node is going to be a validator and allows configuring it. | *[ValidatorConfig](#validatorconfig) | false |
 | autoDiscoverPeers | Ensures peers with same chain ID are connected with each other. Enabled by default. | *bool | false |
 | stateSyncRestore | Configures this node to find a state-sync snapshot on the network and restore from it. This is disabled by default. | *bool | false |
+| stateSyncResources | Compute Resources to be used while the node is state-syncing. | corev1.ResourceRequirements | false |
 | peers | Additional persistent peers that should be added to this node. | [][Peer](#peer) | false |
 | expose | Allows exposing P2P traffic to public. | *[ExposeConfig](#exposeconfig) | false |
 | resources | Compute Resources required by the app container. | corev1.ResourceRequirements | false |
@@ -330,6 +331,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | nodeSelector | Selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. | map[string]string | false |
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
 | stateSyncRestore | Configures these nodes to find state-sync snapshots on the network and restore from it. This is disabled by default. | *bool | false |
+| stateSyncResources | Compute Resources to be used while the node is state-syncing. | corev1.ResourceRequirements | false |
 | inheritValidatorGasPrice | Whether these nodes should inherit gas price from validator (if there is not configured on this ChainNodeSet) Defaults to `true`. | *bool | false |
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
@@ -355,6 +357,7 @@ NodeSetValidatorConfig contains validator configurations.
 | affinity | If specified, the pod's scheduling constraints. | *corev1.Affinity | false |
 | tmKMS | TmKMS configuration for signing commits for this validator. When configured, .spec.validator.privateKeySecret will not be mounted on the validator node. | *[TmKMS](#tmkms) | false |
 | stateSyncRestore | Configures this node to find a state-sync snapshot on the network and restore from it. This is disabled by default. | *bool | false |
+| stateSyncResources | Compute Resources to be used while the node is state-syncing. | corev1.ResourceRequirements | false |
 | createValidator | Indicates cosmopilot should run create-validator tx to make this node a validator. | *[CreateValidatorConfig](#createvalidatorconfig) | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 | pdb | Pod Disruption Budget configuration for the validator pod. This is mainly useful in testnets where multiple validators might run in the same namespace. In production mainnet environments, where typically only one validator runs per namespace, this is rarely needed. | *[PdbConfig](#pdbconfig) | false |

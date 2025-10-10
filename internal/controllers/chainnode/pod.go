@@ -251,7 +251,11 @@ func (r *Reconciler) createPod(ctx context.Context, chainNode *appsv1.ChainNode,
 	}
 
 	logger.Info("creating pod", "pod", pod.GetName())
-	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeStarting); err != nil {
+	startPhase := appsv1.PhaseChainNodeStarting
+	if chainNode.Status.LatestHeight > 0 {
+		startPhase = appsv1.PhaseChainNodeRestarting
+	}
+	if err := r.updatePhase(ctx, chainNode, startPhase); err != nil {
 		return err
 	}
 

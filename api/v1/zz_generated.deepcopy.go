@@ -330,6 +330,7 @@ func (in *ChainNodeSpec) DeepCopyInto(out *ChainNodeSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	in.StateSyncResources.DeepCopyInto(&out.StateSyncResources)
 	if in.Peers != nil {
 		in, out := &in.Peers, &out.Peers
 		*out = make([]Peer, len(*in))
@@ -1203,6 +1204,7 @@ func (in *NodeGroupSpec) DeepCopyInto(out *NodeGroupSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	in.StateSyncResources.DeepCopyInto(&out.StateSyncResources)
 	if in.InheritValidatorGasPrice != nil {
 		in, out := &in.InheritValidatorGasPrice, &out.InheritValidatorGasPrice
 		*out = new(bool)
@@ -1296,6 +1298,7 @@ func (in *NodeSetValidatorConfig) DeepCopyInto(out *NodeSetValidatorConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	in.StateSyncResources.DeepCopyInto(&out.StateSyncResources)
 	if in.CreateValidator != nil {
 		in, out := &in.CreateValidator, &out.CreateValidator
 		*out = new(CreateValidatorConfig)

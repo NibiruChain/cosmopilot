@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
 	"k8s.io/utils/pointer"
@@ -284,6 +285,22 @@ func (chainNode *ChainNode) MustStop() (bool, string) {
 		return *chainNode.Spec.Config.HaltHeight == chainNode.Status.LatestHeight, fmt.Sprintf("halt height %d", *chainNode.Spec.Config.HaltHeight)
 	}
 	return false, ""
+}
+
+func (chainNode *ChainNode) GetResources() corev1.ResourceRequirements {
+	if len(chainNode.Spec.StateSyncResources.Limits) == 0 && len(chainNode.Spec.StateSyncResources.Requests) == 0 {
+		return chainNode.Spec.Resources
+	}
+
+	if chainNode.StateSyncRestoreEnabled() &&
+		!chainNode.ShouldRestoreFromSnapshot() &&
+		(chainNode.Status.Phase == PhaseChainNodeInitData ||
+			chainNode.Status.Phase == PhaseChainNodeStarting ||
+			chainNode.Status.Phase == PhaseChainNodeStateSyncing) {
+		return chainNode.Spec.StateSyncResources
+	}
+
+	return chainNode.Spec.Resources
 }
 
 // Validator methods

@@ -21,12 +21,12 @@ func (r *Reconciler) maybeGetVpaResources(ctx context.Context, chainNode *appsv1
 	logger := log.FromContext(ctx).WithValues("module", "vpa")
 
 	if !chainNode.Spec.VPA.IsEnabled() {
-		return chainNode.Spec.Resources, r.clearVpaLastAppliedResources(ctx, chainNode)
+		return chainNode.GetResources(), r.clearVpaLastAppliedResources(ctx, chainNode)
 	}
 
 	if chainNode.Status.Phase == appsv1.PhaseChainNodeStateSyncing {
 		logger.Info("Skipping VPA while node is state-syncing")
-		return chainNode.Spec.Resources, nil
+		return chainNode.GetResources(), nil
 	}
 
 	// Clone the last applied or fallback
@@ -338,12 +338,12 @@ func (r *Reconciler) storeVpaLastAppliedResources(
 func getVpaLastAppliedResourcesOrFallback(chainNode *appsv1.ChainNode) corev1.ResourceRequirements {
 	data, ok := chainNode.Annotations[controllers.AnnotationVPAResources]
 	if !ok {
-		return chainNode.Spec.Resources
+		return chainNode.GetResources()
 	}
 
 	resources := corev1.ResourceRequirements{}
 	if err := json.Unmarshal([]byte(data), &resources); err != nil {
-		return chainNode.Spec.Resources
+		return chainNode.GetResources()
 	}
 
 	return resources
@@ -406,9 +406,9 @@ func calculateLimitFromRequest(chainNode *appsv1.ChainNode, request resource.Qua
 		return nil
 
 	case appsv1.LimitRetain:
-		// Copy from ChainNode .spec.resources if it exists
-		if chainNode.Spec.Resources.Limits != nil {
-			qtt, ok := chainNode.Spec.Resources.Limits[resourceName]
+		// Copy from ChainNode resources if it exists
+		if chainNode.GetResources().Limits != nil {
+			qtt, ok := chainNode.GetResources().Limits[resourceName]
 			if ok {
 				return &qtt
 			}
