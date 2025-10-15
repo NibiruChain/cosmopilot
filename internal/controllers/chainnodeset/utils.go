@@ -3,6 +3,7 @@ package chainnodeset
 import (
 	"context"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/banzaicloud/k8s-objectmatcher/patch"
@@ -161,4 +162,14 @@ func RemoveIdFromFullAddresses(fullAddresses []string) []string {
 		result[i] = AddressWithPortFromFullAddress(address)
 	}
 	return result
+}
+
+func GetGlobalIngressLabels(nodeSet *v1.ChainNodeSet, group string) map[string]string {
+	labels := make(map[string]string)
+	for _, ingress := range nodeSet.Spec.Ingresses {
+		if utils.SliceContains(ingress.Groups, group) {
+			labels[ingress.GetName(nodeSet)] = strconv.FormatBool(true)
+		}
+	}
+	return labels
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"golang.org/x/exp/maps"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,15 +39,20 @@ func (r *Reconciler) ensurePodDisruptionBudgets(ctx context.Context, nodeSet *ap
 
 	for _, group := range nodeSet.Spec.Nodes {
 		if group.HasPdbEnabled() {
-			pdb := getPdbSpec(
-				nodeSet,
-				group.GetServiceName(nodeSet),
-				group.GetPdbMinAvailable(),
-				map[string]string{
-					controllers.LabelChainNodeSet:      nodeSet.GetName(),
-					controllers.LabelChainNodeSetGroup: group.Name,
-				},
-			)
+			labels := map[string]string{
+				controllers.LabelChainID:      nodeSet.Status.ChainID,
+				controllers.LabelChainNodeSet: nodeSet.GetName(),
+			}
+			
+			// Respect IgnoreGroupOnDisruptionChecks
+			if !group.ShouldIgnoreGroupLabelOnDisruptions() {
+				labels[controllers.LabelChainNodeSetGroup] = group.Name
+			}
+
+			// Include global-ingresses labels
+			maps.Copy(labels, GetGlobalIngressLabels(nodeSet, group.Name))
+
+			pdb := getPdbSpec(nodeSet, group.GetServiceName(nodeSet), group.GetPdbMinAvailable(), labels)
 			if err := r.ensurePodDisruptionBudget(ctx, pdb); err != nil {
 				return err
 			}

@@ -172,6 +172,13 @@ func (group *NodeGroupSpec) GetSnapshotNodeIndex() int {
 	return 0
 }
 
+func (group *NodeGroupSpec) ShouldIgnoreGroupLabelOnDisruptions() bool {
+	if group != nil && group.IgnoreGroupOnDisruptionChecks != nil {
+		return *group.IgnoreGroupOnDisruptionChecks
+	}
+	return false
+}
+
 // Validator methods
 
 func (val *NodeSetValidatorConfig) GetPrivKeySecretName(obj client.Object) string {
