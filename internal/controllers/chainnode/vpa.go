@@ -341,12 +341,42 @@ func getVpaLastAppliedResourcesOrFallback(chainNode *appsv1.ChainNode) corev1.Re
 		return chainNode.GetResources()
 	}
 
-	resources := corev1.ResourceRequirements{}
-	if err := json.Unmarshal([]byte(data), &resources); err != nil {
+	vpaResources := corev1.ResourceRequirements{}
+	if err := json.Unmarshal([]byte(data), &vpaResources); err != nil {
 		return chainNode.GetResources()
 	}
 
-	return resources
+	// Merge VPA resources with fallback, preserving non-CPU/Memory resources
+	fallback := chainNode.GetResources()
+
+	// Start with fallback as base
+	merged := fallback
+
+	// Override CPU and Memory from VPA
+	if merged.Requests == nil {
+		merged.Requests = corev1.ResourceList{}
+	}
+	if merged.Limits == nil {
+		merged.Limits = corev1.ResourceList{}
+	}
+
+	// Copy VPA CPU/Memory to requests
+	if q, ok := vpaResources.Requests[corev1.ResourceCPU]; ok {
+		merged.Requests[corev1.ResourceCPU] = q
+	}
+	if q, ok := vpaResources.Requests[corev1.ResourceMemory]; ok {
+		merged.Requests[corev1.ResourceMemory] = q
+	}
+
+	// Copy VPA CPU/Memory to limits
+	if q, ok := vpaResources.Limits[corev1.ResourceCPU]; ok {
+		merged.Limits[corev1.ResourceCPU] = q
+	}
+	if q, ok := vpaResources.Limits[corev1.ResourceMemory]; ok {
+		merged.Limits[corev1.ResourceMemory] = q
+	}
+
+	return merged
 }
 
 func (r *Reconciler) clearVpaLastAppliedResources(ctx context.Context, chainNode *appsv1.ChainNode) error {
