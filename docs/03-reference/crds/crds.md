@@ -655,6 +655,7 @@ SidecarSpec allows configuring additional containers to run alongside the node.
 | resources | Compute Resources for the sidecar container. | corev1.ResourceRequirements | false |
 | restartPodOnFailure | Whether the pod of this node should be restarted when this sidecar container fails. Defaults to `false`. | *bool | false |
 | runBeforeNode | When enabled, this container turns into an init container instead of a sidecar as it will have to finish before the node container starts. Defaults to `false`. | *bool | false |
+| deferUntilHealthy | DeferUntilHealthy determines whether this container should be deferred until the group is healthy. When enabled, this container will only be added to the pod if the group to which the node belongs is healthy (has the minimum pods available as defined in its PodDisruptionBudget). This makes the container optional, allowing for faster node startup when the group is unhealthy. Note: this is ignored on orphan ChainNodes. It is only useful when using ChainNodeSet. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -551,6 +551,13 @@ func (s *SidecarSpec) GetImage(chainNode *ChainNode) string {
 	return chainNode.GetAppImage()
 }
 
+func (s *SidecarSpec) DeferUntilHealthyEnabled() bool {
+	if s != nil && s.DeferUntilHealthy != nil {
+		return *s.DeferUntilHealthy
+	}
+	return false
+}
+
 // VolumeSpec methods
 
 func (v *VolumeSpec) ShouldDeleteWithNode() bool {

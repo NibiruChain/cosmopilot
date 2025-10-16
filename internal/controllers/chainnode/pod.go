@@ -13,8 +13,10 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -702,7 +704,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Sidecars != nil {
 		for _, c := range chainNode.Spec.Config.Sidecars {
-			container := corev1.Container{
+			if r.shouldSkipSidecar(ctx, chainNode, c, pod.Labels) {
+				continue
+			}
+			sidecar := corev1.Container{
 				Name:            c.Name,
 				Image:           c.GetImage(chainNode),
 				ImagePullPolicy: chainNode.Spec.Config.GetSidecarImagePullPolicy(c.Name),
@@ -714,11 +719,11 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			}
 
 			if !c.ShouldRunBeforeNode() {
-				container.RestartPolicy = &sidecarRestartAlways
+				sidecar.RestartPolicy = &sidecarRestartAlways
 			}
 
 			if c.MountDataVolume != nil {
-				container.VolumeMounts = []corev1.VolumeMount{
+				sidecar.VolumeMounts = []corev1.VolumeMount{
 					{
 						Name:      "data",
 						MountPath: *c.MountDataVolume,
@@ -745,10 +750,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 						SubPath:   k,
 					})
 				}
-				container.VolumeMounts = append(container.VolumeMounts, configMounts...)
+				sidecar.VolumeMounts = append(sidecar.VolumeMounts, configMounts...)
 			}
 
-			pod.Spec.InitContainers = append([]corev1.Container{container}, pod.Spec.InitContainers...)
+			pod.Spec.InitContainers = append([]corev1.Container{sidecar}, pod.Spec.InitContainers...)
 		}
 	}
 
@@ -1187,4 +1192,39 @@ func (r *Reconciler) stopNodeUtilsContainer(chainNode *appsv1.ChainNode) error {
 
 func isPodTerminating(pod *corev1.Pod) bool {
 	return pod.DeletionTimestamp != nil
+}
+
+func (r *Reconciler) shouldSkipSidecar(ctx context.Context, chainNode *appsv1.ChainNode, sidecar appsv1.SidecarSpec, podLabels map[string]string) bool {
+	logger := log.FromContext(ctx)
+
+	if _, belongsToGroup := chainNode.Labels[controllers.LabelChainNodeSetGroup]; belongsToGroup && sidecar.DeferUntilHealthyEnabled() {
+		pdbList := &policyv1.PodDisruptionBudgetList{}
+		if err := r.List(ctx, pdbList, client.InNamespace(chainNode.Namespace)); err != nil {
+			logger.Info("failed to list pdb for sidecar skip check", "sidecar", sidecar.Name, "err", err)
+			return false
+		}
+
+		// Find PDB that matches this chainNode's group
+		for _, pdb := range pdbList.Items {
+			// Check if PDB selector matches this chainNode
+			if pdb.Spec.Selector != nil {
+				selector, err := metav1.LabelSelectorAsSelector(pdb.Spec.Selector)
+				if err != nil {
+					logger.Info("failed to create selector from pdb selector", "sidecar", sidecar.Name, "err", err)
+					continue
+				}
+
+				// Check if this PDB applies to nodes in this group
+				if selector.Matches(labels.Set(podLabels)) {
+					if pdb.Status.CurrentHealthy < pdb.Status.DesiredHealthy {
+						logger.Info("skipping sidecar until group is healthy", "sidecar", sidecar.Name)
+						return true
+					}
+					// PDB found and group is healthy, don't skip
+					return false
+				}
+			}
+		}
+	}
+	return false
 }

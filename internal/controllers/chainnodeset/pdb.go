@@ -43,7 +43,7 @@ func (r *Reconciler) ensurePodDisruptionBudgets(ctx context.Context, nodeSet *ap
 				controllers.LabelChainID:      nodeSet.Status.ChainID,
 				controllers.LabelChainNodeSet: nodeSet.GetName(),
 			}
-			
+
 			// Respect IgnoreGroupOnDisruptionChecks
 			if !group.ShouldIgnoreGroupLabelOnDisruptions() {
 				labels[controllers.LabelChainNodeSetGroup] = group.Name

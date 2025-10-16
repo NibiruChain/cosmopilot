@@ -1686,6 +1686,15 @@ spec:
                                 items:
                                   type: string
                                 type: array
+                              deferUntilHealthy:
+                                description: |-
+                                  DeferUntilHealthy determines whether this container should be deferred until the group is healthy.
+                                  When enabled, this container will only be added to the pod if the group to which the node belongs
+                                  is healthy (has the minimum pods available as defined in its PodDisruptionBudget).
+                                  This makes the container optional, allowing for faster node startup when the group is unhealthy.
+                                  Note: this is ignored on orphan ChainNodes. It is only useful when using ChainNodeSet.
+                                  Defaults to `false`.
+                                type: boolean
                               env:
                                 description: Environment variables to be passed to
                                   this container.
@@ -4197,6 +4206,15 @@ spec:
                               items:
                                 type: string
                               type: array
+                            deferUntilHealthy:
+                              description: |-
+                                DeferUntilHealthy determines whether this container should be deferred until the group is healthy.
+                                When enabled, this container will only be added to the pod if the group to which the node belongs
+                                is healthy (has the minimum pods available as defined in its PodDisruptionBudget).
+                                This makes the container optional, allowing for faster node startup when the group is unhealthy.
+                                Note: this is ignored on orphan ChainNodes. It is only useful when using ChainNodeSet.
+                                Defaults to `false`.
+                              type: boolean
                             env:
                               description: Environment variables to be passed to this
                                 container.

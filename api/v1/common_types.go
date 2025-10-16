@@ -322,6 +322,15 @@ type SidecarSpec struct {
 	// as it will have to finish before the node container starts. Defaults to `false`.
 	// +optional
 	RunBeforeNode *bool `json:"runBeforeNode,omitempty"`
+
+	// DeferUntilHealthy determines whether this container should be deferred until the group is healthy.
+	// When enabled, this container will only be added to the pod if the group to which the node belongs
+	// is healthy (has the minimum pods available as defined in its PodDisruptionBudget).
+	// This makes the container optional, allowing for faster node startup when the group is unhealthy.
+	// Note: this is ignored on orphan ChainNodes. It is only useful when using ChainNodeSet.
+	// Defaults to `false`.
+	// +optional
+	DeferUntilHealthy *bool `json:"deferUntilHealthy,omitempty"`
 }
 
 // ValidatorInfo contains information about this validator.
