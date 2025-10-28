@@ -159,6 +159,16 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 			return err
 		}
 
+		// Set upgrading label to true
+		modifiedPod := currentPod.DeepCopy()
+		if modifiedPod.Labels == nil {
+			modifiedPod.Labels = make(map[string]string)
+		}
+		modifiedPod.Labels[controllers.LabelUpgrading] = controllers.StringValueTrue
+		if _, err = r.PatchPod(ctx, currentPod, modifiedPod); err != nil {
+			return err
+		}
+
 		// Force update config files, to prevent restarting again because of config changes
 		app, err = chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
 			chainNode.Spec.App.GetSdkVersion(),
@@ -323,6 +333,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				controllers.LabelNodeID:    chainNode.Status.NodeID,
 				controllers.LabelChainID:   chainNode.Status.ChainID,
 				controllers.LabelValidator: strconv.FormatBool(chainNode.IsValidator()),
+				controllers.LabelUpgrading: controllers.StringValueFalse,
 			}),
 		},
 		Spec: corev1.PodSpec{

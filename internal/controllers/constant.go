@@ -45,6 +45,7 @@ const (
 	LabelApp                   = "app"
 	LabelSeed                  = "seed"
 	LabelPeer                  = "peer"
+	LabelUpgrading             = "upgrading"
 
 	StringValueTrue  = "true"
 	StringValueFalse = "false"

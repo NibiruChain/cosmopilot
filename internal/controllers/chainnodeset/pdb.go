@@ -24,6 +24,7 @@ func (r *Reconciler) ensurePodDisruptionBudgets(ctx context.Context, nodeSet *ap
 			fmt.Sprintf("%s-validator", nodeSet.GetName()),
 			nodeSet.Spec.Validator.GetPdbMinAvailable(),
 			map[string]string{
+				controllers.LabelUpgrading:             controllers.StringValueFalse,
 				controllers.LabelChainID:               nodeSet.Status.ChainID,
 				controllers.LabelChainNodeSetValidator: controllers.StringValueTrue,
 			},
@@ -40,6 +41,7 @@ func (r *Reconciler) ensurePodDisruptionBudgets(ctx context.Context, nodeSet *ap
 	for _, group := range nodeSet.Spec.Nodes {
 		if group.HasPdbEnabled() {
 			labels := map[string]string{
+				controllers.LabelUpgrading:    controllers.StringValueFalse,
 				controllers.LabelChainID:      nodeSet.Status.ChainID,
 				controllers.LabelChainNodeSet: nodeSet.GetName(),
 			}
