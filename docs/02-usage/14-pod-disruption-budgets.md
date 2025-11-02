@@ -25,4 +25,4 @@ With this configuration, Kubernetes will ensure that at least two fullnode pods 
 - PDBs are currently supported only on `ChainNodeSet` resources.
 - `minAvailable` defaults to the number of instances minus one for node groups.
 - A validator PDB only has an effect when multiple validators run in the same namespace; otherwise the default `minAvailable: 0` leaves it ineffective.
-
+- During [upgrades](08-upgrades), PDBs are automatically disabled for `ChainNodes` with the `Upgrading` status.

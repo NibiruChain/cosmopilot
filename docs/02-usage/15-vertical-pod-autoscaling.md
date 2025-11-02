@@ -44,4 +44,4 @@ In this example the `ChainNode` defines CPU and memory scaling rules for its pod
 
 - VPA requires a Vertical Pod Autoscaler controller running in the cluster.
 - If `enabled` is set to `false`, pods keep their configured CPU and memory requests without vertical autoscaling.
-
+- VPA is automatically disabled for a `ChainNode` has the `StateSyncing` status to prevent it from restarting. Once state synchronization is complete, VPA is re-enabled.

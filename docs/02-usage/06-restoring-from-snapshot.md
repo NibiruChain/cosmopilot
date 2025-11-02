@@ -31,6 +31,32 @@ config:
         trust_hash: A8A55B09347E9BCC6A626D25EDEE2BA063812D2AC335B5EDCDB400239AD8CFE0
 ```
 
+### Specifying State-Sync Resources
+
+The state sync process may cause the node to consume more resources than during its usual operation. To avoid reconfiguring the node’s resource limits, you can define separate resource specifications that will be applied to the pod while the `ChainNode` is in the `StateSyncing` status.
+
+```yaml{9-15}
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+  
+stateSyncResources:
+  requests:
+    cpu: "1000m"
+    memory: "2Gi"
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+```
+
+::: info NOTE
+[Vertical pod autoscaling](15-vertical-pod-autoscaling) is automatically disabled for a `ChainNode` has the `StateSyncing` status to prevent it from restarting. Once state synchronization is complete, VPA is re-enabled.
+:::
+
 ## Restoring from a Volume Snapshot
 
 You can obtain the list of available volume snapshots by running
