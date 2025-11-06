@@ -25,7 +25,7 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 			return fmt.Errorf("failed to get pvc: %w", err)
 		}
 		if pvc == nil {
-			return fmt.Errorf("pvc not found")
+			return fmt.Errorf("pvc not found for chainnode %s/%s", chainNode.Namespace, chainNode.Name)
 		}
 		if v, ok := pvc.Annotations[controllers.AnnotationGenesisDownloaded]; ok && v == controllers.StringValueTrue {
 			return nil
@@ -36,10 +36,10 @@ func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, cha
 
 	if chainNode.ShouldInitGenesis() {
 		if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeInitGenesis); err != nil {
-			return err
+			return fmt.Errorf("failed to update phase to InitGenesis: %w", err)
 		}
 		if err := r.initGenesis(ctx, app, chainNode); err != nil {
-			return err
+			return fmt.Errorf("failed to initialize genesis: %w", err)
 		}
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeNormal,
@@ -62,7 +62,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		if chainNode.Spec.Genesis.ShouldDownloadUsingContainer() {
 			pvc := &corev1.PersistentVolumeClaim{}
 			if err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
-				return err
+				return fmt.Errorf("failed to get pvc for genesis download: %w", err)
 			}
 			logger.Info("downloading genesis to data volume using container",
 				"url", *chainNode.Spec.Genesis.Url,
@@ -75,14 +75,14 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 					r.opts.GetDefaultPriorityClassName(),
 					chainNode.Spec.Affinity,
 					chainNode.Spec.NodeSelector); err != nil {
-				return err
+				return fmt.Errorf("failed to download genesis to PVC: %w", err)
 			}
 			if pvc.Annotations == nil {
 				pvc.Annotations = map[string]string{}
 			}
 			pvc.Annotations[controllers.AnnotationGenesisDownloaded] = controllers.StringValueTrue
 			if err = r.Update(ctx, pvc); err != nil {
-				return err
+				return fmt.Errorf("failed to update pvc annotations: %w", err)
 			}
 			chainNode.Status.ChainID = *chainNode.Spec.Genesis.ChainID
 			return r.Status().Update(ctx, chainNode)
@@ -93,7 +93,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		if err != nil {
 			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
 				controllers.FormatErrorEvent("Failed to download genesis from URL", err))
-			return err
+			return fmt.Errorf("failed to retrieve genesis from URL %s: %w", *chainNode.Spec.Genesis.Url, err)
 		}
 
 		r.recorder.Eventf(chainNode,
@@ -110,7 +110,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		if err != nil {
 			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
 				controllers.FormatErrorEvent("Failed to retrieve genesis from RPC node", err))
-			return err
+			return fmt.Errorf("failed to retrieve genesis from RPC endpoint %s: %w", genesisUrl, err)
 		}
 
 		r.recorder.Eventf(chainNode,
@@ -125,12 +125,12 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		if err != nil {
 			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
 				controllers.FormatErrorEvent("Failed to load genesis from ConfigMap", err))
-			return err
+			return fmt.Errorf("failed to load genesis from ConfigMap %s: %w", *chainNode.Spec.Genesis.ConfigMap, err)
 		}
 
 		chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to extract chainID from genesis: %w", err)
 		}
 
 		r.recorder.Eventf(chainNode,
@@ -150,13 +150,13 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 
 	chainID, err := chainutils.ExtractChainIdFromGenesis(genesis)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to extract chainID from retrieved genesis: %w", err)
 	}
 
 	if chainNode.Spec.Genesis.ShouldUseDataVolume() {
 		pvc := &corev1.PersistentVolumeClaim{}
 		if err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
-			return err
+			return fmt.Errorf("failed to get pvc for writing genesis: %w", err)
 		}
 		logger.Info("writing genesis to data volume", "pvc", pvc.GetName())
 		if err = k8s.NewPvcHelper(r.ClientSet, r.RestConfig, pvc).
@@ -164,14 +164,14 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 				r.opts.GetDefaultPriorityClassName(),
 				chainNode.Spec.Affinity,
 				chainNode.Spec.NodeSelector); err != nil {
-			return err
+			return fmt.Errorf("failed to write genesis to PVC: %w", err)
 		}
 		if pvc.Annotations == nil {
 			pvc.Annotations = map[string]string{}
 		}
 		pvc.Annotations[controllers.AnnotationGenesisDownloaded] = controllers.StringValueTrue
 		if err = r.Update(ctx, pvc); err != nil {
-			return err
+			return fmt.Errorf("failed to update pvc annotations after genesis write: %w", err)
 		}
 
 	} else {
@@ -185,12 +185,12 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 			Data: map[string]string{chainutils.GenesisFilename: genesis},
 		}
 		if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
-			return err
+			return fmt.Errorf("failed to set controller reference on genesis configmap: %w", err)
 		}
 
 		logger.Info("creating genesis configmap", "configmap", cm.GetName())
 		if err = r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
-			return err
+			return fmt.Errorf("failed to create genesis configmap: %w", err)
 		}
 	}
 
@@ -220,10 +220,10 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 	for _, a := range chainNode.Spec.Validator.Init.ChainNodeAccounts {
 		cn := &appsv1.ChainNode{}
 		if err := r.Get(ctx, client.ObjectKey{Namespace: chainNode.GetNamespace(), Name: a.ChainNode}, cn); err != nil {
-			return fmt.Errorf("failed to get chain node account: %w", err)
+			return fmt.Errorf("failed to get chain node account %s: %w", a.ChainNode, err)
 		}
 		if cn.Status.AccountAddress == "" {
-			return fmt.Errorf("chain node has no account address")
+			return fmt.Errorf("chain node %s has no account address", a.ChainNode)
 		}
 		genesisParams.Accounts = append(genesisParams.Accounts, chainutils.AccountAssets{
 			Address: cn.Status.AccountAddress,
@@ -250,7 +250,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 
 	accountSecret := &corev1.Secret{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: chainNode.GetNamespace(), Name: chainNode.Spec.Validator.GetAccountSecretName(chainNode)}, accountSecret); err != nil {
-		return err
+		return fmt.Errorf("failed to get account secret: %w", err)
 	}
 	account, err := chainutils.AccountFromMnemonic(
 		string(accountSecret.Data[MnemonicKey]),
@@ -259,7 +259,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		chainNode.Spec.Validator.GetAccountHDPath(),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create account from mnemonic: %w", err)
 	}
 
 	// Gather validator info
@@ -284,7 +284,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 			corev1.EventTypeWarning,
 			appsv1.ReasonInitGenesisFailure,
 			controllers.FormatErrorEvent("Failed to initialize new genesis", err))
-		return err
+		return fmt.Errorf("failed to generate new genesis: %w", err)
 	}
 
 	cm := &corev1.ConfigMap{
@@ -296,12 +296,12 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		Data: map[string]string{chainutils.GenesisFilename: genesis},
 	}
 	if err = controllerutil.SetControllerReference(chainNode, cm, r.Scheme); err != nil {
-		return err
+		return fmt.Errorf("failed to set controller reference on genesis configmap: %w", err)
 	}
 
 	logger.Info("creating genesis configmap", "configmap", cm.GetName())
 	if err = r.Create(ctx, cm); err != nil && !errors.IsAlreadyExists(err) {
-		return err
+		return fmt.Errorf("failed to create genesis configmap: %w", err)
 	}
 
 	// update chainID in status
