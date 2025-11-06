@@ -37,8 +37,30 @@ type Reconciler struct {
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
-	cfgCache := ttlcache.New(ttlcache.WithTTL[string, map[string]interface{}](2 * time.Hour))
-	clientsCache := ttlcache.New(ttlcache.WithTTL[string, *chainutils.Client](2 * time.Hour))
+	// Create config cache with capacity limit to prevent unbounded growth
+	// 1000 entries should be sufficient for most deployments
+	cfgCache := ttlcache.New(
+		ttlcache.WithTTL[string, map[string]interface{}](2*time.Hour),
+		ttlcache.WithCapacity[string, map[string]interface{}](1000),
+	)
+
+	// Create clients cache with capacity limit and eviction callback
+	// 100 concurrent connections should be more than enough
+	clientsCache := ttlcache.New(
+		ttlcache.WithTTL[string, *chainutils.Client](2*time.Hour),
+		ttlcache.WithCapacity[string, *chainutils.Client](100),
+	)
+
+	// Register eviction callback to properly close gRPC connections
+	// This prevents connection leaks when entries are evicted from the cache
+	clientsCache.OnEviction(func(ctx context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, *chainutils.Client]) {
+		if item != nil && item.Value() != nil {
+			client := item.Value()
+			if err := client.Close(); err != nil {
+				log.FromContext(ctx).Error(err, "failed to close gRPC client connection during cache eviction", "host", item.Key())
+			}
+		}
+	})
 
 	r := &Reconciler{
 		Client:          mgr.GetClient(),
