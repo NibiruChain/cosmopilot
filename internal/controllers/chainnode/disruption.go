@@ -13,7 +13,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	// maxLocks defines the maximum number of locks to maintain in memory.
+	// This prevents unbounded growth in long-running operators.
+	// With typical Kubernetes deployments, this should be more than sufficient.
+	maxLocks = 500
+)
+
 // lockManager manages locks for disruption control based on label sets.
+// It implements a capacity-limited lock cache to prevent memory leaks.
 type lockManager struct {
 	locks map[string]*sync.Mutex
 	mu    sync.Mutex
@@ -45,6 +53,8 @@ func generateLockKey(l map[string]string) string {
 
 // getLockForLabels returns a mutex for the given label set.
 // Creates a new mutex if one doesn't exist for this label set.
+// If the maximum number of locks is reached, it returns an existing lock
+// to prevent unbounded memory growth.
 func (lm *lockManager) getLockForLabels(l map[string]string) *sync.Mutex {
 	lockKey := generateLockKey(l)
 
@@ -53,6 +63,15 @@ func (lm *lockManager) getLockForLabels(l map[string]string) *sync.Mutex {
 
 	if lock, exists := lm.locks[lockKey]; exists {
 		return lock
+	}
+
+	// Enforce capacity limit to prevent unbounded growth
+	if len(lm.locks) >= maxLocks {
+		// Return any existing lock when at capacity
+		// This maintains concurrency control while preventing memory leaks
+		for _, existingLock := range lm.locks {
+			return existingLock
+		}
 	}
 
 	newLock := &sync.Mutex{}

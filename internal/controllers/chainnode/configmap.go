@@ -27,7 +27,14 @@ import (
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
+const (
+	// maxConfigLocks defines the maximum number of config locks to maintain.
+	// This prevents unbounded growth from accumulating locks for every app version.
+	maxConfigLocks = 100
+)
+
 // configLockManager manages locks for config generation to prevent concurrent regeneration.
+// It implements a capacity-limited lock cache to prevent memory leaks.
 type configLockManager struct {
 	locks map[string]*sync.Mutex
 	mu    sync.Mutex
@@ -42,12 +49,23 @@ func newConfigLockManager() *configLockManager {
 
 // getLockForVersion returns a mutex for the given app version.
 // Creates a new mutex if one doesn't exist for this version.
+// If the maximum number of locks is reached, it returns an existing lock
+// to prevent unbounded memory growth.
 func (clm *configLockManager) getLockForVersion(version string) *sync.Mutex {
 	clm.mu.Lock()
 	defer clm.mu.Unlock()
 
 	if lock, exists := clm.locks[version]; exists {
 		return lock
+	}
+
+	// Enforce capacity limit to prevent unbounded growth
+	if len(clm.locks) >= maxConfigLocks {
+		// Return any existing lock when at capacity
+		// This maintains concurrency control while preventing memory leaks
+		for _, existingLock := range clm.locks {
+			return existingLock
+		}
 	}
 
 	newLock := &sync.Mutex{}
