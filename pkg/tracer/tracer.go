@@ -1,3 +1,5 @@
+// Package tracer provides functionality for tracing blockchain store operations
+// by reading and parsing trace output from a FIFO pipe.
 package tracer
 
 import (
@@ -11,11 +13,13 @@ import (
 	"github.com/nxadm/tail"
 )
 
+// StoreTracer reads and parses store operation traces from a file or FIFO pipe.
 type StoreTracer struct {
 	tail   *tail.Tail
 	Traces chan *Trace
 }
 
+// Trace represents a single store operation trace event.
 type Trace struct {
 	Operation string    `json:"operation"`
 	Key       string    `json:"key"`
@@ -24,11 +28,15 @@ type Trace struct {
 	Err       error     `json:"-"`
 }
 
+// Metadata contains contextual information about a trace event.
 type Metadata struct {
 	BlockHeight int64  `json:"blockHeight"`
 	StoreName   string `json:"store_name"`
 }
 
+// NewStoreTracer creates a new StoreTracer that reads from the specified path.
+// If createFifo is true, a FIFO pipe will be created at the path.
+// The tracer must be started with Start() to begin processing traces.
 func NewStoreTracer(path string, createFifo bool) (*StoreTracer, error) {
 	if createFifo {
 		f, err := fifo.OpenFifo(context.Background(), path, syscall.O_CREAT|syscall.O_RDONLY|syscall.O_NONBLOCK, 0655)
@@ -56,10 +64,13 @@ func NewStoreTracer(path string, createFifo bool) (*StoreTracer, error) {
 	}, nil
 }
 
+// Stop stops the tracer and closes the underlying file.
 func (t *StoreTracer) Stop() error {
 	return t.tail.Stop()
 }
 
+// Start begins processing trace events and sending them to the Traces channel.
+// This method blocks until the tracer is stopped or the file is closed.
 func (t *StoreTracer) Start() {
 	for line := range t.tail.Lines {
 		if line.Err != nil {

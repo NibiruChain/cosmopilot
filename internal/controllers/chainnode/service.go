@@ -407,7 +407,7 @@ func (r *Reconciler) getP2pServiceSpec(chainNode *appsv1.ChainNode) (*corev1.Ser
 func (r *Reconciler) addStateSyncAnnotations(ctx context.Context, chainNode *appsv1.ChainNode, svc *corev1.Service) error {
 	logger := log.FromContext(ctx)
 
-	availableHeights, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).ListSnapshots()
+	availableHeights, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).ListSnapshots(ctx)
 	if err != nil {
 		return err
 	}

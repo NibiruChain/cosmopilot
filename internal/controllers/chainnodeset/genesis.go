@@ -77,7 +77,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSe
 	case nodeSet.Spec.Genesis.Url != nil:
 		logger.Info("retrieving genesis from url", "url", *nodeSet.Spec.Genesis.Url)
 
-		genesis, err = chainutils.RetrieveGenesisFromURL(*nodeSet.Spec.Genesis.Url, nodeSet.Spec.Genesis.GenesisSHA)
+		genesis, err = chainutils.RetrieveGenesisFromURL(ctx, *nodeSet.Spec.Genesis.Url, nodeSet.Spec.Genesis.GenesisSHA)
 		if err != nil {
 			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
 			return err
@@ -93,7 +93,7 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSe
 		genesisUrl := nodeSet.Spec.Genesis.FromNodeRPC.GetGenesisFromRPCUrl()
 		logger.Info("retrieving genesis from node RPC", "endpoint", genesisUrl)
 
-		genesis, err = chainutils.RetrieveGenesisFromNodeRPC(genesisUrl, nodeSet.Spec.Genesis.GenesisSHA)
+		genesis, err = chainutils.RetrieveGenesisFromNodeRPC(ctx, genesisUrl, nodeSet.Spec.Genesis.GenesisSHA)
 		if err != nil {
 			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
 			return err

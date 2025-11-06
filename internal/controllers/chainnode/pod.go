@@ -132,7 +132,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 
 	// Check if the node is waiting for an upgrade
 	logger.V(1).Info("checking if an upgrade is required")
-	requiresUpgrade, err := r.requiresUpgrade(chainNode)
+	requiresUpgrade, err := r.requiresUpgrade(ctx, chainNode)
 	if err != nil {
 		return err
 	}
@@ -556,9 +556,9 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 								Scheme: "HTTP",
 							},
 						},
-						PeriodSeconds:    5,
-						FailureThreshold: int32(chainNode.Spec.Config.GetStartupTime().Seconds() / 5),
-						TimeoutSeconds:   livenessProbeTimeoutSeconds,
+						PeriodSeconds:    startupProbePeriodSeconds,
+						FailureThreshold: int32(chainNode.Spec.Config.GetStartupTime().Seconds() / startupProbePeriodSeconds),
+						TimeoutSeconds:   startupProbeTimeoutSeconds,
 					},
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
@@ -571,8 +571,8 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 								Scheme: "HTTP",
 							},
 						},
-						FailureThreshold: 2,
-						PeriodSeconds:    30,
+						FailureThreshold: livenessProbeFailureThreshold,
+						PeriodSeconds:    livenessProbePeriodSeconds,
 						TimeoutSeconds:   livenessProbeTimeoutSeconds,
 					},
 					ReadinessProbe: &corev1.Probe{
@@ -586,8 +586,8 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 								Scheme: "HTTP",
 							},
 						},
-						FailureThreshold: 1,
-						PeriodSeconds:    10,
+						FailureThreshold: readinessProbeFailureThreshold,
+						PeriodSeconds:    readinessProbePeriodSeconds,
 						TimeoutSeconds:   readinessProbeTimeoutSeconds,
 					},
 					Resources: appResources,
@@ -876,7 +876,7 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 		}
 
 		logger.Info("attempting to acquire lock for recreating pod", "pod", pod.GetName(), "labels", disruptionLabels)
-		lock := getLockForLabels(disruptionLabels)
+		lock := r.disruptionLocks.getLockForLabels(disruptionLabels)
 		lock.Lock()
 		defer lock.Unlock()
 		logger.Info("acquired lock for recreating pod", "pod", pod.GetName(), "labels", disruptionLabels)
@@ -907,7 +907,7 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 
 		// Attempt to terminate node-utils container without waiting for grace-period. If there is an error
 		// we will just wait for the grace-period
-		if err := r.stopNodeUtilsContainer(chainNode); err != nil {
+		if err := r.stopNodeUtilsContainer(ctx, chainNode); err != nil {
 			logger.Info("failed to stop node utils container", "pod", pod.GetName(), "error", err.Error())
 		}
 		return r.setNodePhase(ctx, chainNode)
@@ -952,7 +952,7 @@ func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode
 
 	// Attempt to terminate node-utils container without waiting for grace-period. If there is an error
 	// we will just wait for the grace-period
-	if err := r.stopNodeUtilsContainer(chainNode); err != nil {
+	if err := r.stopNodeUtilsContainer(ctx, chainNode); err != nil {
 		logger.Info("failed to stop node utils container", "pod", pod.GetName(), "error", err.Error())
 	}
 
@@ -1091,7 +1091,7 @@ func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNo
 	}
 
 	// Check if its state-sync first
-	stateSyncing, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).IsStateSyncing()
+	stateSyncing, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).IsStateSyncing(ctx)
 	if err != nil {
 		return err
 	}
@@ -1197,8 +1197,8 @@ func nodeUtilsIsInFailedState(pod *corev1.Pod) bool {
 	return false
 }
 
-func (r *Reconciler) stopNodeUtilsContainer(chainNode *appsv1.ChainNode) error {
-	return nodeutils.NewClient(chainNode.GetNodeFQDN()).ShutdownNodeUtilsServer()
+func (r *Reconciler) stopNodeUtilsContainer(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	return nodeutils.NewClient(chainNode.GetNodeFQDN()).ShutdownNodeUtilsServer(ctx)
 }
 
 func isPodTerminating(pod *corev1.Pod) bool {

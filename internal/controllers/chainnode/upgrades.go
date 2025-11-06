@@ -118,8 +118,8 @@ func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1
 	return nil
 }
 
-func (r *Reconciler) requiresUpgrade(chainNode *appsv1.ChainNode) (bool, error) {
-	return nodeutils.NewClient(chainNode.GetNodeFQDN()).RequiresUpgrade()
+func (r *Reconciler) requiresUpgrade(ctx context.Context, chainNode *appsv1.ChainNode) (bool, error) {
+	return nodeutils.NewClient(chainNode.GetNodeFQDN()).RequiresUpgrade(ctx)
 }
 
 func (r *Reconciler) getUpgrade(chainNode *appsv1.ChainNode, height int64) *appsv1.Upgrade {

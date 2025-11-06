@@ -241,7 +241,7 @@ func (r *Reconciler) getStorageSize(ctx context.Context, chainNode *appsv1.Chain
 	}
 
 	// Get current size of data
-	dataSizeBytes, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetDataSize()
+	dataSizeBytes, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetDataSize(ctx)
 	if err != nil {
 		return resource.Quantity{}, err
 	}

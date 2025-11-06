@@ -27,21 +27,31 @@ import (
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
-var (
-	configGenerationLocks      = make(map[string]*sync.Mutex)
-	configGenerationLocksMutex sync.Mutex
-)
+// configLockManager manages locks for config generation to prevent concurrent regeneration.
+type configLockManager struct {
+	locks map[string]*sync.Mutex
+	mu    sync.Mutex
+}
 
-func getConfigsLockForAppVersion(version string) *sync.Mutex {
-	configGenerationLocksMutex.Lock()
-	defer configGenerationLocksMutex.Unlock()
+// newConfigLockManager creates a new config lock manager instance.
+func newConfigLockManager() *configLockManager {
+	return &configLockManager{
+		locks: make(map[string]*sync.Mutex),
+	}
+}
 
-	if lock, exists := configGenerationLocks[version]; exists {
+// getLockForVersion returns a mutex for the given app version.
+// Creates a new mutex if one doesn't exist for this version.
+func (clm *configLockManager) getLockForVersion(version string) *sync.Mutex {
+	clm.mu.Lock()
+	defer clm.mu.Unlock()
+
+	if lock, exists := clm.locks[version]; exists {
 		return lock
 	}
 
 	newLock := &sync.Mutex{}
-	configGenerationLocks[version] = newLock
+	clm.locks[version] = newLock
 	return newLock
 }
 
@@ -305,7 +315,7 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, cm *corev1.ConfigMap) 
 func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
 	logger := log.FromContext(ctx)
 
-	lock := getConfigsLockForAppVersion(chainNode.GetAppImage())
+	lock := r.configLocks.getLockForVersion(chainNode.GetAppImage())
 	lock.Lock()
 	defer lock.Unlock()
 

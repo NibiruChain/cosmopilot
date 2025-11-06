@@ -20,7 +20,15 @@ const (
 	timeoutPodDeleted              = 2 * time.Minute
 	timeoutWaitServiceIP           = 5 * time.Minute
 	minimumTimeBeforeFirstSnapshot = 10 * time.Minute
+
+	// Probe configuration constants
+	startupProbePeriodSeconds      = 5
+	startupProbeTimeoutSeconds     = 5
+	livenessProbeFailureThreshold  = 2
+	livenessProbePeriodSeconds     = 30
 	livenessProbeTimeoutSeconds    = 5
+	readinessProbeFailureThreshold = 1
+	readinessProbePeriodSeconds    = 10
 	readinessProbeTimeoutSeconds   = 5
 
 	nodeUtilsContainerName = "node-utils"

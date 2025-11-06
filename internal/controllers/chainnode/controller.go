@@ -25,13 +25,15 @@ import (
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet   *kubernetes.Clientset
-	RestConfig  *rest.Config
-	Scheme      *runtime.Scheme
-	configCache *ttlcache.Cache[string, map[string]interface{}]
-	nodeClients *ttlcache.Cache[string, *chainutils.Client]
-	recorder    record.EventRecorder
-	opts        *controllers.ControllerRunOptions
+	ClientSet       *kubernetes.Clientset
+	RestConfig      *rest.Config
+	Scheme          *runtime.Scheme
+	configCache     *ttlcache.Cache[string, map[string]interface{}]
+	nodeClients     *ttlcache.Cache[string, *chainutils.Client]
+	recorder        record.EventRecorder
+	opts            *controllers.ControllerRunOptions
+	disruptionLocks *lockManager
+	configLocks     *configLockManager
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
@@ -39,14 +41,16 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 	clientsCache := ttlcache.New(ttlcache.WithTTL[string, *chainutils.Client](2 * time.Hour))
 
 	r := &Reconciler{
-		Client:      mgr.GetClient(),
-		ClientSet:   clientSet,
-		RestConfig:  mgr.GetConfig(),
-		Scheme:      mgr.GetScheme(),
-		configCache: cfgCache,
-		nodeClients: clientsCache,
-		recorder:    mgr.GetEventRecorderFor("chainnode-controller"),
-		opts:        opts,
+		Client:          mgr.GetClient(),
+		ClientSet:       clientSet,
+		RestConfig:      mgr.GetConfig(),
+		Scheme:          mgr.GetScheme(),
+		configCache:     cfgCache,
+		nodeClients:     clientsCache,
+		recorder:        mgr.GetEventRecorderFor("chainnode-controller"),
+		opts:            opts,
+		disruptionLocks: newLockManager(),
+		configLocks:     newConfigLockManager(),
 	}
 	if err := r.setupWithManager(mgr); err != nil {
 		return nil, err
@@ -286,7 +290,7 @@ func (r *Reconciler) getChainNodeClientByHost(host string) (*chainutils.Client, 
 }
 
 func (r *Reconciler) updateLatestHeight(ctx context.Context, chainNode *appsv1.ChainNode) error {
-	height, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetLatestHeight()
+	height, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).GetLatestHeight(ctx)
 	if err != nil {
 		return err
 	}

@@ -14,10 +14,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
+)
+
+var (
+	// httpClient is a shared HTTP client with reasonable timeout for genesis downloads
+	// Note: Individual requests should use context for cancellation control
+	httpClient = &http.Client{
+		Timeout: 5 * time.Minute,
+	}
 )
 
 func ExtractChainIdFromGenesis(genesis string) (string, error) {
@@ -25,10 +34,15 @@ func ExtractChainIdFromGenesis(genesis string) (string, error) {
 	if err := json.Unmarshal([]byte(genesis), &genesisJson); err != nil {
 		return "", err
 	}
-	if chainId, ok := genesisJson["chain_id"]; ok {
-		return chainId.(string), nil
+	chainIDRaw, ok := genesisJson["chain_id"]
+	if !ok {
+		return "", fmt.Errorf("chain_id field not found in genesis")
 	}
-	return "", fmt.Errorf("could not extract chain id from genesis")
+	chainID, ok := chainIDRaw.(string)
+	if !ok {
+		return "", fmt.Errorf("chain_id is not a string type")
+	}
+	return chainID, nil
 }
 
 func (a *App) NewGenesis(ctx context.Context,
@@ -206,10 +220,17 @@ func (a *App) NewGenesis(ctx context.Context,
 	ph := k8s.NewPodHelper(a.client, a.restConfig, pod)
 
 	// Delete the pod if it already exists
-	_ = ph.Delete(ctx)
+	logger := log.FromContext(ctx)
+	if err := ph.Delete(ctx); err != nil {
+		logger.V(1).Info("failed to delete existing genesis pod (may not exist)", "error", err)
+	}
 
 	// Delete the pod independently of the result
-	defer ph.Delete(ctx)
+	defer func() {
+		if err := ph.Delete(ctx); err != nil {
+			logger.Error(err, "failed to cleanup genesis pod")
+		}
+	}()
 
 	// Create the pod
 	if err := ph.Create(ctx); err != nil {
@@ -249,8 +270,13 @@ func (a *App) LoadGenesisFromConfigMap(ctx context.Context, configMapName string
 	return genesis, nil
 }
 
-func RetrieveGenesisFromURL(url string, sha *string) (string, error) {
-	response, err := http.Get(url)
+func RetrieveGenesisFromURL(ctx context.Context, url string, sha *string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	response, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -265,18 +291,24 @@ func RetrieveGenesisFromURL(url string, sha *string) (string, error) {
 	if sha != nil {
 		hash := utils.Sha256(genesis)
 		if hash != *sha {
-			return "", fmt.Errorf("genesis 256 SHA does not match the one specified")
+			return "", fmt.Errorf("genesis SHA256 mismatch: expected %s, got %s", *sha, hash)
 		}
 	}
 
 	return genesis, nil
 }
 
-func RetrieveGenesisFromNodeRPC(url string, sha *string) (string, error) {
-	res, err := http.Get(url)
+func RetrieveGenesisFromNodeRPC(ctx context.Context, url string, sha *string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -303,7 +335,7 @@ func RetrieveGenesisFromNodeRPC(url string, sha *string) (string, error) {
 	if sha != nil {
 		hash := utils.Sha256(genesis)
 		if hash != *sha {
-			return "", fmt.Errorf("genesis 256 SHA does not match the one specified")
+			return "", fmt.Errorf("genesis SHA256 mismatch: expected %s, got %s", *sha, hash)
 		}
 	}
 
