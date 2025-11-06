@@ -79,7 +79,8 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSe
 
 		genesis, err = chainutils.RetrieveGenesisFromURL(ctx, *nodeSet.Spec.Genesis.Url, nodeSet.Spec.Genesis.GenesisSHA)
 		if err != nil {
-			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
+				controllers.FormatErrorEvent("Failed to download genesis from URL", err))
 			return err
 		}
 
@@ -95,7 +96,8 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSe
 
 		genesis, err = chainutils.RetrieveGenesisFromNodeRPC(ctx, genesisUrl, nodeSet.Spec.Genesis.GenesisSHA)
 		if err != nil {
-			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
+				controllers.FormatErrorEvent("Failed to retrieve genesis from RPC node", err))
 			return err
 		}
 
@@ -109,7 +111,8 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, nodeSe
 		logger.Info("loading genesis from configmap", "configmap", *nodeSet.Spec.Genesis.ConfigMap)
 		genesis, err = app.LoadGenesisFromConfigMap(ctx, *nodeSet.Spec.Genesis.ConfigMap)
 		if err != nil {
-			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			r.recorder.Eventf(nodeSet, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
+				controllers.FormatErrorEvent("Failed to load genesis from ConfigMap", err))
 			return err
 		}
 

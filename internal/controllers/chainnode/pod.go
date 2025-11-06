@@ -927,8 +927,7 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeWarning,
 			appsv1.ReasonNodeError,
-			"Error: %v",
-			err,
+			controllers.FormatErrorEvent("Pod failed to start", err),
 		)
 		_ = r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeError)
 		return err
@@ -975,8 +974,7 @@ func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeWarning,
 			appsv1.ReasonNodeError,
-			"Error: %v",
-			err,
+			controllers.FormatErrorEvent("Pod failed to start after upgrade", err),
 		)
 		_ = r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeError)
 		return true, err
@@ -984,7 +982,7 @@ func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode
 	r.recorder.Eventf(chainNode,
 		corev1.EventTypeNormal,
 		appsv1.ReasonNodeRestarted,
-		"Node upgraded",
+		"Node upgraded to %s", image,
 	)
 	return true, r.setNodePhase(ctx, chainNode)
 }

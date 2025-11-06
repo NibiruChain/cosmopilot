@@ -91,7 +91,8 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		logger.Info("retrieving genesis from url", "url", *chainNode.Spec.Genesis.Url)
 		genesis, err = chainutils.RetrieveGenesisFromURL(ctx, *chainNode.Spec.Genesis.Url, chainNode.Spec.Genesis.GenesisSHA)
 		if err != nil {
-			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
+				controllers.FormatErrorEvent("Failed to download genesis from URL", err))
 			return err
 		}
 
@@ -107,7 +108,8 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 
 		genesis, err = chainutils.RetrieveGenesisFromNodeRPC(ctx, genesisUrl, chainNode.Spec.Genesis.GenesisSHA)
 		if err != nil {
-			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
+				controllers.FormatErrorEvent("Failed to retrieve genesis from RPC node", err))
 			return err
 		}
 
@@ -121,7 +123,8 @@ func (r *Reconciler) getGenesis(ctx context.Context, app *chainutils.App, chainN
 		logger.Info("loading genesis from configmap", "configmap", *chainNode.Spec.Genesis.ConfigMap)
 		genesis, err = app.LoadGenesisFromConfigMap(ctx, *chainNode.Spec.Genesis.ConfigMap)
 		if err != nil {
-			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError, err.Error())
+			r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonGenesisError,
+				controllers.FormatErrorEvent("Failed to load genesis from ConfigMap", err))
 			return err
 		}
 
@@ -280,7 +283,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		r.recorder.Eventf(chainNode,
 			corev1.EventTypeWarning,
 			appsv1.ReasonInitGenesisFailure,
-			"failed to initialize genesis: %s", err.Error())
+			controllers.FormatErrorEvent("Failed to initialize new genesis", err))
 		return err
 	}
 
