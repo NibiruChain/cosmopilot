@@ -1,0 +1,381 @@
+package chainnode
+
+import (
+	"testing"
+	"time"
+
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+
+	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	"github.com/NibiruChain/cosmopilot/internal/controllers"
+)
+
+func TestIsSnapshotReady(t *testing.T) {
+	tests := []struct {
+		name     string
+		snapshot *snapshotv1.VolumeSnapshot
+		want     bool
+	}{
+		{
+			name:     "nil snapshot",
+			snapshot: nil,
+			want:     false,
+		},
+		{
+			name: "snapshot with nil status",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				Status: nil,
+			},
+			want: false,
+		},
+		{
+			name: "snapshot with nil ReadyToUse",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				Status: &snapshotv1.VolumeSnapshotStatus{
+					ReadyToUse: nil,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "snapshot not ready",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				Status: &snapshotv1.VolumeSnapshotStatus{
+					ReadyToUse: pointer.Bool(false),
+				},
+			},
+			want: false,
+		},
+		{
+			name: "snapshot ready",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				Status: &snapshotv1.VolumeSnapshotStatus{
+					ReadyToUse: pointer.Bool(true),
+				},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isSnapshotReady(tt.snapshot)
+			if got != tt.want {
+				t.Errorf("isSnapshotReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsSnapshotExpired(t *testing.T) {
+	now := time.Now()
+	pastTime := now.Add(-25 * time.Hour) // More than 24h ago
+	recentTime := now.Add(-1 * time.Hour)
+
+	tests := []struct {
+		name      string
+		snapshot  *snapshotv1.VolumeSnapshot
+		want      bool
+		wantError bool
+	}{
+		{
+			name: "no retention annotation",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			want:      false,
+			wantError: false,
+		},
+		{
+			name: "invalid retention format",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						controllers.AnnotationSnapshotRetention: "invalid",
+					},
+				},
+			},
+			want:      false,
+			wantError: true,
+		},
+		{
+			name: "snapshot expired",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				ObjectMeta: metav1.ObjectMeta{
+					CreationTimestamp: metav1.Time{Time: pastTime},
+					Annotations: map[string]string{
+						controllers.AnnotationSnapshotRetention: "24h",
+					},
+				},
+			},
+			want:      true,
+			wantError: false,
+		},
+		{
+			name: "snapshot not expired",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				ObjectMeta: metav1.ObjectMeta{
+					CreationTimestamp: metav1.Time{Time: recentTime},
+					Annotations: map[string]string{
+						controllers.AnnotationSnapshotRetention: "24h",
+					},
+				},
+			},
+			want:      false,
+			wantError: false,
+		},
+		{
+			name: "long retention period",
+			snapshot: &snapshotv1.VolumeSnapshot{
+				ObjectMeta: metav1.ObjectMeta{
+					CreationTimestamp: metav1.Time{Time: recentTime},
+					Annotations: map[string]string{
+						controllers.AnnotationSnapshotRetention: "720h", // 30 days
+					},
+				},
+			},
+			want:      false,
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := isSnapshotExpired(tt.snapshot)
+			if (err != nil) != tt.wantError {
+				t.Errorf("isSnapshotExpired() error = %v, wantError %v", err, tt.wantError)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("isSnapshotExpired() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestVolumeSnapshotInProgress(t *testing.T) {
+	tests := []struct {
+		name      string
+		chainNode *appsv1.ChainNode
+		want      bool
+	}{
+		{
+			name: "no annotations",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: nil,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "empty annotations",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "snapshot in progress",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						controllers.AnnotationPvcSnapshotInProgress: "true",
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "snapshot not in progress",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						controllers.AnnotationPvcSnapshotInProgress: "false",
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "invalid annotation value",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						controllers.AnnotationPvcSnapshotInProgress: "not-a-bool",
+					},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := volumeSnapshotInProgress(tt.chainNode)
+			if got != tt.want {
+				t.Errorf("volumeSnapshotInProgress() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetSnapshotInProgress(t *testing.T) {
+	tests := []struct {
+		name         string
+		chainNode    *appsv1.ChainNode
+		snapshotting bool
+		wantPhase    appsv1.ChainNodePhase
+		wantValue    string
+	}{
+		{
+			name: "start snapshotting",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			snapshotting: true,
+			wantPhase:    appsv1.PhaseChainNodeSnapshotting,
+			wantValue:    "true",
+		},
+		{
+			name: "stop snapshotting",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			snapshotting: false,
+			wantPhase:    appsv1.PhaseChainNodeRunning,
+			wantValue:    "false",
+		},
+		{
+			name: "start with nil annotations",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: nil,
+				},
+			},
+			snapshotting: true,
+			wantPhase:    appsv1.PhaseChainNodeSnapshotting,
+			wantValue:    "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setSnapshotInProgress(tt.chainNode, tt.snapshotting)
+
+			if tt.chainNode.Status.Phase != tt.wantPhase {
+				t.Errorf("setSnapshotInProgress() phase = %v, want %v", tt.chainNode.Status.Phase, tt.wantPhase)
+			}
+
+			if tt.chainNode.Annotations[controllers.AnnotationPvcSnapshotInProgress] != tt.wantValue {
+				t.Errorf("setSnapshotInProgress() annotation = %v, want %v",
+					tt.chainNode.Annotations[controllers.AnnotationPvcSnapshotInProgress], tt.wantValue)
+			}
+		})
+	}
+}
+
+func TestGetLastSnapshotTime(t *testing.T) {
+	now := time.Now().UTC()
+	timeStr := now.Format(timeLayout)
+
+	tests := []struct {
+		name      string
+		chainNode *appsv1.ChainNode
+		want      time.Time
+	}{
+		{
+			name: "has snapshot time",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						controllers.AnnotationLastPvcSnapshot: timeStr,
+					},
+				},
+			},
+			want: now,
+		},
+		{
+			name: "no snapshot time annotation",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			want: time.Time{},
+		},
+		{
+			name: "nil annotations",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: nil,
+				},
+			},
+			want: time.Time{},
+		},
+		{
+			name: "invalid time format",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						controllers.AnnotationLastPvcSnapshot: "invalid",
+					},
+				},
+			},
+			want: time.Time{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getLastSnapshotTime(tt.chainNode)
+			// Compare with a small tolerance for rounding
+			if !got.Equal(tt.want) && got.Sub(tt.want).Abs() > time.Second {
+				t.Errorf("getLastSnapshotTime() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetSnapshotTime(t *testing.T) {
+	now := time.Now().UTC()
+	chainNode := &appsv1.ChainNode{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: nil,
+		},
+	}
+
+	setSnapshotTime(chainNode, now)
+
+	// Verify annotation was set
+	if chainNode.Annotations == nil {
+		t.Fatal("setSnapshotTime() did not initialize annotations")
+	}
+
+	timeStr, ok := chainNode.Annotations[controllers.AnnotationLastPvcSnapshot]
+	if !ok {
+		t.Fatal("setSnapshotTime() did not set annotation")
+	}
+
+	// Verify time can be parsed back
+	parsed, err := time.Parse(timeLayout, timeStr)
+	if err != nil {
+		t.Fatalf("setSnapshotTime() set invalid time format: %v", err)
+	}
+
+	// timeLayout doesn't include subseconds, so truncate to seconds for comparison
+	expectedTime := now.Truncate(time.Second)
+	if !parsed.Equal(expectedTime) {
+		t.Errorf("setSnapshotTime() time mismatch: got %v, want %v", parsed, expectedTime)
+	}
+}
