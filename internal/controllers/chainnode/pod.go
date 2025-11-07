@@ -75,7 +75,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 	// Prepare pod spec
 	pod, err := r.getPodSpec(ctx, chainNode, configHash)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get pod spec for %s: %w", chainNode.GetName(), err)
 	}
 
 	// Get current pod. If it does not exist create it and exit.
@@ -85,13 +85,13 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		if errors.IsNotFound(err) {
 			return r.createPod(ctx, chainNode, pod)
 		}
-		return err
+		return fmt.Errorf("failed to get pod for %s: %w", chainNode.GetName(), err)
 	}
 
 	if isPodTerminating(currentPod) {
 		logger.Info("wait for pod to finish terminating")
 		if err = r.waitForPodTermination(ctx, currentPod); err != nil {
-			return err
+			return fmt.Errorf("failed waiting for pod %s termination: %w", currentPod.GetName(), err)
 		}
 		return r.createPod(ctx, chainNode, pod)
 	}
@@ -104,7 +104,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		modifiedPod.Labels = pod.Labels
 		currentPod, err = r.PatchPod(ctx, currentPod, modifiedPod)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to patch pod labels for %s: %w", pod.GetName(), err)
 		}
 	}
 
@@ -127,14 +127,14 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 
 	logger.V(1).Info("updating latest height")
 	if err = r.updateLatestHeight(ctx, chainNode); err != nil {
-		return err
+		return fmt.Errorf("failed to update latest height for %s: %w", chainNode.GetName(), err)
 	}
 
 	// Check if the node is waiting for an upgrade
 	logger.V(1).Info("checking if an upgrade is required")
 	requiresUpgrade, err := r.requiresUpgrade(ctx, chainNode)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check if upgrade is required for %s: %w", chainNode.GetName(), err)
 	}
 
 	if requiresUpgrade {
@@ -156,7 +156,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 
 		logger.Info("upgrading node", "pod", pod.GetName())
 		if err := r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeOnGoing); err != nil {
-			return err
+			return fmt.Errorf("failed to set upgrade status for %s: %w", chainNode.GetName(), err)
 		}
 
 		// Set upgrading label to true
@@ -166,7 +166,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		}
 		modifiedPod.Labels[controllers.LabelUpgrading] = controllers.StringValueTrue
 		if _, err = r.PatchPod(ctx, currentPod, modifiedPod); err != nil {
-			return err
+			return fmt.Errorf("failed to patch pod upgrading label for %s: %w", pod.GetName(), err)
 		}
 
 		// Force update config files, to prevent restarting again because of config changes
@@ -180,17 +180,17 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 			chainutils.WithNodeSelector(chainNode.Spec.NodeSelector),
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create new app for upgrade %s: %w", chainNode.GetName(), err)
 		}
 		configHash, err = r.ensureConfigs(ctx, app, chainNode, true)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to ensure configs for upgrade %s: %w", chainNode.GetName(), err)
 		}
 
 		// Get new pod spec with updated configs
 		pod, err = r.getPodSpec(ctx, chainNode, configHash)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get pod spec after config update for %s: %w", chainNode.GetName(), err)
 		}
 
 		if upgraded, err := r.upgradePod(ctx, chainNode, pod, upgrade.Image); err != nil {
@@ -268,15 +268,15 @@ func (r *Reconciler) createPod(ctx context.Context, chainNode *appsv1.ChainNode,
 		startPhase = appsv1.PhaseChainNodeRestarting
 	}
 	if err := r.updatePhase(ctx, chainNode, startPhase); err != nil {
-		return err
+		return fmt.Errorf("failed to update phase for %s: %w", chainNode.GetName(), err)
 	}
 
 	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
 	if err := ph.Create(ctx); err != nil {
-		return err
+		return fmt.Errorf("failed to create pod %s: %w", pod.GetName(), err)
 	}
 	if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, chainNode.Spec.App.App); err != nil {
-		return err
+		return fmt.Errorf("timeout waiting for container %s to start in pod %s: %w", chainNode.Spec.App.App, pod.GetName(), err)
 	}
 	r.recorder.Eventf(chainNode,
 		corev1.EventTypeNormal,
@@ -891,14 +891,14 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 
 	logger.Info("recreating pod", "pod", pod.GetName())
 	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeRestarting); err != nil {
-		return err
+		return fmt.Errorf("failed to update phase to Restarting for %s: %w", chainNode.GetName(), err)
 	}
 
 	logger.V(1).Info("deleting pod", "pod", pod.GetName())
 	deletePod := pod.DeepCopy()
 	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, deletePod)
 	if err := ph.Delete(ctx); err != nil {
-		return err
+		return fmt.Errorf("failed to delete pod %s for recreation: %w", pod.GetName(), err)
 	}
 
 	// There is no need to wait for pod to be deleted if we are keeping it stopped
@@ -914,13 +914,13 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 	}
 
 	if err := ph.WaitForPodDeleted(ctx, timeoutPodDeleted); err != nil {
-		return err
+		return fmt.Errorf("timeout waiting for pod %s to be deleted: %w", pod.GetName(), err)
 	}
 	logger.V(1).Info("pod deleted", "pod", pod.GetName())
 
 	ph = k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
 	if err := ph.Create(ctx); err != nil {
-		return err
+		return fmt.Errorf("failed to recreate pod %s: %w", pod.GetName(), err)
 	}
 
 	if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, chainNode.Spec.App.App); err != nil {
@@ -930,7 +930,7 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 			controllers.FormatErrorEvent("Pod failed to start", err),
 		)
 		_ = r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeError)
-		return err
+		return fmt.Errorf("timeout waiting for recreated container %s to start in pod %s: %w", chainNode.Spec.App.App, pod.GetName(), err)
 	}
 	r.recorder.Eventf(chainNode,
 		corev1.EventTypeNormal,
@@ -1085,13 +1085,13 @@ func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNo
 
 	c, err := r.getChainNodeClient(chainNode)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get chain node client for %s: %w", chainNode.GetName(), err)
 	}
 
 	// Check if its state-sync first
 	stateSyncing, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).IsStateSyncing(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check state-sync status for %s: %w", chainNode.GetName(), err)
 	}
 
 	logger.V(1).Info("node state-syncing status", "state-syncing", stateSyncing)
@@ -1111,7 +1111,7 @@ func (r *Reconciler) setNodePhase(ctx context.Context, chainNode *appsv1.ChainNo
 	logger.V(1).Info("check if node is syncing")
 	syncing, err := c.IsNodeSyncing(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check if node %s is syncing: %w", chainNode.GetName(), err)
 	}
 	logger.V(1).Info("node syncing status", "syncing", syncing)
 

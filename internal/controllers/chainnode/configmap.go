@@ -304,12 +304,12 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, cm *corev1.ConfigMap) 
 			logger.Info("creating configmap")
 			return r.Create(ctx, cm)
 		}
-		return err
+		return fmt.Errorf("failed to get configmap %s: %w", cm.GetName(), err)
 	}
 
 	patchResult, err := patch.DefaultPatchMaker.Calculate(currentCm, cm, patch.IgnoreStatusFields(), patch.IgnoreField("data"))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to calculate patch for configmap %s: %w", cm.GetName(), err)
 	}
 
 	var shouldUpdate bool

@@ -27,7 +27,7 @@ func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, ch
 
 	logger.Info("initializing data", "pvc", pvc.GetName())
 	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeInitData); err != nil {
-		return err
+		return fmt.Errorf("failed to update phase to InitData for %s: %w", chainNode.GetName(), err)
 	}
 
 	initCommands := make([]*chainutils.InitCommand, len(chainNode.GetPersistenceInitCommands()))
@@ -41,15 +41,15 @@ func (r *Reconciler) initializeData(ctx context.Context, app *chainutils.App, ch
 	}
 
 	if err := app.InitPvcData(ctx, pvc, chainNode.GetPersistenceInitTimeout(), initCommands...); err != nil {
-		return err
+		return fmt.Errorf("failed to initialize PVC data for %s: %w", pvc.GetName(), err)
 	}
 	// Get the updated PVC for updating annotation
 	if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), pvc); err != nil {
-		return err
+		return fmt.Errorf("failed to get PVC %s after initialization: %w", pvc.GetName(), err)
 	}
 	pvc.Annotations[controllers.AnnotationDataInitialized] = controllers.StringValueTrue
 	if err := r.Update(ctx, pvc); err != nil {
-		return err
+		return fmt.Errorf("failed to update PVC %s with initialized annotation: %w", pvc.GetName(), err)
 	}
 	r.recorder.Eventf(chainNode,
 		corev1.EventTypeNormal,
@@ -187,18 +187,18 @@ func (r *Reconciler) ensurePvcUpdates(ctx context.Context, chainNode *appsv1.Cha
 
 	expectedStorageSize, err := r.getStorageSize(ctx, chainNode)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get storage size for %s: %w", chainNode.GetName(), err)
 	}
 
 	if err = r.updateLatestHeight(ctx, chainNode); err != nil {
-		return err
+		return fmt.Errorf("failed to update latest height for %s: %w", chainNode.GetName(), err)
 	}
 
 	dataHeight := strconv.FormatInt(chainNode.Status.LatestHeight, 10)
 	if pvc.Annotations[controllers.AnnotationDataHeight] != dataHeight {
 		pvc.Annotations[controllers.AnnotationDataHeight] = dataHeight
 		if err = r.Update(ctx, pvc); err != nil {
-			return err
+			return fmt.Errorf("failed to update PVC %s data height annotation: %w", pvc.GetName(), err)
 		}
 	}
 
@@ -209,7 +209,7 @@ func (r *Reconciler) ensurePvcUpdates(ctx context.Context, chainNode *appsv1.Cha
 			corev1.ResourceStorage: expectedStorageSize,
 		}
 		if err = r.Update(ctx, pvc); err != nil {
-			return err
+			return fmt.Errorf("failed to resize PVC %s: %w", pvc.GetName(), err)
 		}
 		chainNode.Status.PvcSize = expectedStorageSize.String()
 		r.recorder.Eventf(chainNode,
@@ -342,7 +342,7 @@ func (r *Reconciler) ensureAdditionalVolumes(ctx context.Context, chainNode *app
 		volumeName := fmt.Sprintf("%s-%s", chainNode.GetName(), volume.Name)
 		specSize, err := resource.ParseQuantity(volume.Size)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse volume size %s for volume %s: %w", volume.Size, volume.Name, err)
 		}
 
 		pvc := &corev1.PersistentVolumeClaim{}
@@ -371,22 +371,22 @@ func (r *Reconciler) ensureAdditionalVolumes(ctx context.Context, chainNode *app
 
 				if volume.ShouldDeleteWithNode() {
 					if err = controllerutil.SetControllerReference(chainNode, pvc, r.Scheme); err != nil {
-						return err
+						return fmt.Errorf("failed to set controller reference for PVC %s: %w", volumeName, err)
 					}
 				}
 
 				if err = r.Create(ctx, pvc); err != nil {
-					return err
+					return fmt.Errorf("failed to create PVC %s: %w", volumeName, err)
 				}
 			} else {
-				return err
+				return fmt.Errorf("failed to get PVC %s: %w", volumeName, err)
 			}
 		} else {
 			if pvc.Spec.Resources.Requests[corev1.ResourceStorage] != specSize {
 				logger.Info("updating pvc", "name", volumeName, "old-size", pvc.Spec.Resources.Requests[corev1.ResourceStorage], "new-size", volume.Size)
 				pvc.Spec.Resources.Requests[corev1.ResourceStorage] = specSize
 				if err = r.Update(ctx, pvc); err != nil {
-					return err
+					return fmt.Errorf("failed to update PVC %s size: %w", volumeName, err)
 				}
 			}
 		}

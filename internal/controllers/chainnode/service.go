@@ -28,11 +28,11 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 	// Ensure main service
 	svc, err := r.getServiceSpec(chainNode)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get service spec for %s: %w", chainNode.GetName(), err)
 	}
 
 	if err := r.ensureService(ctx, svc); err != nil {
-		return err
+		return fmt.Errorf("failed to ensure main service for %s: %w", chainNode.GetName(), err)
 	}
 
 	// Update ChainNode IP address
@@ -40,28 +40,28 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 		logger.Info("updating .status.IP", "IP", svc.Spec.ClusterIP)
 		chainNode.Status.IP = svc.Spec.ClusterIP
 		if err := r.Status().Update(ctx, chainNode); err != nil {
-			return err
+			return fmt.Errorf("failed to update ChainNode status.IP for %s: %w", chainNode.GetName(), err)
 		}
 	}
 
 	// Ensure internal service
 	internal, err := r.getInternalServiceSpec(ctx, chainNode)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get internal service spec for %s: %w", chainNode.GetName(), err)
 	}
 
 	if err := r.ensureService(ctx, internal); err != nil {
-		return err
+		return fmt.Errorf("failed to ensure internal service for %s: %w", chainNode.GetName(), err)
 	}
 
 	// Ensure P2P service if enabled
 	p2p, err := r.getP2pServiceSpec(chainNode)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get P2P service spec for %s: %w", chainNode.GetName(), err)
 	}
 	if chainNode.Spec.Expose.Enabled() {
 		if err := r.ensureService(ctx, p2p); err != nil {
-			return err
+			return fmt.Errorf("failed to ensure P2P service for %s: %w", chainNode.GetName(), err)
 		}
 
 		// Get External IP address
@@ -75,20 +75,20 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
 				return svc.Spec.Ports[0].NodePort > 0, nil
 			}, timeoutWaitServiceIP); err != nil {
-				return err
+				return fmt.Errorf("timeout waiting for NodePort to be available for service %s: %w", p2p.GetName(), err)
 			}
 			port := p2p.Spec.Ports[0].NodePort
 
 			var node *corev1.Node
 			pod, err := r.getChainNodePod(ctx, chainNode)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get ChainNode pod %s for NodePort external address: %w", chainNode.GetName(), err)
 			}
 			if pod != nil {
 				if pod.Spec.NodeName != "" {
 					node, err = r.ClientSet.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
 					if err != nil {
-						return err
+						return fmt.Errorf("failed to get node %s for NodePort external address: %w", pod.Spec.NodeName, err)
 					}
 				}
 			}
@@ -97,7 +97,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 			if node == nil {
 				nodes, err := r.ClientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to list nodes for NodePort external address: %w", err)
 				}
 				if len(nodes.Items) > 0 {
 					node = &nodes.Items[0]
@@ -141,7 +141,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
 				return svc.Status.LoadBalancer.Ingress != nil && len(svc.Status.LoadBalancer.Ingress) > 0, nil
 			}, timeoutWaitServiceIP); err != nil {
-				return err
+				return fmt.Errorf("timeout waiting for LoadBalancer address for service %s: %w", p2p.GetName(), err)
 			}
 			externalAddress = fmt.Sprintf("%s@%s:%d", chainNode.Status.NodeID, p2p.Status.LoadBalancer.Ingress[0].IP, chainutils.P2pPort)
 		}
@@ -156,7 +156,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 		// Delete the service if it exists
 		if err := r.Delete(ctx, p2p); err != nil {
 			if !errors.IsNotFound(err) {
-				return err
+				return fmt.Errorf("failed to delete P2P service %s: %w", p2p.GetName(), err)
 			}
 		} else {
 			logger.Info("deleted service", "svc", p2p.GetName())
@@ -176,12 +176,12 @@ func (r *Reconciler) ensureService(ctx context.Context, svc *corev1.Service) err
 			logger.Info("creating service")
 			return r.Create(ctx, svc)
 		}
-		return err
+		return fmt.Errorf("failed to get service %s: %w", svc.GetName(), err)
 	}
 
 	patchResult, err := patch.DefaultPatchMaker.Calculate(currentSvc, svc)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to calculate patch for service %s: %w", svc.GetName(), err)
 	}
 
 	if !patchResult.IsEmpty() || !reflect.DeepEqual(currentSvc.Annotations, svc.Annotations) {
@@ -409,7 +409,7 @@ func (r *Reconciler) addStateSyncAnnotations(ctx context.Context, chainNode *app
 
 	availableHeights, err := nodeutils.NewClient(chainNode.GetNodeFQDN()).ListSnapshots(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to list state-sync snapshots for %s: %w", chainNode.GetName(), err)
 	}
 
 	if len(availableHeights) == 0 {
@@ -418,7 +418,7 @@ func (r *Reconciler) addStateSyncAnnotations(ctx context.Context, chainNode *app
 
 	c, err := r.getChainNodeClient(chainNode)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get chain node client for %s: %w", chainNode.GetName(), err)
 	}
 
 	// Get the most recent height with a retrievable block hash
@@ -441,7 +441,7 @@ func (r *Reconciler) addStateSyncAnnotations(ctx context.Context, chainNode *app
 		trustHeight = lastUpgradeHeight + 1
 		trustHash, err = c.GetBlockHash(ctx, trustHeight)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get block hash at height %d for %s: %w", trustHeight, chainNode.GetName(), err)
 		}
 		logger.Info("adjusting trust height due to upgrade", "newTrustHeight", trustHeight)
 	}
