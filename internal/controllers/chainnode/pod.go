@@ -286,25 +286,293 @@ func (r *Reconciler) createPod(ctx context.Context, chainNode *appsv1.ChainNode,
 	return r.setNodePhase(ctx, chainNode)
 }
 
-func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) (*corev1.Pod, error) {
-	logger := log.FromContext(ctx)
-
-	// Load configmap to have config file names. We will mount them individually to allow the config
-	// dir to be writable. When ConfigMap is mounted as whole, the directory is read only.
+// getConfigFilesMounts loads the ConfigMap and returns individual volume mounts for each config file.
+// We mount config files individually to allow the config directory to be writable.
+func (r *Reconciler) getConfigFilesMounts(ctx context.Context, chainNode *appsv1.ChainNode) ([]corev1.VolumeMount, error) {
 	config := &corev1.ConfigMap{}
 	err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get configmap for %s: %w", chainNode.GetName(), err)
 	}
-	configFilesMounts := make([]corev1.VolumeMount, len(config.Data))
-	i := 0
+
+	mounts := make([]corev1.VolumeMount, 0, len(config.Data))
 	for k := range config.Data {
-		configFilesMounts[i] = corev1.VolumeMount{
+		mounts = append(mounts, corev1.VolumeMount{
 			Name:      "config",
 			MountPath: "/home/app/config/" + k,
 			SubPath:   k,
-		}
-		i++
+		})
+	}
+	return mounts, nil
+}
+
+// buildBaseVolumes creates the base set of volumes that are always present in the pod.
+func (r *Reconciler) buildBaseVolumes(chainNode *appsv1.ChainNode) []corev1.Volume {
+	return []corev1.Volume{
+		{
+			Name: "app-empty-dir",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "data",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: chainNode.GetName(),
+				},
+			},
+		},
+		{
+			Name: "config-empty-dir",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: chainNode.GetName(),
+					},
+				},
+			},
+		},
+		{
+			Name: "node-key",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: chainNode.GetName(),
+				},
+			},
+		},
+		{
+			Name: "trace",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "upgrades-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("%s-upgrades", chainNode.GetName()),
+					},
+				},
+			},
+		},
+	}
+}
+
+// buildNodeUtilsInitContainer creates the node-utils sidecar init container.
+func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) corev1.Container {
+	var sidecarRestartAlways = corev1.ContainerRestartPolicyAlways
+
+	return corev1.Container{
+		Name:            nodeUtilsContainerName,
+		Image:           r.opts.NodeUtilsImage,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		RestartPolicy:   &sidecarRestartAlways,
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          nodeUtilsPortName,
+				ContainerPort: 8000,
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "data",
+				MountPath: "/home/app/data",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "trace",
+				MountPath: "/trace",
+			},
+			{
+				Name:      "upgrades-config",
+				MountPath: "/config",
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "BLOCK_THRESHOLD",
+				Value: chainNode.Spec.Config.GetBlockThreshold(),
+			},
+			{
+				Name:  "LOG_LEVEL",
+				Value: chainNode.Spec.Config.GetNodeUtilsLogLevel(),
+			},
+			{
+				Name:  "TMKMS_PROXY",
+				Value: strconv.FormatBool(chainNode.IsValidator() && chainNode.UsesTmKms()),
+			},
+			{
+				Name:  "CREATE_FIFO",
+				Value: controllers.StringValueTrue,
+			},
+			{
+				Name:  "TRACE_STORE",
+				Value: "/trace/trace.fifo",
+			},
+			{
+				Name:  "NODE_BINARY_NAME",
+				Value: chainNode.Spec.App.App,
+			},
+			{
+				Name:  "HALT_HEIGHT",
+				Value: strconv.FormatInt(chainNode.Spec.Config.GetHaltHeight(), 10),
+			},
+		},
+		Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/must_upgrade",
+					Port: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: nodeUtilsPort,
+					},
+					Scheme: "HTTP",
+				},
+			},
+			FailureThreshold: 1,
+			PeriodSeconds:    2,
+		},
+	}
+}
+
+// buildAppContainer creates the main application container with its configuration.
+func (r *Reconciler) buildAppContainer(chainNode *appsv1.ChainNode, configFilesMounts []corev1.VolumeMount, readinessPath string, appResources corev1.ResourceRequirements) corev1.Container {
+	return corev1.Container{
+		Name:            chainNode.Spec.App.App,
+		Image:           chainNode.GetAppImage(),
+		ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
+		Command:         []string{chainNode.Spec.App.App},
+		Args: append([]string{"start",
+			"--home", "/home/app",
+			"--trace-store", "/trace/trace.fifo",
+		}, chainNode.GetAdditionalRunFlags()...),
+		Env: chainNode.Spec.Config.GetEnv(),
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          chainutils.P2pPortName,
+				ContainerPort: chainutils.P2pPort,
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          chainutils.RpcPortName,
+				ContainerPort: chainutils.RpcPort,
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          chainutils.LcdPortName,
+				ContainerPort: chainutils.LcdPort,
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          chainutils.GrpcPortName,
+				ContainerPort: chainutils.GrpcPort,
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          chainutils.PrivValPortName,
+				ContainerPort: chainutils.PrivValPort,
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          chainutils.PrometheusPortName,
+				ContainerPort: chainutils.PrometheusPort,
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: append([]corev1.VolumeMount{
+			{
+				Name:      "app-empty-dir",
+				MountPath: "/home/app",
+			},
+			{
+				Name:      "data",
+				MountPath: "/home/app/data",
+			},
+			{
+				Name:      "config-empty-dir",
+				MountPath: "/home/app/config",
+			},
+			{
+				Name:      "node-key",
+				MountPath: "/home/app/config/" + nodeKeyFilename,
+				SubPath:   nodeKeyFilename,
+			},
+			{
+				Name:      "trace",
+				MountPath: "/trace",
+			},
+		}, configFilesMounts...),
+		StartupProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/health",
+					Port: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: nodeUtilsPort,
+					},
+					Scheme: "HTTP",
+				},
+			},
+			PeriodSeconds:    startupProbePeriodSeconds,
+			FailureThreshold: int32(chainNode.Spec.Config.GetStartupTime().Seconds() / startupProbePeriodSeconds),
+			TimeoutSeconds:   startupProbeTimeoutSeconds,
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/health",
+					Port: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: nodeUtilsPort,
+					},
+					Scheme: "HTTP",
+				},
+			},
+			FailureThreshold: livenessProbeFailureThreshold,
+			PeriodSeconds:    livenessProbePeriodSeconds,
+			TimeoutSeconds:   livenessProbeTimeoutSeconds,
+		},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: readinessPath,
+					Port: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: nodeUtilsPort,
+					},
+					Scheme: "HTTP",
+				},
+			},
+			FailureThreshold: readinessProbeFailureThreshold,
+			PeriodSeconds:    readinessProbePeriodSeconds,
+			TimeoutSeconds:   readinessProbeTimeoutSeconds,
+		},
+		Resources: appResources,
+	}
+}
+
+func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode, configHash string) (*corev1.Pod, error) {
+	logger := log.FromContext(ctx)
+
+	configFilesMounts, err := r.getConfigFilesMounts(ctx, chainNode)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load configmap for sidecar configuration later in the function
+	config := &corev1.ConfigMap{}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(chainNode), config); err != nil {
+		return nil, fmt.Errorf("failed to get configmap for %s: %w", chainNode.GetName(), err)
 	}
 
 	readinessPath := "/ready"
@@ -348,251 +616,9 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				FSGroup:    pointer.Int64(controllers.NonRootId),
 			},
 			TerminationGracePeriodSeconds: chainNode.Spec.Config.GetTerminationGracePeriodSeconds(),
-			Volumes: []corev1.Volume{
-				{
-					Name: "app-empty-dir",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				},
-				{
-					Name: "data",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: chainNode.GetName(),
-						},
-					},
-				},
-				{
-					Name: "config-empty-dir",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				},
-				{
-					Name: "config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: chainNode.GetName(),
-							},
-						},
-					},
-				},
-				{
-					Name: "node-key",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: chainNode.GetName(),
-						},
-					},
-				},
-				{
-					Name: "trace",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				},
-				{
-					Name: "upgrades-config",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: fmt.Sprintf("%s-upgrades", chainNode.GetName()),
-							},
-						},
-					},
-				},
-			},
-			InitContainers: []corev1.Container{
-				{
-					Name:            nodeUtilsContainerName,
-					Image:           r.opts.NodeUtilsImage,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					RestartPolicy:   &sidecarRestartAlways,
-					Ports: []corev1.ContainerPort{
-						{
-							Name:          nodeUtilsPortName,
-							ContainerPort: 8000,
-							Protocol:      corev1.ProtocolTCP,
-						},
-					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "data",
-							MountPath: "/home/app/data",
-							ReadOnly:  true,
-						},
-						{
-							Name:      "trace",
-							MountPath: "/trace",
-						},
-						{
-							Name:      "upgrades-config",
-							MountPath: "/config",
-						},
-					},
-					Env: []corev1.EnvVar{
-						{
-							Name:  "BLOCK_THRESHOLD",
-							Value: chainNode.Spec.Config.GetBlockThreshold(),
-						},
-						{
-							Name:  "LOG_LEVEL",
-							Value: chainNode.Spec.Config.GetNodeUtilsLogLevel(),
-						},
-						{
-							Name:  "TMKMS_PROXY",
-							Value: strconv.FormatBool(chainNode.IsValidator() && chainNode.UsesTmKms()),
-						},
-						{
-							Name:  "CREATE_FIFO",
-							Value: controllers.StringValueTrue,
-						},
-						{
-							Name:  "TRACE_STORE",
-							Value: "/trace/trace.fifo",
-						},
-						{
-							Name:  "NODE_BINARY_NAME",
-							Value: chainNode.Spec.App.App,
-						},
-						{
-							Name:  "HALT_HEIGHT",
-							Value: strconv.FormatInt(chainNode.Spec.Config.GetHaltHeight(), 10),
-						},
-					},
-					Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
-					ReadinessProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/must_upgrade",
-								Port: intstr.IntOrString{
-									Type:   intstr.Int,
-									IntVal: nodeUtilsPort,
-								},
-								Scheme: "HTTP",
-							},
-						},
-						FailureThreshold: 1,
-						PeriodSeconds:    2,
-					},
-				},
-			},
-			Containers: []corev1.Container{
-				{
-					Name:            chainNode.Spec.App.App,
-					Image:           chainNode.GetAppImage(),
-					ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
-					Command:         []string{chainNode.Spec.App.App},
-					Args: append([]string{"start",
-						"--home", "/home/app",
-						"--trace-store", "/trace/trace.fifo",
-					}, chainNode.GetAdditionalRunFlags()...),
-					Env: chainNode.Spec.Config.GetEnv(),
-					Ports: []corev1.ContainerPort{
-						{
-							Name:          chainutils.P2pPortName,
-							ContainerPort: chainutils.P2pPort,
-							Protocol:      corev1.ProtocolTCP,
-						},
-						{
-							Name:          chainutils.RpcPortName,
-							ContainerPort: chainutils.RpcPort,
-							Protocol:      corev1.ProtocolTCP,
-						},
-						{
-							Name:          chainutils.LcdPortName,
-							ContainerPort: chainutils.LcdPort,
-							Protocol:      corev1.ProtocolTCP,
-						},
-						{
-							Name:          chainutils.GrpcPortName,
-							ContainerPort: chainutils.GrpcPort,
-							Protocol:      corev1.ProtocolTCP,
-						},
-						{
-							Name:          chainutils.PrivValPortName,
-							ContainerPort: chainutils.PrivValPort,
-							Protocol:      corev1.ProtocolTCP,
-						},
-						{
-							Name:          chainutils.PrometheusPortName,
-							ContainerPort: chainutils.PrometheusPort,
-							Protocol:      corev1.ProtocolTCP,
-						},
-					},
-					VolumeMounts: append([]corev1.VolumeMount{
-						{
-							Name:      "app-empty-dir",
-							MountPath: "/home/app",
-						},
-						{
-							Name:      "data",
-							MountPath: "/home/app/data",
-						},
-						{
-							Name:      "config-empty-dir",
-							MountPath: "/home/app/config",
-						},
-						{
-							Name:      "node-key",
-							MountPath: "/home/app/config/" + nodeKeyFilename,
-							SubPath:   nodeKeyFilename,
-						},
-						{
-							Name:      "trace",
-							MountPath: "/trace",
-						},
-					}, configFilesMounts...),
-					StartupProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/health",
-								Port: intstr.IntOrString{
-									Type:   intstr.Int,
-									IntVal: nodeUtilsPort,
-								},
-								Scheme: "HTTP",
-							},
-						},
-						PeriodSeconds:    startupProbePeriodSeconds,
-						FailureThreshold: int32(chainNode.Spec.Config.GetStartupTime().Seconds() / startupProbePeriodSeconds),
-						TimeoutSeconds:   startupProbeTimeoutSeconds,
-					},
-					LivenessProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/health",
-								Port: intstr.IntOrString{
-									Type:   intstr.Int,
-									IntVal: nodeUtilsPort,
-								},
-								Scheme: "HTTP",
-							},
-						},
-						FailureThreshold: livenessProbeFailureThreshold,
-						PeriodSeconds:    livenessProbePeriodSeconds,
-						TimeoutSeconds:   livenessProbeTimeoutSeconds,
-					},
-					ReadinessProbe: &corev1.Probe{
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: readinessPath,
-								Port: intstr.IntOrString{
-									Type:   intstr.Int,
-									IntVal: nodeUtilsPort,
-								},
-								Scheme: "HTTP",
-							},
-						},
-						FailureThreshold: readinessProbeFailureThreshold,
-						PeriodSeconds:    readinessProbePeriodSeconds,
-						TimeoutSeconds:   readinessProbeTimeoutSeconds,
-					},
-					Resources: appResources,
-				},
-			},
+			Volumes:                       r.buildBaseVolumes(chainNode),
+			InitContainers:                []corev1.Container{r.buildNodeUtilsInitContainer(chainNode)},
+			Containers:                    []corev1.Container{r.buildAppContainer(chainNode, configFilesMounts, readinessPath, appResources)},
 		},
 	}
 
