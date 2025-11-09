@@ -3,6 +3,7 @@ package chainnodeset
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
@@ -66,10 +67,7 @@ func TestAddOrUpdateNodeStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			AddOrUpdateNodeStatus(tt.nodeSet, tt.status)
 
-			if len(tt.nodeSet.Status.Nodes) != tt.wantLen {
-				t.Errorf("AddOrUpdateNodeStatus() resulted in %d nodes, want %d", len(tt.nodeSet.Status.Nodes), tt.wantLen)
-				return
-			}
+			assert.Len(t, tt.nodeSet.Status.Nodes, tt.wantLen)
 
 			// Find the node
 			found := false
@@ -77,16 +75,14 @@ func TestAddOrUpdateNodeStatus(t *testing.T) {
 				if node.Name == tt.wantName {
 					found = true
 					// If updating, check that status was updated
-					if tt.name == "update existing node" && node.Public != tt.status.Public {
-						t.Errorf("Node status not updated: got %v, want %v", node.Public, tt.status.Public)
+					if tt.name == "update existing node" {
+						assert.Equal(t, tt.status.Public, node.Public)
 					}
 					break
 				}
 			}
 
-			if !found {
-				t.Errorf("Node %s not found in status", tt.wantName)
-			}
+			assert.True(t, found)
 		})
 	}
 }
@@ -158,15 +154,11 @@ func TestDeleteNodeStatus(t *testing.T) {
 				actualLen = len(tt.nodeSet.Status.Nodes)
 			}
 
-			if actualLen != tt.wantLen {
-				t.Errorf("DeleteNodeStatus() resulted in %d nodes, want %d", actualLen, tt.wantLen)
-			}
+			assert.Equal(t, tt.wantLen, actualLen)
 
 			// Verify the deleted node is actually gone
 			for _, node := range tt.nodeSet.Status.Nodes {
-				if node.Name == tt.delName {
-					t.Errorf("DeleteNodeStatus() did not delete node %s", tt.delName)
-				}
+				assert.NotEqual(t, tt.delName, node.Name)
 			}
 		})
 	}
@@ -227,15 +219,11 @@ func TestWithChainNodeSetLabels(t *testing.T) {
 
 			// Verify expected keys are present
 			for _, key := range tt.wantKeys {
-				if _, exists := result[key]; !exists {
-					t.Errorf("WithChainNodeSetLabels() missing expected key: %s", key)
-				}
+				assert.Contains(t, result, key)
 			}
 
 			// Verify count matches
-			if len(result) != len(tt.wantKeys) {
-				t.Errorf("WithChainNodeSetLabels() returned %d labels, want %d", len(result), len(tt.wantKeys))
-			}
+			assert.Len(t, result, len(tt.wantKeys))
 		})
 	}
 }
@@ -280,9 +268,8 @@ func TestContainsGroup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ContainsGroup(tt.groups, tt.groupName); got != tt.want {
-				t.Errorf("ContainsGroup() = %v, want %v", got, tt.want)
-			}
+			got := ContainsGroup(tt.groups, tt.groupName)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -324,9 +311,8 @@ func TestContainsGlobalIngress(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ContainsGlobalIngress(tt.ingresses, tt.ingressName, tt.ignoreServicesOnly); got != tt.want {
-				t.Errorf("ContainsGlobalIngress() = %v, want %v", got, tt.want)
-			}
+			got := ContainsGlobalIngress(tt.ingresses, tt.ingressName, tt.ignoreServicesOnly)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -361,9 +347,8 @@ func TestAddressWithPortFromFullAddress(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AddressWithPortFromFullAddress(tt.fullAddress); got != tt.want {
-				t.Errorf("AddressWithPortFromFullAddress() = %v, want %v", got, tt.want)
-			}
+			got := AddressWithPortFromFullAddress(tt.fullAddress)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -408,15 +393,7 @@ func TestRemoveIdFromFullAddresses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := RemoveIdFromFullAddresses(tt.fullAddresses)
-			if len(got) != len(tt.want) {
-				t.Errorf("RemoveIdFromFullAddresses() returned %d items, want %d", len(got), len(tt.want))
-				return
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("RemoveIdFromFullAddresses()[%d] = %v, want %v", i, got[i], tt.want[i])
-				}
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -492,14 +469,10 @@ func TestGetGlobalIngressLabels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := GetGlobalIngressLabels(tt.nodeSet, tt.group)
 
-			if len(got) != len(tt.wantKeys) {
-				t.Errorf("GetGlobalIngressLabels() returned %d labels, want %d", len(got), len(tt.wantKeys))
-			}
+			assert.Len(t, got, len(tt.wantKeys))
 
 			for _, key := range tt.wantKeys {
-				if _, exists := got[key]; !exists {
-					t.Errorf("GetGlobalIngressLabels() missing expected key: %s", key)
-				}
+				assert.Contains(t, got, key)
 			}
 		})
 	}

@@ -3,6 +3,7 @@ package chainnode
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -83,15 +84,12 @@ func TestWithChainNodeLabels(t *testing.T) {
 			result := WithChainNodeLabels(tt.chainNode, tt.additional...)
 
 			// Verify worker-name is excluded
-			if _, exists := result[tt.excludeKey]; exists {
-				t.Errorf("WithChainNodeLabels() should exclude %s label", tt.excludeKey)
-			}
+			_, exists := result[tt.excludeKey]
+			assert.False(t, exists)
 
 			// Verify expected keys are present
 			for _, key := range tt.wantKeys {
-				if _, exists := result[key]; !exists {
-					t.Errorf("WithChainNodeLabels() missing expected key: %s", key)
-				}
+				assert.Contains(t, result, key)
 			}
 		})
 	}
@@ -212,9 +210,8 @@ func TestIsPodReady(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsPodReady(tt.pod); got != tt.want {
-				t.Errorf("IsPodReady() = %v, want %v", got, tt.want)
-			}
+			got := IsPodReady(tt.pod)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

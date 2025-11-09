@@ -5,6 +5,7 @@ import (
 	"time"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
@@ -62,9 +63,7 @@ func TestIsSnapshotReady(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := isSnapshotReady(tt.snapshot)
-			if got != tt.want {
-				t.Errorf("isSnapshotReady() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -146,13 +145,12 @@ func TestIsSnapshotExpired(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := isSnapshotExpired(tt.snapshot)
-			if (err != nil) != tt.wantError {
-				t.Errorf("isSnapshotExpired() error = %v, wantError %v", err, tt.wantError)
+			if tt.wantError {
+				assert.Error(t, err)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("isSnapshotExpired() = %v, want %v", got, tt.want)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -219,9 +217,7 @@ func TestVolumeSnapshotInProgress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := volumeSnapshotInProgress(tt.chainNode)
-			if got != tt.want {
-				t.Errorf("volumeSnapshotInProgress() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -273,14 +269,8 @@ func TestSetSnapshotInProgress(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			setSnapshotInProgress(tt.chainNode, tt.snapshotting)
 
-			if tt.chainNode.Status.Phase != tt.wantPhase {
-				t.Errorf("setSnapshotInProgress() phase = %v, want %v", tt.chainNode.Status.Phase, tt.wantPhase)
-			}
-
-			if tt.chainNode.Annotations[controllers.AnnotationPvcSnapshotInProgress] != tt.wantValue {
-				t.Errorf("setSnapshotInProgress() annotation = %v, want %v",
-					tt.chainNode.Annotations[controllers.AnnotationPvcSnapshotInProgress], tt.wantValue)
-			}
+			assert.Equal(t, tt.wantPhase, tt.chainNode.Status.Phase)
+			assert.Equal(t, tt.wantValue, tt.chainNode.Annotations[controllers.AnnotationPvcSnapshotInProgress])
 		})
 	}
 }
@@ -340,8 +330,8 @@ func TestGetLastSnapshotTime(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getLastSnapshotTime(tt.chainNode)
 			// Compare with a small tolerance for rounding
-			if !got.Equal(tt.want) && got.Sub(tt.want).Abs() > time.Second {
-				t.Errorf("getLastSnapshotTime() = %v, want %v", got, tt.want)
+			if !got.Equal(tt.want) {
+				assert.WithinDuration(t, tt.want, got, time.Second)
 			}
 		})
 	}
@@ -358,24 +348,16 @@ func TestSetSnapshotTime(t *testing.T) {
 	setSnapshotTime(chainNode, now)
 
 	// Verify annotation was set
-	if chainNode.Annotations == nil {
-		t.Fatal("setSnapshotTime() did not initialize annotations")
-	}
+	assert.NotNil(t, chainNode.Annotations)
 
 	timeStr, ok := chainNode.Annotations[controllers.AnnotationLastPvcSnapshot]
-	if !ok {
-		t.Fatal("setSnapshotTime() did not set annotation")
-	}
+	assert.True(t, ok)
 
 	// Verify time can be parsed back
 	parsed, err := time.Parse(timeLayout, timeStr)
-	if err != nil {
-		t.Fatalf("setSnapshotTime() set invalid time format: %v", err)
-	}
+	assert.NoError(t, err)
 
 	// timeLayout doesn't include subseconds, so truncate to seconds for comparison
 	expectedTime := now.Truncate(time.Second)
-	if !parsed.Equal(expectedTime) {
-		t.Errorf("setSnapshotTime() time mismatch: got %v, want %v", parsed, expectedTime)
-	}
+	assert.True(t, parsed.Equal(expectedTime))
 }

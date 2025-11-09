@@ -3,6 +3,8 @@ package chainnode
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/controllers"
 )
@@ -48,13 +50,12 @@ func TestGetConfigHash(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hash, err := getConfigHash(tt.configs)
-			if (err != nil) != tt.wantError {
-				t.Errorf("getConfigHash() error = %v, wantError %v", err, tt.wantError)
+			if tt.wantError {
+				assert.Error(t, err)
 				return
 			}
-			if !tt.wantError && hash == "" {
-				t.Error("getConfigHash() returned empty hash")
-			}
+			assert.NoError(t, err)
+			assert.NotEmpty(t, hash)
 		})
 	}
 }
@@ -72,13 +73,9 @@ func TestGetConfigHash_Consistency(t *testing.T) {
 	hash1, err1 := getConfigHash(config1)
 	hash2, err2 := getConfigHash(config2)
 
-	if err1 != nil || err2 != nil {
-		t.Fatalf("getConfigHash() failed: %v, %v", err1, err2)
-	}
-
-	if hash1 != hash2 {
-		t.Errorf("getConfigHash() inconsistent for same configs: %s vs %s", hash1, hash2)
-	}
+	assert.NoError(t, err1)
+	assert.NoError(t, err2)
+	assert.Equal(t, hash1, hash2)
 }
 
 func TestGetConfigHash_DifferentForDifferentConfigs(t *testing.T) {
@@ -92,13 +89,9 @@ func TestGetConfigHash_DifferentForDifferentConfigs(t *testing.T) {
 	hash1, err1 := getConfigHash(config1)
 	hash2, err2 := getConfigHash(config2)
 
-	if err1 != nil || err2 != nil {
-		t.Fatalf("getConfigHash() failed: %v, %v", err1, err2)
-	}
-
-	if hash1 == hash2 {
-		t.Error("getConfigHash() returned same hash for different configs")
-	}
+	assert.NoError(t, err1)
+	assert.NoError(t, err2)
+	assert.NotEqual(t, hash1, hash2)
 }
 
 func TestGetMostRecentHeightFromServicesAnnotations(t *testing.T) {
@@ -185,12 +178,8 @@ func TestGetMostRecentHeightFromServicesAnnotations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			height, hash := getMostRecentHeightFromServicesAnnotations(tt.annotationsList)
-			if height != tt.wantHeight {
-				t.Errorf("getMostRecentHeightFromServicesAnnotations() height = %v, want %v", height, tt.wantHeight)
-			}
-			if hash != tt.wantHash {
-				t.Errorf("getMostRecentHeightFromServicesAnnotations() hash = %v, want %v", hash, tt.wantHash)
-			}
+			assert.Equal(t, tt.wantHeight, height)
+			assert.Equal(t, tt.wantHash, hash)
 		})
 	}
 }
@@ -247,24 +236,16 @@ func TestGetExternalAddress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			address, ok := getExternalAddress(tt.chainNode)
-			if address != tt.wantAddress {
-				t.Errorf("getExternalAddress() address = %v, want %v", address, tt.wantAddress)
-			}
-			if ok != tt.wantOk {
-				t.Errorf("getExternalAddress() ok = %v, want %v", ok, tt.wantOk)
-			}
+			assert.Equal(t, tt.wantAddress, address)
+			assert.Equal(t, tt.wantOk, ok)
 		})
 	}
 }
 
 func TestNewConfigLockManager(t *testing.T) {
 	clm := newConfigLockManager()
-	if clm == nil {
-		t.Fatal("newConfigLockManager() returned nil")
-	}
-	if clm.locks == nil {
-		t.Error("newConfigLockManager() did not initialize locks map")
-	}
+	assert.NotNil(t, clm)
+	assert.NotNil(t, clm.locks)
 }
 
 func TestConfigLockManager_GetLockForVersion(t *testing.T) {
@@ -272,31 +253,21 @@ func TestConfigLockManager_GetLockForVersion(t *testing.T) {
 
 	// Get lock for version1
 	lock1 := clm.getLockForVersion("v1.0.0")
-	if lock1 == nil {
-		t.Fatal("getLockForVersion() returned nil for v1.0.0")
-	}
+	assert.NotNil(t, lock1)
 
 	// Get lock for same version
 	lock2 := clm.getLockForVersion("v1.0.0")
-	if lock2 == nil {
-		t.Fatal("getLockForVersion() returned nil for v1.0.0 (second call)")
-	}
+	assert.NotNil(t, lock2)
 
 	// Should return same lock instance for same version
-	if lock1 != lock2 {
-		t.Error("getLockForVersion() returned different locks for same version")
-	}
+	assert.Same(t, lock1, lock2)
 
 	// Get lock for different version
 	lock3 := clm.getLockForVersion("v2.0.0")
-	if lock3 == nil {
-		t.Fatal("getLockForVersion() returned nil for v2.0.0")
-	}
+	assert.NotNil(t, lock3)
 
 	// Should return different lock for different version
-	if lock1 == lock3 {
-		t.Error("getLockForVersion() returned same lock for different versions")
-	}
+	assert.NotSame(t, lock1, lock3)
 }
 
 func TestConfigLockManager_CapacityLimit(t *testing.T) {
@@ -311,18 +282,12 @@ func TestConfigLockManager_CapacityLimit(t *testing.T) {
 	}
 
 	// Should have maxConfigLocks entries
-	if len(clm.locks) != maxConfigLocks {
-		t.Errorf("Expected %d locks, got %d", maxConfigLocks, len(clm.locks))
-	}
+	assert.Equal(t, maxConfigLocks, len(clm.locks))
 
 	// Try to add one more
 	extraLock := clm.getLockForVersion("extra-version")
-	if extraLock == nil {
-		t.Fatal("getLockForVersion() returned nil when at capacity")
-	}
+	assert.NotNil(t, extraLock)
 
 	// Should still have maxConfigLocks entries (reused existing lock)
-	if len(clm.locks) > maxConfigLocks {
-		t.Errorf("Lock map grew beyond capacity: %d > %d", len(clm.locks), maxConfigLocks)
-	}
+	assert.LessOrEqual(t, len(clm.locks), maxConfigLocks)
 }

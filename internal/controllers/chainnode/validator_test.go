@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/stretchr/testify/assert"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 )
@@ -44,9 +45,7 @@ func TestGetValidatorStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getValidatorStatus(tt.status)
-			if got != tt.want {
-				t.Errorf("getValidatorStatus() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
