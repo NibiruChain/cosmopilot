@@ -53,7 +53,7 @@ func (r *Reconciler) ensureTmKMSConfig(ctx context.Context, chainNode *appsv1.Ch
 				r.recorder.Eventf(chainNode,
 					corev1.EventTypeWarning,
 					appsv1.ReasonUploadFailure,
-					"failed to upload key: %v", err,
+					controllers.FormatErrorEvent("Failed to upload validator key to Vault", err),
 				)
 				return err
 			}

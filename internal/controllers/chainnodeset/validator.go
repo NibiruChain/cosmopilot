@@ -26,11 +26,11 @@ func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainN
 
 	validator, err := r.getValidatorSpec(nodeSet)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get validator spec for %s: %w", nodeSet.GetName(), err)
 	}
 
 	if err := r.ensureNode(ctx, nodeSet, validator, true); err != nil {
-		return err
+		return fmt.Errorf("failed to ensure validator node for %s: %w", nodeSet.GetName(), err)
 	}
 
 	nodeSetCopy := nodeSet.DeepCopy()

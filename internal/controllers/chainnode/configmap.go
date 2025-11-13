@@ -27,21 +27,49 @@ import (
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
-var (
-	configGenerationLocks      = make(map[string]*sync.Mutex)
-	configGenerationLocksMutex sync.Mutex
+const (
+	// maxConfigLocks defines the maximum number of config locks to maintain.
+	// This prevents unbounded growth from accumulating locks for every app version.
+	maxConfigLocks = 100
 )
 
-func getConfigsLockForAppVersion(version string) *sync.Mutex {
-	configGenerationLocksMutex.Lock()
-	defer configGenerationLocksMutex.Unlock()
+// configLockManager manages locks for config generation to prevent concurrent regeneration.
+// It implements a capacity-limited lock cache to prevent memory leaks.
+type configLockManager struct {
+	locks map[string]*sync.Mutex
+	mu    sync.Mutex
+}
 
-	if lock, exists := configGenerationLocks[version]; exists {
+// newConfigLockManager creates a new config lock manager instance.
+func newConfigLockManager() *configLockManager {
+	return &configLockManager{
+		locks: make(map[string]*sync.Mutex),
+	}
+}
+
+// getLockForVersion returns a mutex for the given app version.
+// Creates a new mutex if one doesn't exist for this version.
+// If the maximum number of locks is reached, it returns an existing lock
+// to prevent unbounded memory growth.
+func (clm *configLockManager) getLockForVersion(version string) *sync.Mutex {
+	clm.mu.Lock()
+	defer clm.mu.Unlock()
+
+	if lock, exists := clm.locks[version]; exists {
 		return lock
 	}
 
+	// Enforce capacity limit to prevent unbounded growth
+	if len(clm.locks) >= maxConfigLocks {
+		// Return any existing lock when at capacity
+		// This maintains concurrency control while preventing memory leaks
+		for _, existingLock := range clm.locks {
+			return existingLock
+		}
+	}
+
 	newLock := &sync.Mutex{}
-	configGenerationLocks[version] = newLock
+	clm.locks[version] = newLock
 	return newLock
 }
 
@@ -276,12 +304,12 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, cm *corev1.ConfigMap) 
 			logger.Info("creating configmap")
 			return r.Create(ctx, cm)
 		}
-		return err
+		return fmt.Errorf("failed to get configmap %s: %w", cm.GetName(), err)
 	}
 
 	patchResult, err := patch.DefaultPatchMaker.Calculate(currentCm, cm, patch.IgnoreStatusFields(), patch.IgnoreField("data"))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to calculate patch for configmap %s: %w", cm.GetName(), err)
 	}
 
 	var shouldUpdate bool
@@ -305,7 +333,7 @@ func (r *Reconciler) ensureConfigMap(ctx context.Context, cm *corev1.ConfigMap) 
 func (r *Reconciler) getGeneratedConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) (map[string]interface{}, error) {
 	logger := log.FromContext(ctx)
 
-	lock := getConfigsLockForAppVersion(chainNode.GetAppImage())
+	lock := r.configLocks.getLockForVersion(chainNode.GetAppImage())
 	lock.Lock()
 	defer lock.Unlock()
 

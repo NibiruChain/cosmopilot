@@ -128,7 +128,7 @@ func getScaleReason(direction appsv1.ScalingDirection) string {
 func (r *Reconciler) evaluateCpuRule(ctx context.Context, chainNode *appsv1.ChainNode, client *nodeutils.Client, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
 	logger := log.FromContext(ctx).WithValues("module", "vpa")
 
-	avg, err := client.GetCPUStats(rule.GetDuration())
+	avg, err := client.GetCPUStats(ctx, rule.GetDuration())
 	if err != nil {
 		return false, resource.Quantity{}, err
 	}
@@ -172,7 +172,7 @@ func (r *Reconciler) evaluateCpuRule(ctx context.Context, chainNode *appsv1.Chai
 func (r *Reconciler) evaluateMemoryRule(ctx context.Context, chainNode *appsv1.ChainNode, client *nodeutils.Client, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
 	logger := log.FromContext(ctx).WithValues("module", "vpa")
 
-	avg, err := client.GetMemoryStats(rule.GetDuration())
+	avg, err := client.GetMemoryStats(ctx, rule.GetDuration())
 	if err != nil {
 		return false, resource.Quantity{}, err
 	}

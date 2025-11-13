@@ -352,9 +352,16 @@ func (r *Reconciler) waitChainNodeRunningOrSyncing(node *appsv1.ChainNode) error
 	if _, err := nodesInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			chainNode := &appsv1.ChainNode{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.(*unstructured.Unstructured).UnstructuredContent(), chainNode); err != nil {
-				exitErr = fmt.Errorf("error casting object to chainnode")
+			uns, ok := obj.(*unstructured.Unstructured)
+			if !ok {
+				exitErr = fmt.Errorf("expected *unstructured.Unstructured, got %T", obj)
 				once.Do(func() { close(stopCh) })
+				return
+			}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(uns.UnstructuredContent(), chainNode); err != nil {
+				exitErr = fmt.Errorf("error converting unstructured to chainnode: %w", err)
+				once.Do(func() { close(stopCh) })
+				return
 			}
 			if chainNode.GetName() == node.GetName() && chainNode.GetNamespace() == node.GetNamespace() {
 				*node = *chainNode
@@ -365,9 +372,16 @@ func (r *Reconciler) waitChainNodeRunningOrSyncing(node *appsv1.ChainNode) error
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			chainNode := &appsv1.ChainNode{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(newObj.(*unstructured.Unstructured).UnstructuredContent(), chainNode); err != nil {
-				exitErr = fmt.Errorf("error casting object to chainnode")
+			uns, ok := newObj.(*unstructured.Unstructured)
+			if !ok {
+				exitErr = fmt.Errorf("expected *unstructured.Unstructured, got %T", newObj)
 				once.Do(func() { close(stopCh) })
+				return
+			}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(uns.UnstructuredContent(), chainNode); err != nil {
+				exitErr = fmt.Errorf("error converting unstructured to chainnode: %w", err)
+				once.Do(func() { close(stopCh) })
+				return
 			}
 			if chainNode.GetName() == node.GetName() && chainNode.GetNamespace() == node.GetNamespace() {
 				*node = *chainNode
@@ -378,9 +392,16 @@ func (r *Reconciler) waitChainNodeRunningOrSyncing(node *appsv1.ChainNode) error
 		},
 		DeleteFunc: func(obj interface{}) {
 			chainNode := &appsv1.ChainNode{}
-			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.(*unstructured.Unstructured).UnstructuredContent(), chainNode); err != nil {
-				exitErr = fmt.Errorf("error casting object to chainnode")
+			uns, ok := obj.(*unstructured.Unstructured)
+			if !ok {
+				exitErr = fmt.Errorf("expected *unstructured.Unstructured, got %T", obj)
 				once.Do(func() { close(stopCh) })
+				return
+			}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(uns.UnstructuredContent(), chainNode); err != nil {
+				exitErr = fmt.Errorf("error converting unstructured to chainnode: %w", err)
+				once.Do(func() { close(stopCh) })
+				return
 			}
 			if chainNode.GetName() == node.GetName() && chainNode.GetNamespace() == node.GetNamespace() {
 				exitErr = fmt.Errorf("chainnode was deleted")

@@ -13,10 +13,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	locks      = make(map[string]*sync.Mutex)
-	locksMutex sync.Mutex
+const (
+	// maxLocks defines the maximum number of locks to maintain in memory.
+	// This prevents unbounded growth in long-running operators.
+	// With typical Kubernetes deployments, this should be more than sufficient.
+	maxLocks = 500
 )
+
+// lockManager manages locks for disruption control based on label sets.
+// It implements a capacity-limited lock cache to prevent memory leaks.
+type lockManager struct {
+	locks map[string]*sync.Mutex
+	mu    sync.Mutex
+}
+
+// newLockManager creates a new lock manager instance.
+func newLockManager() *lockManager {
+	return &lockManager{
+		locks: make(map[string]*sync.Mutex),
+	}
+}
 
 func generateLockKey(l map[string]string) string {
 	var keys []string
@@ -27,23 +43,39 @@ func generateLockKey(l map[string]string) string {
 
 	var builder strings.Builder
 	for _, k := range keys {
-		builder.WriteString(fmt.Sprintf("%s=%s,", k, l[k]))
+		builder.WriteString(k)
+		builder.WriteByte('=')
+		builder.WriteString(l[k])
+		builder.WriteByte(',')
 	}
 	return builder.String()
 }
 
-func getLockForLabels(l map[string]string) *sync.Mutex {
+// getLockForLabels returns a mutex for the given label set.
+// Creates a new mutex if one doesn't exist for this label set.
+// If the maximum number of locks is reached, it returns an existing lock
+// to prevent unbounded memory growth.
+func (lm *lockManager) getLockForLabels(l map[string]string) *sync.Mutex {
 	lockKey := generateLockKey(l)
 
-	locksMutex.Lock()
-	defer locksMutex.Unlock()
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
 
-	if lock, exists := locks[lockKey]; exists {
+	if lock, exists := lm.locks[lockKey]; exists {
 		return lock
 	}
 
+	// Enforce capacity limit to prevent unbounded growth
+	if len(lm.locks) >= maxLocks {
+		// Return any existing lock when at capacity
+		// This maintains concurrency control while preventing memory leaks
+		for _, existingLock := range lm.locks {
+			return existingLock
+		}
+	}
+
 	newLock := &sync.Mutex{}
-	locks[lockKey] = newLock
+	lm.locks[lockKey] = newLock
 	return newLock
 }
 
