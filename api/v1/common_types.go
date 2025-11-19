@@ -748,6 +748,15 @@ type VolumeSnapshotsConfig struct {
 	// Compute resources for the integrity-check job pod (applied only when `verify` is true).
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Selector which must be true for the integrity-check job pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// If specified, the integrity-check job pod's scheduling constraints.
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // PvcSnapshot represents a snapshot to be used to restore a PVC.

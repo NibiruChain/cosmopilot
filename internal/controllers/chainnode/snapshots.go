@@ -728,6 +728,8 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 							},
 						},
 					},
+					NodeSelector: chainNode.Spec.Persistence.Snapshots.NodeSelector,
+					Affinity:     chainNode.Spec.Persistence.Snapshots.Affinity,
 				},
 			},
 		},
