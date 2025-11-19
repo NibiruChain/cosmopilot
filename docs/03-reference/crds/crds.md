@@ -814,6 +814,7 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 | exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |
 | verify | Whether cosmopilot should verify the snapshot for corruption after it is ready. Defaults to `false`. | *bool | false |
 | disableWhileSyncing | Whether to disable snapshots while the node is syncing. Defaults to `true`. | *bool | false |
+| disableWhileUnhealthy | Whether to disable snapshots while the node is unhealthy. Defaults to `true`. | *bool | false |
 | resources | Compute resources for the integrity-check job pod (applied only when `verify` is true). | corev1.ResourceRequirements | false |
 | nodeSelector | Selector which must be true for the integrity-check job pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. | map[string]string | false |
 | affinity | If specified, the integrity-check job pod's scheduling constraints. | *corev1.Affinity | false |

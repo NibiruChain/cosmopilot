@@ -32,29 +32,34 @@ import (
 	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
 )
 
-func (r *Reconciler) isChainNodePodRunning(ctx context.Context, chainNode *appsv1.ChainNode) (bool, error) {
+func (r *Reconciler) isChainNodePodRunning(ctx context.Context, chainNode *appsv1.ChainNode) (bool, bool, error) {
 	pod, err := r.getChainNodePod(ctx, chainNode)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	if pod == nil {
-		return false, nil
+		return false, false, nil
 	}
 
 	// Check if the pod is terminating or in a failed state
 	if isPodTerminating(pod) || nodeUtilsIsInFailedState(pod) || podInFailedState(chainNode, pod) {
-		return false, nil
+		return false, false, nil
 	}
 
+	// Check if the pod is running
+	isRunning := pod.Status.Phase == corev1.PodRunning
+
 	// Check if the pod is ready
+	isReady := false
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-			return true, nil
+			isReady = true
+			break
 		}
 	}
 
-	return false, nil
+	return isRunning, isReady, nil
 }
 
 func (r *Reconciler) getChainNodePod(ctx context.Context, chainNode *appsv1.ChainNode) (*corev1.Pod, error) {

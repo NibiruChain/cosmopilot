@@ -36,7 +36,7 @@ const (
 	snapshotIntegrityCorrupted SnapshotIntegrityStatus = "corrupted"
 )
 
-func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv1.ChainNode) error {
+func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv1.ChainNode, nodePodReady bool) error {
 	logger := log.FromContext(ctx)
 
 	if !chainNode.SnapshotsEnabled() || chainNode.Status.PvcSize == "" || chainNode.Status.LatestHeight == 0 {
@@ -291,7 +291,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 	}
 
 	// Create a snapshot if it's time for that
-	if shouldSnapshot(chainNode) {
+	if shouldSnapshot(chainNode, nodePodReady) {
 		logger.Info("creating new pvc snapshot")
 		return r.startNewSnapshot(ctx, chainNode)
 	}
@@ -362,8 +362,13 @@ func (r *Reconciler) createSnapshot(ctx context.Context, chainNode *appsv1.Chain
 	return snapshot, r.Create(ctx, snapshot)
 }
 
-func shouldSnapshot(chainNode *appsv1.ChainNode) bool {
-	if chainNode.Status.Phase == appsv1.PhaseChainNodeSyncing && chainNode.Spec.Persistence.Snapshots.ShouldDisableWhileSyncing() {
+func shouldSnapshot(chainNode *appsv1.ChainNode, nodePodReady bool) bool {
+	switch {
+	case chainNode.Spec.Persistence.Snapshots.ShouldDisableWhileSyncing() && chainNode.Status.Phase == appsv1.PhaseChainNodeSyncing:
+		return false
+	case chainNode.Spec.Persistence.Snapshots.ShouldDisableWhileUnhealthy() && !nodePodReady:
+		return false
+	case chainNode.Spec.Persistence.Snapshots.ShouldDisableWhileUnhealthy() && chainNode.Status.Phase != appsv1.PhaseChainNodeRunning:
 		return false
 	}
 

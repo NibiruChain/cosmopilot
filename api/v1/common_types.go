@@ -745,6 +745,11 @@ type VolumeSnapshotsConfig struct {
 	// +default=true
 	DisableWhileSyncing *bool `json:"disableWhileSyncing,omitempty"`
 
+	// Whether to disable snapshots while the node is unhealthy. Defaults to `true`.
+	// +optional
+	// +default=true
+	DisableWhileUnhealthy *bool `json:"disableWhileUnhealthy,omitempty"`
+
 	// Compute resources for the integrity-check job pod (applied only when `verify` is true).
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`

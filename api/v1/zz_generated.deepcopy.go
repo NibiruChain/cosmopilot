@@ -1929,6 +1929,11 @@ func (in *VolumeSnapshotsConfig) DeepCopyInto(out *VolumeSnapshotsConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.DisableWhileUnhealthy != nil {
+		in, out := &in.DisableWhileUnhealthy, &out.DisableWhileUnhealthy
+		*out = new(bool)
+		**out = **in
+	}
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector

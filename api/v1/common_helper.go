@@ -452,6 +452,13 @@ func (s *VolumeSnapshotsConfig) ShouldDisableWhileSyncing() bool {
 	return true
 }
 
+func (s *VolumeSnapshotsConfig) ShouldDisableWhileUnhealthy() bool {
+	if s != nil && s.DisableWhileUnhealthy != nil {
+		return *s.DisableWhileUnhealthy
+	}
+	return true
+}
+
 // ExportTarballConfig helper methods
 
 func (e *ExportTarballConfig) GetSuffix() string {

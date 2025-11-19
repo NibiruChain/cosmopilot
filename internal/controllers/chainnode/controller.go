@@ -139,7 +139,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Let's check if pod for this node is alive or not so that we can use this information
 	// on methods before pod reconciliation
-	nodePodRunning, err := r.isChainNodePodRunning(ctx, chainNode)
+	nodePodRunning, nodePodReady, err := r.isChainNodePodRunning(ctx, chainNode)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -195,7 +195,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Ensure snapshots are taken if enabled and check if they are ready
 	logger.V(1).Info("ensure volume snapshots if applicable")
-	if err = r.ensureVolumeSnapshots(ctx, chainNode); err != nil {
+	if err = r.ensureVolumeSnapshots(ctx, chainNode, nodePodReady); err != nil {
 		return ctrl.Result{}, err
 	}
 

@@ -3360,6 +3360,11 @@ spec:
                               description: Whether to disable snapshots while the
                                 node is syncing. Defaults to `true`.
                               type: boolean
+                            disableWhileUnhealthy:
+                              default: true
+                              description: Whether to disable snapshots while the
+                                node is unhealthy. Defaults to `true`.
+                              type: boolean
                             exportTarball:
                               description: Whether to create a tarball of data directory
                                 in each snapshot and upload it to external storage.
@@ -6859,6 +6864,11 @@ spec:
                             default: true
                             description: Whether to disable snapshots while the node
                               is syncing. Defaults to `true`.
+                            type: boolean
+                          disableWhileUnhealthy:
+                            default: true
+                            description: Whether to disable snapshots while the node
+                              is unhealthy. Defaults to `true`.
                             type: boolean
                           exportTarball:
                             description: Whether to create a tarball of data directory
