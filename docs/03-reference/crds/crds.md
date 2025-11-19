@@ -809,6 +809,7 @@ VolumeSnapshotsConfig holds the configuration of snapshotting feature.
 | ----- | ----------- | ------ | -------- |
 | frequency | How often a snapshot should be created. | string | true |
 | retention | How long a snapshot should be retained. Default is indefinite retention. | *string | false |
+| preserveLastSnapshot | If true, retention policies will not be enforced when only a single snapshot exists. Ensures at least one snapshot is always available. Defaults to true. | *bool | false |
 | snapshotClass | Name of the volume snapshot class to be used. Uses the default class if not specified. | *string | false |
 | stopNode | Whether the node should be stopped while the snapshot is taken. Defaults to `false`. | *bool | false |
 | exportTarball | Whether to create a tarball of data directory in each snapshot and upload it to external storage. | *[ExportTarballConfig](#exporttarballconfig) | false |

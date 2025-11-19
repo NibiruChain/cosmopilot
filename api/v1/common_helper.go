@@ -459,6 +459,13 @@ func (s *VolumeSnapshotsConfig) ShouldDisableWhileUnhealthy() bool {
 	return true
 }
 
+func (s *VolumeSnapshotsConfig) ShouldPreserveLastSnapshot() bool {
+	if s != nil && s.PreserveLastSnapshot != nil {
+		return *s.PreserveLastSnapshot
+	}
+	return true
+}
+
 // ExportTarballConfig helper methods
 
 func (e *ExportTarballConfig) GetSuffix() string {

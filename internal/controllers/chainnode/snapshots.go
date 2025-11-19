@@ -3,6 +3,7 @@ package chainnode
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -49,6 +50,11 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		return err
 	}
 
+	// Sort snapshots by creation time, newest last
+	sort.Slice(snapshots, func(i, j int) bool {
+		return snapshots[i].CreationTimestamp.Before(&snapshots[j].CreationTimestamp)
+	})
+
 	// Fix snapshotting status in case there are no snapshots for this node
 	if len(snapshots) == 0 && volumeSnapshotInProgress(chainNode) {
 		setSnapshotInProgress(chainNode, false)
@@ -60,7 +66,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 	// Grab list of possible tarball names to make sure we delete any possible dangling jobs
 	tarballNames := make([]string, 0)
 
-	for _, snapshot := range snapshots {
+	for i, snapshot := range snapshots {
 		if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
 			tarballNames = append(tarballNames, getTarballName(chainNode, &snapshot))
 		}
@@ -236,30 +242,34 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		// Default case is checking if snapshot has expired. If tarball is also set for deletion on expire it is also
 		// taken care here.
 		default:
-			expired, err := isSnapshotExpired(&snapshot)
-			if err != nil {
-				return err
-			}
-			if expired {
-				logger.Info("deleting expired pvc snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
-				if err = r.Delete(ctx, &snapshot); err != nil {
+			if chainNode.Spec.Persistence.Snapshots.ShouldPreserveLastSnapshot() && i == len(snapshots)-1 {
+				logger.Info("skipping retention check to preserve last snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
+			} else {
+				expired, err := isSnapshotExpired(&snapshot)
+				if err != nil {
 					return err
 				}
-				r.recorder.Eventf(chainNode,
-					corev1.EventTypeNormal,
-					appsv1.ReasonDeletedSnapshot,
-					"Deleted expired PVC snapshot %s", snapshot.GetName(),
-				)
-				if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && chainNode.Spec.Persistence.Snapshots.ExportTarball.DeleteWhenExpired() {
-					logger.Info("deleting expired snapshot tarball", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
-					if err = r.deleteTarball(ctx, chainNode, &snapshot); err != nil {
+				if expired {
+					logger.Info("deleting expired pvc snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
+					if err = r.Delete(ctx, &snapshot); err != nil {
 						return err
 					}
 					r.recorder.Eventf(chainNode,
 						corev1.EventTypeNormal,
-						appsv1.ReasonTarballDeleted,
-						"Deleted expired tarball %s", getTarballName(chainNode, &snapshot),
+						appsv1.ReasonDeletedSnapshot,
+						"Deleted expired PVC snapshot %s", snapshot.GetName(),
 					)
+					if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && chainNode.Spec.Persistence.Snapshots.ExportTarball.DeleteWhenExpired() {
+						logger.Info("deleting expired snapshot tarball", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
+						if err = r.deleteTarball(ctx, chainNode, &snapshot); err != nil {
+							return err
+						}
+						r.recorder.Eventf(chainNode,
+							corev1.EventTypeNormal,
+							appsv1.ReasonTarballDeleted,
+							"Deleted expired tarball %s", getTarballName(chainNode, &snapshot),
+						)
+					}
 				}
 			}
 		}

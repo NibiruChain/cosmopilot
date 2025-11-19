@@ -722,6 +722,12 @@ type VolumeSnapshotsConfig struct {
 	// +kubebuilder:validation:Format=duration
 	Retention *string `json:"retention,omitempty"`
 
+	// If true, retention policies will not be enforced when only a single snapshot exists.
+	// Ensures at least one snapshot is always available. Defaults to true.
+	// +optional
+	// +default=true
+	PreserveLastSnapshot *bool `json:"preserveLastSnapshot,omitempty"`
+
 	// Name of the volume snapshot class to be used. Uses the default class if not specified.
 	// +optional
 	SnapshotClassName *string `json:"snapshotClass,omitempty"`

@@ -3070,6 +3070,12 @@ spec:
                           Selector which must be true for the integrity-check job pod to fit on a node.
                           Selector which must match a node's labels for the pod to be scheduled on that node.
                         type: object
+                      preserveLastSnapshot:
+                        default: true
+                        description: |-
+                          If true, retention policies will not be enforced when only a single snapshot exists.
+                          Ensures at least one snapshot is always available. Defaults to true.
+                        type: boolean
                       resources:
                         description: Compute resources for the integrity-check job
                           pod (applied only when `verify` is true).

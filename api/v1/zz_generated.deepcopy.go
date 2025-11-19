@@ -1904,6 +1904,11 @@ func (in *VolumeSnapshotsConfig) DeepCopyInto(out *VolumeSnapshotsConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.PreserveLastSnapshot != nil {
+		in, out := &in.PreserveLastSnapshot, &out.PreserveLastSnapshot
+		*out = new(bool)
+		**out = **in
+	}
 	if in.SnapshotClassName != nil {
 		in, out := &in.SnapshotClassName, &out.SnapshotClassName
 		*out = new(string)
