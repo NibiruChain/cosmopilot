@@ -441,6 +441,7 @@ Config allows setting specific configurations for a node, including overriding c
 | stateSync | Allows configuring this node to perform state-sync snapshots. | *[StateSyncConfig](#statesyncconfig) | false |
 | seedMode | Configures this node to run on seed mode. Defaults to `false`. | *bool | false |
 | env | List of environment variables to set in the app container. | []corev1.EnvVar | false |
+| podAnnotations | PodAnnotations allows setting additional annotations on the node's pod. | map[string]string | false |
 | safeToEvict | SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows cluster-autoscaler to evict this node's pod. | *bool | false |
 | cosmoGuard | Deploys CosmoGuard to protect API endpoints of the node. | *[CosmoGuardConfig](#cosmoguardconfig) | false |
 | nodeUtilsLogLevel | Log level for node-utils container. Defaults to `info`. | *string | false |

@@ -1644,6 +1644,12 @@ spec:
                           description: Whether to persist address book file in data
                             directory. Defaults to `false`.
                           type: boolean
+                        podAnnotations:
+                          additionalProperties:
+                            type: string
+                          description: PodAnnotations allows setting additional annotations
+                            on the node's pod.
+                          type: object
                         reconcilePeriod:
                           default: 15s
                           description: |-
@@ -5109,6 +5115,12 @@ spec:
                         description: Whether to persist address book file in data
                           directory. Defaults to `false`.
                         type: boolean
+                      podAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: PodAnnotations allows setting additional annotations
+                          on the node's pod.
+                        type: object
                       reconcilePeriod:
                         default: 15s
                         description: |-

@@ -468,6 +468,13 @@ func (in *Config) DeepCopyInto(out *Config) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.PodAnnotations != nil {
+		in, out := &in.PodAnnotations, &out.PodAnnotations
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.SafeToEvict != nil {
 		in, out := &in.SafeToEvict, &out.SafeToEvict
 		*out = new(bool)

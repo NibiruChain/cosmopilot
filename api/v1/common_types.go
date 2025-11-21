@@ -172,6 +172,10 @@ type Config struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
+	// PodAnnotations allows setting additional annotations on the node's pod.
+	// +optional
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
 	// SafeToEvict sets cluster-autoscaler.kubernetes.io/safe-to-evict annotation to the given value. It allows/disallows
 	// cluster-autoscaler to evict this node's pod.
 	// +optional

@@ -112,6 +112,19 @@ env:
     value: custom_value_2
 ```
 
+## Pod Annotations
+
+You can add custom annotations to the node's pod:
+
+```yaml
+config:
+  podAnnotations:
+    custom-annotation-key: custom-annotation-value
+    another-key: another-value
+```
+
+These annotations will be merged with system-managed annotations. Note that system annotations (like `apps.k8s.nibiru.org/config-hash`) take precedence and cannot be overridden.
+
 ## Configuring Node Startup Time
 
 The startup time corresponds to the startup probe timeout. It defaults to `1h`. If the node does not get helthy within this period it will be restarted. In some cases, like when starting a node with huge data, this might not be enough. You can adjust adjust it, using the following:

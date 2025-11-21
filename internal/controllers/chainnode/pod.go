@@ -601,13 +601,21 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		logger.Info("could not get resources from vpa: " + err.Error())
 	}
 
+	// Build initial annotations with user-provided annotations
+	annotations := map[string]string{}
+	if chainNode.Spec.Config != nil {
+		for k, v := range chainNode.Spec.Config.PodAnnotations {
+			annotations[k] = v
+		}
+	}
+	// System annotations override user annotations
+	annotations[controllers.AnnotationConfigHash] = configHash
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      chainNode.GetName(),
-			Namespace: chainNode.GetNamespace(),
-			Annotations: map[string]string{
-				controllers.AnnotationConfigHash: configHash,
-			},
+			Name:        chainNode.GetName(),
+			Namespace:   chainNode.GetNamespace(),
+			Annotations: annotations,
 			Labels: WithChainNodeLabels(chainNode, map[string]string{
 				controllers.LabelNodeID:    chainNode.Status.NodeID,
 				controllers.LabelChainID:   chainNode.Status.ChainID,
