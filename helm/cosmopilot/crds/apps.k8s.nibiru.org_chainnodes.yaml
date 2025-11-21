@@ -3722,6 +3722,12 @@ spec:
                           description: VerticalAutoscalingRule defines a single rule
                             for when to trigger a scaling adjustment.
                           properties:
+                            cooldown:
+                              description: |-
+                                Cooldown is the minimum time to wait between scaling actions for this rule.
+                                If not specified, falls back to the metric-level cooldown.
+                              format: duration
+                              type: string
                             direction:
                               description: 'Direction of scaling: "up" or "down".'
                               enum:
@@ -3832,6 +3838,12 @@ spec:
                           description: VerticalAutoscalingRule defines a single rule
                             for when to trigger a scaling adjustment.
                           properties:
+                            cooldown:
+                              description: |-
+                                Cooldown is the minimum time to wait between scaling actions for this rule.
+                                If not specified, falls back to the metric-level cooldown.
+                              format: duration
+                              type: string
                             direction:
                               description: 'Direction of scaling: "up" or "down".'
                               enum:

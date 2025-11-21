@@ -1060,4 +1060,10 @@ type VerticalAutoscalingRule struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	StepPercent int `json:"stepPercent"`
+
+	// Cooldown is the minimum time to wait between scaling actions for this rule.
+	// If not specified, falls back to the metric-level cooldown.
+	// +optional
+	// +kubebuilder:validation:Format=duration
+	Cooldown *string `json:"cooldown,omitempty"`
 }

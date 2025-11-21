@@ -798,6 +798,7 @@ VerticalAutoscalingRule defines a single rule for when to trigger a scaling adju
 | usagePercent | UsagePercent is the resource usage percentage (0–100) that must be met. Usage is compared against the selected Source value. | int | true |
 | duration | Duration is the length of time the usage must remain above/below the threshold before scaling. Defaults to \"5m\". | *string | false |
 | stepPercent | StepPercent defines how much to adjust the resource by, as a percentage of the current value. For example, 50 = scale by 50% of current value. | int | true |
+| cooldown | Cooldown is the minimum time to wait between scaling actions for this rule. If not specified, falls back to the metric-level cooldown. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 

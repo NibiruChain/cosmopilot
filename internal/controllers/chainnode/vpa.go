@@ -35,8 +35,17 @@ func (r *Reconciler) maybeGetVpaResources(ctx context.Context, chainNode *appsv1
 
 	client := nodeutils.NewClient(chainNode.GetNodeFQDN())
 
-	if chainNode.Spec.VPA.CPU != nil && !withinCooldown(getLastCpuScaleTime(chainNode), chainNode.Spec.VPA.CPU.GetCooldownDuration()) {
+	if chainNode.Spec.VPA.CPU != nil {
+		metricCooldown := chainNode.Spec.VPA.CPU.GetCooldownDuration()
+		lastCpuScaleTime := getLastCpuScaleTime(chainNode)
+
 		for _, rule := range chainNode.Spec.VPA.CPU.Rules {
+			ruleCooldown := rule.GetCooldownDuration(metricCooldown)
+			if withinCooldown(lastCpuScaleTime, ruleCooldown) {
+				logger.V(1).Info("vpa rule is within cooldown period for cpu scaling", "rule", rule.Direction, "cooldown", ruleCooldown)
+				continue
+			}
+
 			shouldScale, newCpuRequest, err := r.evaluateCpuRule(ctx, chainNode, client, updated, chainNode.Spec.VPA.CPU, rule)
 			if err != nil {
 				return getVpaLastAppliedResourcesOrFallback(chainNode), err
@@ -71,12 +80,19 @@ func (r *Reconciler) maybeGetVpaResources(ctx context.Context, chainNode *appsv1
 				break
 			}
 		}
-	} else {
-		logger.Info("vpa is within cooldown period for cpu scaling", "cooldown", chainNode.Spec.VPA.CPU.GetCooldownDuration())
 	}
 
-	if chainNode.Spec.VPA.Memory != nil && !withinCooldown(getLastMemoryScaleTime(chainNode), chainNode.Spec.VPA.Memory.GetCooldownDuration()) {
+	if chainNode.Spec.VPA.Memory != nil {
+		metricCooldown := chainNode.Spec.VPA.Memory.GetCooldownDuration()
+		lastMemoryScaleTime := getLastMemoryScaleTime(chainNode)
+
 		for _, rule := range chainNode.Spec.VPA.Memory.Rules {
+			ruleCooldown := rule.GetCooldownDuration(metricCooldown)
+			if withinCooldown(lastMemoryScaleTime, ruleCooldown) {
+				logger.V(1).Info("vpa rule is within cooldown period for memory scaling", "rule", rule.Direction, "cooldown", ruleCooldown)
+				continue
+			}
+
 			shouldScale, newMemRequest, err := r.evaluateMemoryRule(ctx, chainNode, client, updated, chainNode.Spec.VPA.Memory, rule)
 			if err != nil {
 				return getVpaLastAppliedResourcesOrFallback(chainNode), err
@@ -111,8 +127,6 @@ func (r *Reconciler) maybeGetVpaResources(ctx context.Context, chainNode *appsv1
 				break
 			}
 		}
-	} else {
-		logger.Info("vpa is within cooldown period for memory scaling", "cooldown", chainNode.Spec.VPA.Memory.GetCooldownDuration())
 	}
 
 	return updated, r.storeVpaLastAppliedResources(ctx, chainNode, updated, cpuScaleTs, memScaleTs)

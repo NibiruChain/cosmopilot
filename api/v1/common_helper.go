@@ -626,6 +626,18 @@ func (vpar *VerticalAutoscalingRule) GetDuration() time.Duration {
 	return DefaultVpaCooldown
 }
 
+// GetCooldownDuration returns the cooldown duration for this rule.
+// If the rule has a cooldown specified, it uses that.
+// Otherwise, it falls back to the provided metricCooldown.
+func (vpar *VerticalAutoscalingRule) GetCooldownDuration(metricCooldown time.Duration) time.Duration {
+	if vpar != nil && vpar.Cooldown != nil {
+		if d, err := strfmt.ParseDuration(*vpar.Cooldown); err == nil {
+			return d
+		}
+	}
+	return metricCooldown
+}
+
 // Peer helper methods
 
 func (peer *Peer) String() string {

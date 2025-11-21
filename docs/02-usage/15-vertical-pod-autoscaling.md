@@ -40,6 +40,33 @@ spec:
 
 In this example the `ChainNode` defines CPU and memory scaling rules for its pods.
 
+## Per-Rule Cooldown
+
+You can override the metric-level cooldown for individual rules by specifying a `cooldown` field in the rule itself:
+
+```yaml
+spec:
+  vpa:
+    enabled: true
+    cpu:
+      cooldown: 30m  # Default cooldown for all CPU rules
+      min: 750m
+      max: 8000m
+      rules:
+        - direction: up
+          usagePercent: 90
+          duration: 5m
+          stepPercent: 50
+          cooldown: 5m  # Override: scale up more frequently
+        - direction: down
+          usagePercent: 40
+          duration: 30m
+          stepPercent: 50
+          # No cooldown specified - uses the 30m default
+```
+
+In this example, the scale-up rule can trigger every 5 minutes, while the scale-down rule respects the default 30-minute cooldown. This allows for responsive scaling up during high load while preventing frequent scale-down actions.
+
 ## Notes
 
 - VPA requires a Vertical Pod Autoscaler controller running in the cluster.
