@@ -767,6 +767,7 @@ VerticalAutoscalingConfig defines rules and thresholds for vertical autoscaling 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | enabled | Enables vertical autoscaling for the pod. | bool | true |
+| resetVpaAfterNodeUpgrade | ResetVpaAfterNodeUpgrade, when true, clears VPA-applied resources when a node upgrade completes. This reverts resources to user-specified values while setting cooldown timestamps to prevent immediate VPA action after upgrade. | bool | false |
 | cpu | CPU resource autoscaling configuration. | *[VerticalAutoscalingMetricConfig](#verticalautoscalingmetricconfig) | false |
 | memory | Memory resource autoscaling configuration. | *[VerticalAutoscalingMetricConfig](#verticalautoscalingmetricconfig) | false |
 

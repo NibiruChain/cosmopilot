@@ -3885,6 +3885,12 @@ spec:
                           - min
                           - rules
                           type: object
+                        resetVpaAfterNodeUpgrade:
+                          description: |-
+                            ResetVpaAfterNodeUpgrade, when true, clears VPA-applied resources when a node upgrade completes.
+                            This reverts resources to user-specified values while setting cooldown timestamps to prevent
+                            immediate VPA action after upgrade.
+                          type: boolean
                       required:
                       - enabled
                       type: object
@@ -7576,6 +7582,12 @@ spec:
                         - min
                         - rules
                         type: object
+                      resetVpaAfterNodeUpgrade:
+                        description: |-
+                          ResetVpaAfterNodeUpgrade, when true, clears VPA-applied resources when a node upgrade completes.
+                          This reverts resources to user-specified values while setting cooldown timestamps to prevent
+                          immediate VPA action after upgrade.
+                        type: boolean
                     required:
                     - enabled
                     type: object

@@ -405,6 +405,50 @@ func (r *Reconciler) clearVpaLastAppliedResources(ctx context.Context, chainNode
 	return r.Update(ctx, chainNode)
 }
 
+func (r *Reconciler) resetVpaAfterUpgrade(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	logger := log.FromContext(ctx).WithValues("module", "vpa")
+
+	if !chainNode.Spec.VPA.IsEnabled() {
+		return nil
+	}
+
+	if !chainNode.Spec.VPA.ResetVpaAfterNodeUpgrade {
+		return nil
+	}
+
+	logger.Info("resetting vpa after node upgrade")
+
+	annotations := chainNode.Annotations
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+
+	changed := false
+
+	// Clear VPA resources to revert to user-specified values
+	if _, ok := annotations[controllers.AnnotationVPAResources]; ok {
+		delete(annotations, controllers.AnnotationVPAResources)
+		changed = true
+	}
+
+	// Set cooldown timestamps to prevent immediate VPA action after upgrade
+	now := time.Now().UTC().Format(timeLayout)
+	if annotations[controllers.AnnotationVPALastCPUScale] != now {
+		annotations[controllers.AnnotationVPALastCPUScale] = now
+		changed = true
+	}
+	if annotations[controllers.AnnotationVPALastMemoryScale] != now {
+		annotations[controllers.AnnotationVPALastMemoryScale] = now
+		changed = true
+	}
+
+	if changed {
+		chainNode.Annotations = annotations
+		return r.Update(ctx, chainNode)
+	}
+	return nil
+}
+
 func clamp(val, min, max int64) int64 {
 	if val < min {
 		return min

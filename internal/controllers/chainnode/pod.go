@@ -211,6 +211,9 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 				// completed anyway to avoid downgrading and corrupt data.
 				chainNode.Status.AppVersion = upgrade.GetVersion()
 				upgradeStatus = appsv1.UpgradeCompleted
+				if err := r.resetVpaAfterUpgrade(ctx, chainNode); err != nil {
+					return fmt.Errorf("failed to reset VPA after upgrade for %s: %w", chainNode.GetName(), err)
+				}
 			} else {
 				upgradeStatus = appsv1.UpgradeScheduled
 			}
@@ -223,6 +226,9 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 			upgrade.Image, upgrade.Height,
 		)
 		chainNode.Status.AppVersion = upgrade.GetVersion()
+		if err := r.resetVpaAfterUpgrade(ctx, chainNode); err != nil {
+			return fmt.Errorf("failed to reset VPA after upgrade for %s: %w", chainNode.GetName(), err)
+		}
 		return r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeCompleted)
 	}
 

@@ -67,6 +67,34 @@ spec:
 
 In this example, the scale-up rule can trigger every 5 minutes, while the scale-down rule respects the default 30-minute cooldown. This allows for responsive scaling up during high load while preventing frequent scale-down actions.
 
+## Reset VPA After Node Upgrade
+
+By default, VPA-adjusted resources persist across node upgrades. If you want resources to revert to user-specified values after an upgrade, enable `resetVpaAfterNodeUpgrade`:
+
+```yaml
+spec:
+  vpa:
+    enabled: true
+    resetVpaAfterNodeUpgrade: true  # Revert to user-specified resources after upgrade
+    cpu:
+      cooldown: 30m
+      min: 750m
+      max: 8000m
+      rules:
+        - direction: up
+          usagePercent: 90
+          duration: 5m
+          stepPercent: 50
+```
+
+When enabled, this feature:
+- Clears VPA-applied resource adjustments when a node upgrade completes
+- Reverts CPU and memory requests to the values specified in the ChainNode spec
+- Sets cooldown timestamps to prevent VPA from immediately re-scaling the newly upgraded node
+- Ensures VPA waits for the full cooldown period before making any adjustments
+
+This is useful when you want a clean baseline after upgrades, especially if the new node version has different resource characteristics.
+
 ## Notes
 
 - VPA requires a Vertical Pod Autoscaler controller running in the cluster.
