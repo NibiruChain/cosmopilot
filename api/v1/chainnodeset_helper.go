@@ -72,8 +72,8 @@ func (nodeSet *ChainNodeSet) GetAppSpecWithUpgrades() AppSpec {
 	}
 
 	// Sort upgrades by height
-	sort.Slice(nodeSet.Status.Upgrades, func(i, j int) bool {
-		return nodeSet.Status.Upgrades[i].Height < nodeSet.Status.Upgrades[j].Height
+	sort.Slice(spec.Upgrades, func(i, j int) bool {
+		return spec.Upgrades[i].Height < spec.Upgrades[j].Height
 	})
 
 	return *spec

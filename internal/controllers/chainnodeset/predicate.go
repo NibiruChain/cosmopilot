@@ -40,6 +40,11 @@ func (p GenerationChangedPredicate) Update(e event.UpdateEvent) bool {
 	case *appsv1.ChainNodeSet:
 		return e.ObjectNew.GetGeneration() != e.ObjectOld.GetGeneration()
 
+	case *appsv1.ChainNode:
+		// For ChainNode updates, only trigger reconcile if generation changed
+		// This prevents reconciliation loops when only status is updated
+		return e.ObjectNew.GetGeneration() != e.ObjectOld.GetGeneration()
+
 	default:
 		return p.Funcs.Update(e)
 	}
