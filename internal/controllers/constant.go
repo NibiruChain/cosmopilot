@@ -1,12 +1,17 @@
 package controllers
 
 const (
+	CosmoGuardRpcPortName     = "fw-rpc"
 	CosmoGuardRpcPort         = 16657
+	CosmoGuardLcdPortName     = "fw-lcd"
 	CosmoGuardLcdPort         = 11317
+	CosmoGuardGrpcPortName    = "fw-grpc"
 	CosmoGuardGrpcPort        = 19090
 	CosmoGuardMetricsPortName = "fw-metrics"
 	CosmoGuardMetricsPort     = 9001
+	CosmoGuardEvmRpcPortName  = "fw-evm-rpc"
 	CosmoGuardEvmRpcPort      = 18545
+	CosmoGuardEvmRpcWsPortName = "fw-evm-rpc-ws"
 	CosmoGuardEvmRpcWsPort    = 18546
 
 	NonRootId = 1000

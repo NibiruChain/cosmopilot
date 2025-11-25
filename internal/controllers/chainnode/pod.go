@@ -834,17 +834,17 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Args:            []string{"-config", filepath.Join("/config/", chainNode.Spec.Config.GetCosmoGuardConfig().Key)},
 			Ports: []corev1.ContainerPort{
 				{
-					Name:          chainutils.RpcPortName,
+					Name:          controllers.CosmoGuardRpcPortName,
 					ContainerPort: controllers.CosmoGuardRpcPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
-					Name:          chainutils.LcdPortName,
+					Name:          controllers.CosmoGuardLcdPortName,
 					ContainerPort: controllers.CosmoGuardLcdPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 				{
-					Name:          chainutils.GrpcPortName,
+					Name:          controllers.CosmoGuardGrpcPortName,
 					ContainerPort: controllers.CosmoGuardGrpcPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
@@ -878,12 +878,12 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		}
 		if chainNode.Spec.Config.IsEvmEnabled() {
 			cosmoGuardContainer.Ports = append(cosmoGuardContainer.Ports, corev1.ContainerPort{
-				Name:          controllers.EvmRpcPortName,
+				Name:          controllers.CosmoGuardEvmRpcPortName,
 				ContainerPort: controllers.CosmoGuardEvmRpcPort,
 				Protocol:      corev1.ProtocolTCP,
 			})
 			cosmoGuardContainer.Ports = append(cosmoGuardContainer.Ports, corev1.ContainerPort{
-				Name:          controllers.EvmRpcWsPortName,
+				Name:          controllers.CosmoGuardEvmRpcWsPortName,
 				ContainerPort: controllers.CosmoGuardEvmRpcWsPort,
 				Protocol:      corev1.ProtocolTCP,
 			})
