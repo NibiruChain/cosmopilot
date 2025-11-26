@@ -67,7 +67,7 @@ persistence:
 
 ## Snapshots
 
-`Cosmopilot` allows configuring periodic snapshots of volumes in order to back up node data. It is also possible to set a retention period, for proper clean up of old snapshots (by default they are keept forever).
+`Cosmopilot` allows configuring periodic snapshots of volumes in order to back up node data. It is also possible to configure cleanup of old snapshots using either time-based retention or count-based retention (by default snapshots are kept forever).
 
 ::: warning NOTE
 When configured on `ChainNodeSet`group, `snapshots` are only taken on one of the nodes of the group (the first node).
@@ -81,6 +81,34 @@ persistence:
     frequency: 24h # Take a snapshot every 24 hours
     retention: 72h # Retain snapshots of the last 3 days
 ```
+
+### Retention Options
+
+You can configure snapshot retention in two ways:
+
+#### Time-based retention (`retention`)
+Delete snapshots after a specified duration:
+
+```yaml
+persistence:
+  snapshot:
+    frequency: 24h
+    retention: 72h # Delete snapshots older than 3 days
+```
+
+#### Count-based retention (`retain`)
+Keep only the N most recent snapshots:
+
+```yaml
+persistence:
+  snapshot:
+    frequency: 24h
+    retain: 5 # Keep only the 5 most recent snapshots
+```
+
+::: warning NOTE
+The `retention` and `retain` fields are mutually exclusive. You can only use one of them at a time.
+:::
 
 ### Snapshot Class
 

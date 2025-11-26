@@ -3511,9 +3511,17 @@ spec:
                                     More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                                   type: object
                               type: object
+                            retain:
+                              description: |-
+                                How many snapshots should be retained. When set, only the most recent N snapshots are kept.
+                                Cannot be used together with Retention.
+                              format: int32
+                              minimum: 1
+                              type: integer
                             retention:
-                              description: How long a snapshot should be retained.
-                                Default is indefinite retention.
+                              description: |-
+                                How long a snapshot should be retained. Default is indefinite retention.
+                                Cannot be used together with Retain.
                               format: duration
                               type: string
                             snapshotClass:
@@ -7045,9 +7053,17 @@ spec:
                                   More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                                 type: object
                             type: object
+                          retain:
+                            description: |-
+                              How many snapshots should be retained. When set, only the most recent N snapshots are kept.
+                              Cannot be used together with Retention.
+                            format: int32
+                            minimum: 1
+                            type: integer
                           retention:
-                            description: How long a snapshot should be retained. Default
-                              is indefinite retention.
+                            description: |-
+                              How long a snapshot should be retained. Default is indefinite retention.
+                              Cannot be used together with Retain.
                             format: duration
                             type: string
                           snapshotClass:

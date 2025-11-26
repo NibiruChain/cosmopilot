@@ -361,3 +361,169 @@ func TestSetSnapshotTime(t *testing.T) {
 	expectedTime := now.Truncate(time.Second)
 	assert.True(t, parsed.Equal(expectedTime))
 }
+
+func TestGetRetainCount(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *appsv1.VolumeSnapshotsConfig
+		want   *int32
+	}{
+		{
+			name:   "nil config",
+			config: nil,
+			want:   nil,
+		},
+		{
+			name:   "nil retain",
+			config: &appsv1.VolumeSnapshotsConfig{},
+			want:   nil,
+		},
+		{
+			name: "retain set to 3",
+			config: &appsv1.VolumeSnapshotsConfig{
+				Retain: pointer.Int32(3),
+			},
+			want: pointer.Int32(3),
+		},
+		{
+			name: "retain set to 1",
+			config: &appsv1.VolumeSnapshotsConfig{
+				Retain: pointer.Int32(1),
+			},
+			want: pointer.Int32(1),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.config.GetRetainCount()
+			if tt.want == nil {
+				assert.Nil(t, got)
+			} else {
+				assert.NotNil(t, got)
+				assert.Equal(t, *tt.want, *got)
+			}
+		})
+	}
+}
+
+func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
+	tests := []struct {
+		name      string
+		chainNode *appsv1.ChainNode
+		wantErr   bool
+	}{
+		{
+			name: "retention only",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: appsv1.ChainNodeSpec{
+					Genesis: &appsv1.GenesisConfig{
+						Url: pointer.String("https://example.com/genesis.json"),
+					},
+					App: appsv1.AppSpec{
+						Image: "test-image",
+					},
+					Persistence: &appsv1.Persistence{
+						Snapshots: &appsv1.VolumeSnapshotsConfig{
+							Frequency: "24h",
+							Retention: pointer.String("72h"),
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "retain only",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: appsv1.ChainNodeSpec{
+					Genesis: &appsv1.GenesisConfig{
+						Url: pointer.String("https://example.com/genesis.json"),
+					},
+					App: appsv1.AppSpec{
+						Image: "test-image",
+					},
+					Persistence: &appsv1.Persistence{
+						Snapshots: &appsv1.VolumeSnapshotsConfig{
+							Frequency: "24h",
+							Retain:    pointer.Int32(5),
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "both retention and retain",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: appsv1.ChainNodeSpec{
+					Genesis: &appsv1.GenesisConfig{
+						Url: pointer.String("https://example.com/genesis.json"),
+					},
+					App: appsv1.AppSpec{
+						Image: "test-image",
+					},
+					Persistence: &appsv1.Persistence{
+						Snapshots: &appsv1.VolumeSnapshotsConfig{
+							Frequency: "24h",
+							Retention: pointer.String("72h"),
+							Retain:    pointer.Int32(5),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "neither retention nor retain",
+			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: appsv1.ChainNodeSpec{
+					Genesis: &appsv1.GenesisConfig{
+						Url: pointer.String("https://example.com/genesis.json"),
+					},
+					App: appsv1.AppSpec{
+						Image: "test-image",
+					},
+					Persistence: &appsv1.Persistence{
+						Snapshots: &appsv1.VolumeSnapshotsConfig{
+							Frequency: "24h",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.chainNode.Validate(nil)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "mutually exclusive")
+			} else {
+				// Note: Validate may return error for other reasons (e.g., missing genesis)
+				// We just check it doesn't contain our specific error
+				if err != nil {
+					assert.NotContains(t, err.Error(), "mutually exclusive")
+				}
+			}
+		})
+	}
+}

@@ -53,6 +53,13 @@ func (nodeSet *ChainNodeSet) Validate(old *ChainNodeSet) (admission.Warnings, er
 		return nil, fmt.Errorf(".spec.genesis and .spec.validator.init are mutually exclusive")
 	}
 
+	// Validate validator snapshots config
+	if nodeSet.Spec.Validator != nil && nodeSet.Spec.Validator.Persistence != nil && nodeSet.Spec.Validator.Persistence.Snapshots != nil {
+		if err := validateSnapshotsConfig(nodeSet.Spec.Validator.Persistence.Snapshots, ".spec.validator.persistence.snapshots"); err != nil {
+			return nil, err
+		}
+	}
+
 	// Validate each node group
 	for i, group := range nodeSet.Spec.Nodes {
 		// Validate persistence size
@@ -60,6 +67,13 @@ func (nodeSet *ChainNodeSet) Validate(old *ChainNodeSet) (admission.Warnings, er
 			_, err := resource.ParseQuantity(*group.Persistence.Size)
 			if err != nil {
 				return nil, fmt.Errorf("bad format for .spec.nodes[%d].persistence.size: %v", i, err)
+			}
+		}
+
+		// Validate snapshots config
+		if group.Persistence != nil && group.Persistence.Snapshots != nil {
+			if err := validateSnapshotsConfig(group.Persistence.Snapshots, fmt.Sprintf(".spec.nodes[%d].persistence.snapshots", i)); err != nil {
+				return nil, err
 			}
 		}
 

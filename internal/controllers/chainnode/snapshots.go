@@ -239,8 +239,8 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 				}
 			}
 
-		// Default case is checking if snapshot has expired. If tarball is also set for deletion on expire it is also
-		// taken care here.
+		// Default case is checking if snapshot has expired (time-based retention).
+		// If tarball is also set for deletion on expire it is also taken care here.
 		default:
 			if chainNode.Spec.Persistence.Snapshots.ShouldPreserveLastSnapshot() && len(snapshots) == 1 {
 				logger.Info("skipping retention check to preserve last snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
@@ -271,6 +271,50 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 						)
 					}
 				}
+			}
+		}
+	}
+
+	// Handle count-based retention (retain field). Re-list snapshots since some may have been deleted above.
+	if retainCount := chainNode.Spec.Persistence.Snapshots.GetRetainCount(); retainCount != nil {
+		snapshots, err = r.listNodeSnapshots(ctx, chainNode)
+		if err != nil {
+			return err
+		}
+		// Sort snapshots by creation time, newest last
+		sort.Slice(snapshots, func(i, j int) bool {
+			return snapshots[i].CreationTimestamp.Before(&snapshots[j].CreationTimestamp)
+		})
+
+		// Calculate how many snapshots to delete
+		toDelete := len(snapshots) - int(*retainCount)
+		if chainNode.Spec.Persistence.Snapshots.ShouldPreserveLastSnapshot() && toDelete >= len(snapshots) {
+			// Ensure at least one snapshot is preserved
+			toDelete = len(snapshots) - 1
+		}
+
+		// Delete oldest snapshots (from the beginning of sorted slice)
+		for i := 0; i < toDelete; i++ {
+			snapshot := snapshots[i]
+			logger.Info("deleting pvc snapshot due to retain count", "snapshot", snapshot.GetName(), "retain", *retainCount)
+			if err = r.Delete(ctx, &snapshot); err != nil {
+				return err
+			}
+			r.recorder.Eventf(chainNode,
+				corev1.EventTypeNormal,
+				appsv1.ReasonDeletedSnapshot,
+				"Deleted PVC snapshot %s (exceeded retain count of %d)", snapshot.GetName(), *retainCount,
+			)
+			if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() && chainNode.Spec.Persistence.Snapshots.ExportTarball.DeleteWhenExpired() {
+				logger.Info("deleting snapshot tarball due to retain count", "snapshot", snapshot.GetName(), "retain", *retainCount)
+				if err = r.deleteTarball(ctx, chainNode, &snapshot); err != nil {
+					return err
+				}
+				r.recorder.Eventf(chainNode,
+					corev1.EventTypeNormal,
+					appsv1.ReasonTarballDeleted,
+					"Deleted tarball %s (exceeded retain count)", getTarballName(chainNode, &snapshot),
+				)
 			}
 		}
 	}

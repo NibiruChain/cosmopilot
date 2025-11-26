@@ -466,6 +466,13 @@ func (s *VolumeSnapshotsConfig) ShouldPreserveLastSnapshot() bool {
 	return true
 }
 
+func (s *VolumeSnapshotsConfig) GetRetainCount() *int32 {
+	if s != nil {
+		return s.Retain
+	}
+	return nil
+}
+
 // ExportTarballConfig helper methods
 
 func (e *ExportTarballConfig) GetSuffix() string {

@@ -722,9 +722,16 @@ type VolumeSnapshotsConfig struct {
 	Frequency string `json:"frequency"`
 
 	// How long a snapshot should be retained. Default is indefinite retention.
+	// Cannot be used together with Retain.
 	// +optional
 	// +kubebuilder:validation:Format=duration
 	Retention *string `json:"retention,omitempty"`
+
+	// How many snapshots should be retained. When set, only the most recent N snapshots are kept.
+	// Cannot be used together with Retention.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	Retain *int32 `json:"retain,omitempty"`
 
 	// If true, retention policies will not be enforced when only a single snapshot exists.
 	// Ensures at least one snapshot is always available. Defaults to true.

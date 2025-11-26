@@ -59,5 +59,19 @@ func (chainNode *ChainNode) Validate(old *ChainNode) (admission.Warnings, error)
 		return nil, fmt.Errorf(".spec.genesis and .spec.validator.init are mutually exclusive")
 	}
 
+	// Validate snapshots config
+	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.Snapshots != nil {
+		if err := validateSnapshotsConfig(chainNode.Spec.Persistence.Snapshots, ".spec.persistence.snapshots"); err != nil {
+			return nil, err
+		}
+	}
+
 	return nil, nil
+}
+
+func validateSnapshotsConfig(config *VolumeSnapshotsConfig, path string) error {
+	if config.Retention != nil && config.Retain != nil {
+		return fmt.Errorf("%s.retention and %s.retain are mutually exclusive", path, path)
+	}
+	return nil
 }
