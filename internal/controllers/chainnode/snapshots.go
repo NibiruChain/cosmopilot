@@ -66,7 +66,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 	// Grab list of possible tarball names to make sure we delete any possible dangling jobs
 	tarballNames := make([]string, 0)
 
-	for i, snapshot := range snapshots {
+	for _, snapshot := range snapshots {
 		if chainNode.Spec.Persistence.Snapshots.ShouldExportTarballs() {
 			tarballNames = append(tarballNames, getTarballName(chainNode, &snapshot))
 		}
@@ -242,7 +242,7 @@ func (r *Reconciler) ensureVolumeSnapshots(ctx context.Context, chainNode *appsv
 		// Default case is checking if snapshot has expired. If tarball is also set for deletion on expire it is also
 		// taken care here.
 		default:
-			if chainNode.Spec.Persistence.Snapshots.ShouldPreserveLastSnapshot() && i == len(snapshots)-1 {
+			if chainNode.Spec.Persistence.Snapshots.ShouldPreserveLastSnapshot() && len(snapshots) == 1 {
 				logger.Info("skipping retention check to preserve last snapshot", "snapshot", snapshot.GetName(), "retention", snapshot.Annotations[controllers.AnnotationSnapshotRetention])
 			} else {
 				expired, err := isSnapshotExpired(&snapshot)
