@@ -26,12 +26,17 @@ type Client struct {
 // NewClient creates a new node-utils client for the given host.
 // The host should be a hostname or IP address without scheme or port.
 func NewClient(host string) *Client {
-	return &Client{url: fmt.Sprintf("http://%s:8000", host)}
+	return &Client{url: fmt.Sprintf("http://%s:%d", host, DefaultPort)}
 }
 
 // httpGet performs an HTTP GET request and returns the response body as a string.
 // It handles error checking and ensures the response body is properly closed.
 func (c *Client) httpGet(ctx context.Context, endpoint string) (string, error) {
+	return c.httpGetWithStatus(ctx, endpoint, http.StatusOK)
+}
+
+// httpGetWithStatus performs an HTTP GET request and accepts multiple valid status codes.
+func (c *Client) httpGetWithStatus(ctx context.Context, endpoint string, validStatuses ...int) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url+endpoint, nil)
 	if err != nil {
 		return "", err
@@ -48,7 +53,14 @@ func (c *Client) httpGet(ctx context.Context, endpoint string) (string, error) {
 		return "", err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	validStatus := false
+	for _, status := range validStatuses {
+		if resp.StatusCode == status {
+			validStatus = true
+			break
+		}
+	}
+	if !validStatus {
 		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -101,27 +113,11 @@ func (c *Client) GetLatestHeight(ctx context.Context) (int64, error) {
 // RequiresUpgrade checks if the node requires an upgrade.
 // Returns true if an upgrade is required, false otherwise.
 func (c *Client) RequiresUpgrade(ctx context.Context) (bool, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url+"/must_upgrade", nil)
+	body, err := c.httpGetWithStatus(ctx, "/must_upgrade", http.StatusOK, http.StatusUpgradeRequired)
 	if err != nil {
 		return false, err
 	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusUpgradeRequired {
-		return false, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-
-	return strconv.ParseBool(string(body))
+	return strconv.ParseBool(body)
 }
 
 // ShutdownNodeUtilsServer sends a shutdown signal to the node-utils server.

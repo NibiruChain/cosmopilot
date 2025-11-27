@@ -2,14 +2,31 @@ package nodeutils
 
 import "time"
 
+const (
+	// DefaultPort is the default port for the node-utils HTTP server.
+	DefaultPort = 8000
+
+	// DefaultHost is the default host for the node-utils HTTP server.
+	DefaultHost = "0.0.0.0"
+
+	// DefaultDataPath is the default path to the node's data directory.
+	DefaultDataPath = "/home/app/data"
+
+	// DefaultUpgradesConfig is the default path to the upgrades configuration file.
+	DefaultUpgradesConfig = "/config/upgrades.json"
+
+	// DefaultTraceStore is the default path to the trace store FIFO.
+	DefaultTraceStore = "/trace/trace.fifo"
+)
+
 func defaultOptions() *Options {
 	return &Options{
-		DataPath:       "/home/app/data",
-		Host:           "0.0.0.0",
-		Port:           8000,
+		DataPath:       DefaultDataPath,
+		Host:           DefaultHost,
+		Port:           DefaultPort,
 		BlockThreshold: 0,
-		UpgradesConfig: "/config/upgrades.json",
-		TraceStore:     "/trace/trace.fifo",
+		UpgradesConfig: DefaultUpgradesConfig,
+		TraceStore:     DefaultTraceStore,
 		CreateFifo:     false,
 		TmkmsProxy:     false,
 		HaltHeight:     0,

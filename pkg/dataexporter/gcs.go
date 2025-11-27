@@ -88,7 +88,7 @@ func (gcs *GcsExporter) Upload(dir, bucket, name string, opts ...UploadOption) e
 func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, bucket, objectName string, totalSize datasize.ByteSize, opts *UploadOptions) error {
 	partIndex := 0
 	partNames := []string{}
-	var bytesCompressed uint64
+	var bytesCompressed atomic.Uint64
 	var bytesUploaded atomic.Uint64
 
 	// Progress
@@ -105,14 +105,16 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if lastCompressed != bytesCompressed || lastUploaded != bytesUploaded.Load() {
+				currentCompressed := bytesCompressed.Load()
+				currentUploaded := bytesUploaded.Load()
+				if lastCompressed != currentCompressed || lastUploaded != currentUploaded {
 					log.WithFields(map[string]interface{}{
-						"compressed": datasize.ByteSize(bytesCompressed).HumanReadable(),
-						"uploaded":   datasize.ByteSize(bytesUploaded.Load()).HumanReadable(),
+						"compressed": datasize.ByteSize(currentCompressed).HumanReadable(),
+						"uploaded":   datasize.ByteSize(currentUploaded).HumanReadable(),
 						"dir-size":   totalSize.HumanReadable(),
 					}).Info("compressing and uploading")
 				}
-				lastCompressed, lastUploaded = bytesCompressed, bytesUploaded.Load()
+				lastCompressed, lastUploaded = currentCompressed, currentUploaded
 			}
 		}
 	}(progressCtx)
@@ -120,6 +122,7 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, opts.ConcurrentJobs)
 	buf := make([]byte, opts.ChunkSize)
+	var uploadErr atomic.Value // stores first upload error
 
 	for {
 		semaphore <- struct{}{}
@@ -132,7 +135,7 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
 			return fmt.Errorf("error reading chunk: %v", err)
 		}
-		bytesCompressed += uint64(n)
+		bytesCompressed.Add(uint64(n))
 		if n == 0 {
 			break // Done reading
 		}
@@ -163,6 +166,7 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 				opts.BufferSize.Bytes(),
 			); err != nil {
 				log.Errorf("failed to upload part %s: %v", partName, err)
+				uploadErr.CompareAndSwap(nil, err) // store first error
 			}
 			log.WithFields(map[string]interface{}{
 				"part": partName,
@@ -177,6 +181,12 @@ func (gcs *GcsExporter) uploadChunks(ctx context.Context, reader io.Reader, buck
 	}
 
 	wg.Wait()
+
+	// Check if any upload failed
+	if err := uploadErr.Load(); err != nil {
+		return fmt.Errorf("upload failed: %w", err.(error))
+	}
+
 	return gcs.composeParts(ctx, bucket, partNames, objectName, totalSize, opts)
 }
 

@@ -277,7 +277,10 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			data := map[string]string{
 				controllers.MinimumGasPricesKey: price,
 			}
-			dataBytes, _ := json.Marshal(data)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal minimum gas prices: %w", err)
+			}
 
 			if node.Spec.Config == nil {
 				node.Spec.Config = &appsv1.Config{
@@ -297,7 +300,10 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 				}
 
 				cfgData[controllers.MinimumGasPricesKey] = price
-				newDataBytes, _ := json.Marshal(cfgData)
+				newDataBytes, err := json.Marshal(cfgData)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal config data: %w", err)
+				}
 				cfg[controllers.AppTomlFile] = runtime.RawExtension{Raw: newDataBytes}
 			}
 		}
