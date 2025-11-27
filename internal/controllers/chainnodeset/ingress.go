@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -161,7 +161,7 @@ func (r *Reconciler) getIngressSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.N
 			Annotations: group.Ingress.Annotations,
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(group.GetIngressClass()),
+			IngressClassName: ptr.To(group.GetIngressClass()),
 			Rules:            make([]v1.IngressRule, 0),
 		},
 	}
@@ -312,7 +312,7 @@ func (r *Reconciler) getGrpcIngressSpec(nodeSet *appsv1.ChainNodeSet, group apps
 			Annotations: group.GetGrpcAnnotations(),
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(group.GetIngressClass()),
+			IngressClassName: ptr.To(group.GetIngressClass()),
 			Rules: []v1.IngressRule{
 				{
 					Host: fmt.Sprintf("grpc.%s", group.Ingress.Host),
@@ -359,7 +359,7 @@ func (r *Reconciler) getGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, globalIn
 			Annotations: globalIngress.Annotations,
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(globalIngress.GetIngressClass()),
+			IngressClassName: ptr.To(globalIngress.GetIngressClass()),
 			Rules:            make([]v1.IngressRule, 0),
 		},
 	}
@@ -510,7 +510,7 @@ func (r *Reconciler) getGrpcGlobalIngressSpec(nodeSet *appsv1.ChainNodeSet, glob
 			Annotations: globalIngress.GetGrpcAnnotations(),
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(globalIngress.GetIngressClass()),
+			IngressClassName: ptr.To(globalIngress.GetIngressClass()),
 			Rules: []v1.IngressRule{
 				{
 					Host: fmt.Sprintf("grpc.%s", globalIngress.Host),

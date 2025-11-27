@@ -35,7 +35,7 @@ var uploadCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.WithField("time-elapsed", time.Now().Sub(start)).Info("upload successful")
+		log.WithField("time-elapsed", time.Since(start)).Info("upload successful")
 	},
 }
 

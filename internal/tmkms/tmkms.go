@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
@@ -94,7 +94,7 @@ func (kms *KMS) ensureIdentityKey(ctx context.Context) error {
 				Name:      kms.Name,
 				Namespace: kms.Owner.GetNamespace(),
 			},
-			Immutable: pointer.Bool(true),
+			Immutable: ptr.To(true),
 			Data:      map[string][]byte{identityKeyName: []byte(key)},
 		}
 		_, err = kms.Client.CoreV1().Secrets(kms.Owner.GetNamespace()).Create(ctx, spec, metav1.CreateOptions{})
@@ -158,7 +158,7 @@ func (kms *KMS) generateKmsIdentityKey(ctx context.Context) (string, error) {
 	_ = ph.Delete(ctx)
 
 	// Delete the pod independently of the result
-	defer ph.Delete(ctx)
+	defer func() { _ = ph.Delete(ctx) }()
 
 	if err := ph.Create(ctx); err != nil {
 		return "", err

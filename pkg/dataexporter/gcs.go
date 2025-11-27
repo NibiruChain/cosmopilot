@@ -19,7 +19,7 @@ import (
 
 const (
 	GCS                   Provider = "gcs"
-	CompositionBatchLimit          = 32
+	CompositionBatchLimit int      = 32
 )
 
 type GcsExporter struct {

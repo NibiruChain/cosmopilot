@@ -114,12 +114,9 @@ func (s *NodeUtils) Start() error {
 	go func() {
 		ticker := time.NewTicker(fineStatsCollectorInterval)
 		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if err := s.collectProcessStats(s.fineStats); err != nil {
-					log.Errorf("error collecting process fine-grained stats: %v", err)
-				}
+		for range ticker.C {
+			if err := s.collectProcessStats(s.fineStats); err != nil {
+				log.Errorf("error collecting process fine-grained stats: %v", err)
 			}
 		}
 	}()
@@ -128,12 +125,9 @@ func (s *NodeUtils) Start() error {
 	go func() {
 		ticker := time.NewTicker(coarseStatsCollectorInterval)
 		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if err := s.collectProcessStats(s.coarseStats); err != nil {
-					log.Errorf("error collecting process coarse-grained stats: %v", err)
-				}
+		for range ticker.C {
+			if err := s.collectProcessStats(s.coarseStats); err != nil {
+				log.Errorf("error collecting process coarse-grained stats: %v", err)
 			}
 		}
 	}()

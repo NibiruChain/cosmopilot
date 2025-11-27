@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -71,7 +71,7 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 
 	default:
 		genesisConfig = &appsv1.GenesisConfig{
-			ConfigMap: pointer.String(nodeSet.Spec.Genesis.GetConfigMapName(nodeSet.Status.ChainID)),
+			ConfigMap: ptr.To(nodeSet.Spec.Genesis.GetConfigMapName(nodeSet.Status.ChainID)),
 		}
 	}
 

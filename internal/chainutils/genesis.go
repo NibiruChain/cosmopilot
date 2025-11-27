@@ -12,7 +12,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -158,7 +158,7 @@ func (a *App) NewGenesis(ctx context.Context,
 					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 				},
 			},
-			TerminationGracePeriodSeconds: pointer.Int64(0),
+			TerminationGracePeriodSeconds: ptr.To[int64](0),
 		},
 	}
 

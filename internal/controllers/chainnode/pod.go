@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -74,7 +74,7 @@ func (r *Reconciler) getChainNodePod(ctx context.Context, chainNode *appsv1.Chai
 	return pod, nil
 }
 
-func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, configHash string) error {
+func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode *appsv1.ChainNode, configHash string) error {
 	logger := log.FromContext(ctx)
 
 	// Prepare pod spec
@@ -175,7 +175,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, app *chainutils.App, chainNo
 		}
 
 		// Force update config files, to prevent restarting again because of config changes
-		app, err = chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
+		app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
 			chainNode.Spec.App.GetSdkVersion(),
 			chainutils.WithImage(chainNode.GetAppImage()),
 			chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
@@ -624,15 +624,15 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			}),
 		},
 		Spec: corev1.PodSpec{
-			ShareProcessNamespace: pointer.Bool(true),
+			ShareProcessNamespace: ptr.To(true),
 			RestartPolicy:         corev1.RestartPolicyNever,
 			PriorityClassName:     r.opts.GetNodesPriorityClassName(),
 			Affinity:              chainNode.Spec.Affinity,
 			NodeSelector:          chainNode.Spec.NodeSelector,
 			SecurityContext: &corev1.PodSecurityContext{
-				RunAsUser:  pointer.Int64(controllers.NonRootId),
-				RunAsGroup: pointer.Int64(controllers.NonRootId),
-				FSGroup:    pointer.Int64(controllers.NonRootId),
+				RunAsUser:  ptr.To[int64](controllers.NonRootId),
+				RunAsGroup: ptr.To[int64](controllers.NonRootId),
+				FSGroup:    ptr.To[int64](controllers.NonRootId),
 			},
 			TerminationGracePeriodSeconds: chainNode.Spec.Config.GetTerminationGracePeriodSeconds(),
 			Volumes:                       r.buildBaseVolumes(chainNode),

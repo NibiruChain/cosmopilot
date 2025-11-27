@@ -139,7 +139,7 @@ func (r *Reconciler) ensureServices(ctx context.Context, chainNode *appsv1.Chain
 			// Wait for LoadBalancer to be available
 			logger.V(1).Info("waiting for load balancer address to be available", "svc", p2p.GetName())
 			if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
-				return svc.Status.LoadBalancer.Ingress != nil && len(svc.Status.LoadBalancer.Ingress) > 0, nil
+				return len(svc.Status.LoadBalancer.Ingress) > 0, nil
 			}, timeoutWaitServiceIP); err != nil {
 				return fmt.Errorf("timeout waiting for LoadBalancer address for service %s: %w", p2p.GetName(), err)
 			}

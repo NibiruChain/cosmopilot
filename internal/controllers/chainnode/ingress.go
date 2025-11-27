@@ -8,7 +8,7 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -106,7 +106,7 @@ func (r *Reconciler) getIngressSpec(chainNode *appsv1.ChainNode) (*v1.Ingress, e
 			Annotations: chainNode.Spec.Ingress.Annotations,
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(chainNode.GetIngressClass()),
+			IngressClassName: ptr.To(chainNode.GetIngressClass()),
 			Rules:            make([]v1.IngressRule, 0),
 		},
 	}
@@ -253,7 +253,7 @@ func (r *Reconciler) getGrpcIngressSpec(chainNode *appsv1.ChainNode) (*v1.Ingres
 			Annotations: chainNode.GetGrpcAnnotations(),
 		},
 		Spec: v1.IngressSpec{
-			IngressClassName: pointer.String(chainNode.GetIngressClass()),
+			IngressClassName: ptr.To(chainNode.GetIngressClass()),
 			Rules: []v1.IngressRule{
 				{
 					Host: fmt.Sprintf("grpc.%s", chainNode.Spec.Ingress.Host),

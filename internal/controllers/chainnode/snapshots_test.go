@@ -7,7 +7,7 @@ import (
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
 	"github.com/NibiruChain/cosmopilot/internal/controllers"
@@ -44,7 +44,7 @@ func TestIsSnapshotReady(t *testing.T) {
 			name: "snapshot not ready",
 			snapshot: &snapshotv1.VolumeSnapshot{
 				Status: &snapshotv1.VolumeSnapshotStatus{
-					ReadyToUse: pointer.Bool(false),
+					ReadyToUse: ptr.To(false),
 				},
 			},
 			want: false,
@@ -53,7 +53,7 @@ func TestIsSnapshotReady(t *testing.T) {
 			name: "snapshot ready",
 			snapshot: &snapshotv1.VolumeSnapshot{
 				Status: &snapshotv1.VolumeSnapshotStatus{
-					ReadyToUse: pointer.Bool(true),
+					ReadyToUse: ptr.To(true),
 				},
 			},
 			want: true,
@@ -381,16 +381,16 @@ func TestGetRetainCount(t *testing.T) {
 		{
 			name: "retain set to 3",
 			config: &appsv1.VolumeSnapshotsConfig{
-				Retain: pointer.Int32(3),
+				Retain: ptr.To[int32](3),
 			},
-			want: pointer.Int32(3),
+			want: ptr.To[int32](3),
 		},
 		{
 			name: "retain set to 1",
 			config: &appsv1.VolumeSnapshotsConfig{
-				Retain: pointer.Int32(1),
+				Retain: ptr.To[int32](1),
 			},
-			want: pointer.Int32(1),
+			want: ptr.To[int32](1),
 		},
 	}
 
@@ -422,7 +422,7 @@ func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
 				},
 				Spec: appsv1.ChainNodeSpec{
 					Genesis: &appsv1.GenesisConfig{
-						Url: pointer.String("https://example.com/genesis.json"),
+						Url: ptr.To("https://example.com/genesis.json"),
 					},
 					App: appsv1.AppSpec{
 						Image: "test-image",
@@ -430,7 +430,7 @@ func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
 					Persistence: &appsv1.Persistence{
 						Snapshots: &appsv1.VolumeSnapshotsConfig{
 							Frequency: "24h",
-							Retention: pointer.String("72h"),
+							Retention: ptr.To("72h"),
 						},
 					},
 				},
@@ -446,7 +446,7 @@ func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
 				},
 				Spec: appsv1.ChainNodeSpec{
 					Genesis: &appsv1.GenesisConfig{
-						Url: pointer.String("https://example.com/genesis.json"),
+						Url: ptr.To("https://example.com/genesis.json"),
 					},
 					App: appsv1.AppSpec{
 						Image: "test-image",
@@ -454,7 +454,7 @@ func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
 					Persistence: &appsv1.Persistence{
 						Snapshots: &appsv1.VolumeSnapshotsConfig{
 							Frequency: "24h",
-							Retain:    pointer.Int32(5),
+							Retain:    ptr.To[int32](5),
 						},
 					},
 				},
@@ -470,7 +470,7 @@ func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
 				},
 				Spec: appsv1.ChainNodeSpec{
 					Genesis: &appsv1.GenesisConfig{
-						Url: pointer.String("https://example.com/genesis.json"),
+						Url: ptr.To("https://example.com/genesis.json"),
 					},
 					App: appsv1.AppSpec{
 						Image: "test-image",
@@ -478,8 +478,8 @@ func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
 					Persistence: &appsv1.Persistence{
 						Snapshots: &appsv1.VolumeSnapshotsConfig{
 							Frequency: "24h",
-							Retention: pointer.String("72h"),
-							Retain:    pointer.Int32(5),
+							Retention: ptr.To("72h"),
+							Retain:    ptr.To[int32](5),
 						},
 					},
 				},
@@ -495,7 +495,7 @@ func TestValidateSnapshotsConfigMutualExclusion(t *testing.T) {
 				},
 				Spec: appsv1.ChainNodeSpec{
 					Genesis: &appsv1.GenesisConfig{
-						Url: pointer.String("https://example.com/genesis.json"),
+						Url: ptr.To("https://example.com/genesis.json"),
 					},
 					App: appsv1.AppSpec{
 						Image: "test-image",

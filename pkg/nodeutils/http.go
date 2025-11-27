@@ -48,7 +48,7 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(b)
+	_, _ = w.Write(b)
 }
 
 func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +71,7 @@ func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		blockAge := time.Now().Sub(block.Header.Time)
+		blockAge := time.Since(block.Header.Time)
 
 		log.WithFields(map[string]interface{}{
 			"height":    block.Header.Height,
@@ -112,13 +112,13 @@ func (s *NodeUtils) dataSize(w http.ResponseWriter, r *http.Request) {
 	}
 	log.WithField("size", size).Info("retrieved data size")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(strconv.FormatInt(size, 10)))
+	_, _ = w.Write([]byte(strconv.FormatInt(size, 10)))
 }
 
 func (s *NodeUtils) latestHeight(w http.ResponseWriter, r *http.Request) {
 	log.WithField("height", s.latestBlockHeight.Load()).Info("retrieved latest height")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(strconv.FormatInt(s.latestBlockHeight.Load(), 10)))
+	_, _ = w.Write([]byte(strconv.FormatInt(s.latestBlockHeight.Load(), 10)))
 }
 
 func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +128,7 @@ func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
-	w.Write([]byte(strconv.FormatBool(s.requiresUpgrade.Load())))
+	_, _ = w.Write([]byte(strconv.FormatBool(s.requiresUpgrade.Load())))
 }
 
 func (s *NodeUtils) tmkmsConnectionActive(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +138,7 @@ func (s *NodeUtils) tmkmsConnectionActive(w http.ResponseWriter, r *http.Request
 	} else {
 		w.WriteHeader(http.StatusNotAcceptable)
 	}
-	w.Write([]byte(strconv.FormatBool(s.tmkmsActive.Load())))
+	_, _ = w.Write([]byte(strconv.FormatBool(s.tmkmsActive.Load())))
 }
 
 func (s *NodeUtils) shutdownServer(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +216,7 @@ func (s *NodeUtils) statsCPU(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Write([]byte(strconv.FormatFloat(stats.CPUTimeSec, 'E', -1, 64)))
+		_, _ = w.Write([]byte(strconv.FormatFloat(stats.CPUTimeSec, 'E', -1, 64)))
 		return
 	}
 
@@ -229,7 +229,7 @@ func (s *NodeUtils) statsCPU(w http.ResponseWriter, r *http.Request) {
 
 	collector := s.selectCollector(dur)
 	avg := collector.AverageCPUUsage(dur)
-	w.Write([]byte(strconv.FormatFloat(avg, 'E', -1, 64)))
+	_, _ = w.Write([]byte(strconv.FormatFloat(avg, 'E', -1, 64)))
 }
 
 func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +245,7 @@ func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("stats error: %v", err), http.StatusInternalServerError)
 			return
 		}
-		w.Write([]byte(strconv.FormatUint(stats.MemoryRSS, 10)))
+		_, _ = w.Write([]byte(strconv.FormatUint(stats.MemoryRSS, 10)))
 		return
 	}
 
@@ -257,7 +257,7 @@ func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
 
 	collector := s.selectCollector(dur)
 	avg := collector.AverageMemoryUsage(dur)
-	w.Write([]byte(strconv.FormatUint(avg, 10)))
+	_, _ = w.Write([]byte(strconv.FormatUint(avg, 10)))
 }
 
 func (s *NodeUtils) stateSyncing(w http.ResponseWriter, r *http.Request) {

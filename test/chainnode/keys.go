@@ -58,7 +58,7 @@ func testImportPrivateKey(tf *framework.TestFramework, ns *corev1.Namespace, app
 		},
 	}
 
-	secret, err := tf.KubeClient.CoreV1().Secrets(ns.GetName()).Create(tf.Context(), secret, metav1.CreateOptions{})
+	_, err := tf.KubeClient.CoreV1().Secrets(ns.GetName()).Create(tf.Context(), secret, metav1.CreateOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	chainNode := NewChainNodeBasic(ns, app)
@@ -119,7 +119,7 @@ func testImportAccount(tf *framework.TestFramework, ns *corev1.Namespace, app ap
 		},
 	}
 
-	secret, err := tf.KubeClient.CoreV1().Secrets(ns.GetName()).Create(tf.Context(), secret, metav1.CreateOptions{})
+	_, err := tf.KubeClient.CoreV1().Secrets(ns.GetName()).Create(tf.Context(), secret, metav1.CreateOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	chainNode := NewChainNodeBasic(ns, app)

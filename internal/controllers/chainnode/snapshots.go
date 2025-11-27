@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -470,7 +470,7 @@ func getVolumeSnapshotSpec(chainNode *appsv1.ChainNode) *snapshotv1.VolumeSnapsh
 		},
 		Spec: snapshotv1.VolumeSnapshotSpec{
 			Source: snapshotv1.VolumeSnapshotSource{
-				PersistentVolumeClaimName: pointer.String(chainNode.GetName()),
+				PersistentVolumeClaimName: ptr.To(chainNode.GetName()),
 			},
 			VolumeSnapshotClassName: chainNode.Spec.Persistence.Snapshots.SnapshotClassName,
 		},
@@ -631,15 +631,15 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 			},
 		},
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: pointer.Int32(60),
-			BackoffLimit:            pointer.Int32(1),
+			TTLSecondsAfterFinished: ptr.To[int32](60),
+			BackoffLimit:            ptr.To[int32](1),
 			PodFailurePolicy: &batchv1.PodFailurePolicy{
 				Rules: []batchv1.PodFailurePolicyRule{
 					// 1) Count real checker failures (anything except 137/143)
 					{
 						Action: batchv1.PodFailurePolicyActionCount,
 						OnExitCodes: &batchv1.PodFailurePolicyOnExitCodesRequirement{
-							ContainerName: pointer.String("start-checker"),
+							ContainerName: ptr.To("start-checker"),
 							Operator:      batchv1.PodFailurePolicyOnExitCodesOpNotIn,
 							Values:        []int32{137, 143},
 						},
@@ -664,13 +664,13 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 					},
 				},
 			},
-			Completions: pointer.Int32(1),
-			Parallelism: pointer.Int32(1),
+			Completions: ptr.To[int32](1),
+			Parallelism: ptr.To[int32](1),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy:         corev1.RestartPolicyNever,
 					PriorityClassName:     r.opts.GetDefaultPriorityClassName(),
-					ShareProcessNamespace: pointer.Bool(true),
+					ShareProcessNamespace: ptr.To(true),
 					Volumes: []corev1.Volume{
 						{
 							Name: "data",
@@ -830,8 +830,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 		return err
 	}
 
-	pvc, err = r.ClientSet.CoreV1().PersistentVolumeClaims(pvc.GetNamespace()).Create(ctx, pvc, metav1.CreateOptions{})
-	if err != nil {
+	if _, err = r.ClientSet.CoreV1().PersistentVolumeClaims(pvc.GetNamespace()).Create(ctx, pvc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 

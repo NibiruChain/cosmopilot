@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
@@ -64,8 +64,8 @@ func (gcs *GCS) CreateSnapshot(ctx context.Context, name string, vs *snapshotv1.
 			},
 		},
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: pointer.Int32(180),
-			BackoffLimit:            pointer.Int32(0),
+			TTLSecondsAfterFinished: ptr.To[int32](180),
+			BackoffLimit:            ptr.To[int32](0),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy:     corev1.RestartPolicyNever,
@@ -176,12 +176,8 @@ func (gcs *GCS) CreateSnapshot(ctx context.Context, name string, vs *snapshotv1.
 		return err
 	}
 
-	pvc, err = gcs.Client.CoreV1().PersistentVolumeClaims(pvc.GetNamespace()).Create(ctx, pvc, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = gcs.Client.CoreV1().PersistentVolumeClaims(pvc.GetNamespace()).Create(ctx, pvc, metav1.CreateOptions{})
+	return err
 }
 
 func (gcs *GCS) GetSnapshotStatus(ctx context.Context, name string) (SnapshotStatus, error) {
@@ -227,8 +223,8 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 			},
 		},
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: pointer.Int32(60),
-			BackoffLimit:            pointer.Int32(5),
+			TTLSecondsAfterFinished: ptr.To[int32](60),
+			BackoffLimit:            ptr.To[int32](5),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy:     corev1.RestartPolicyNever,

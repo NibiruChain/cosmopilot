@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -129,7 +129,7 @@ func (r *Reconciler) maybeCleanupSeedNodes(ctx context.Context, nodeSet *v1.Chai
 		}
 	}
 
-	if nodeSet.Status.Seeds != nil && len(nodeSet.Status.Seeds) != 0 {
+	if len(nodeSet.Status.Seeds) != 0 {
 		nodeSet.Status.Seeds = nil
 		return r.Status().Update(ctx, nodeSet)
 	}
@@ -265,16 +265,16 @@ func (r *Reconciler) listChainPeers(ctx context.Context, chainID string) (v1.Pee
 		peer := v1.Peer{
 			ID:            svc.Labels[controllers.LabelNodeID],
 			Address:       svc.Name,
-			Port:          pointer.Int(chainutils.P2pPort),
-			Unconditional: pointer.Bool(true),
+			Port:          ptr.To(chainutils.P2pPort),
+			Unconditional: ptr.To(true),
 		}
 
 		if svc.Labels[controllers.LabelSeed] == controllers.StringValueTrue {
-			peer.Seed = pointer.Bool(true)
+			peer.Seed = ptr.To(true)
 		}
 
 		if svc.Labels[controllers.LabelValidator] == controllers.StringValueTrue {
-			peer.Private = pointer.Bool(true)
+			peer.Private = ptr.To(true)
 		}
 
 		peers = append(peers, peer)
@@ -328,9 +328,9 @@ func (r *Reconciler) getStatefulSet(nodeSet *v1.ChainNodeSet, configHash string,
 				Spec: corev1.PodSpec{
 					PriorityClassName: r.opts.GetNodesPriorityClassName(),
 					SecurityContext: &corev1.PodSecurityContext{
-						RunAsUser:  pointer.Int64(controllers.NonRootId),
-						RunAsGroup: pointer.Int64(controllers.NonRootId),
-						FSGroup:    pointer.Int64(controllers.NonRootId),
+						RunAsUser:  ptr.To[int64](controllers.NonRootId),
+						RunAsGroup: ptr.To[int64](controllers.NonRootId),
+						FSGroup:    ptr.To[int64](controllers.NonRootId),
 					},
 					Containers: []corev1.Container{
 						{
@@ -692,7 +692,7 @@ func (r *Reconciler) getSeedPublicAddress(ctx context.Context, nodeSet *v1.Chain
 		// Wait for LoadBalancer to be available
 		logger.V(1).Info("waiting for load balancer address to be available", "svc", svc.GetName())
 		if err := sh.WaitForCondition(ctx, func(svc *corev1.Service) (bool, error) {
-			return svc.Status.LoadBalancer.Ingress != nil && len(svc.Status.LoadBalancer.Ingress) > 0, nil
+			return len(svc.Status.LoadBalancer.Ingress) > 0, nil
 		}, timeoutWaitServiceIP); err != nil {
 			return "", err
 		}
@@ -717,7 +717,7 @@ func (r *Reconciler) getCosmoseedIngress(nodeSet *v1.ChainNodeSet) (*netv1.Ingre
 			Annotations: nodeSet.Spec.Cosmoseed.Ingress.Annotations,
 		},
 		Spec: netv1.IngressSpec{
-			IngressClassName: pointer.String(nodeSet.Spec.Cosmoseed.Ingress.GetIngressClass()),
+			IngressClassName: ptr.To(nodeSet.Spec.Cosmoseed.Ingress.GetIngressClass()),
 			Rules: []netv1.IngressRule{
 				{
 					Host: nodeSet.Spec.Cosmoseed.Ingress.Host,

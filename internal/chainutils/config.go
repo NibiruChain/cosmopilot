@@ -9,7 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/NibiruChain/cosmopilot/internal/k8s"
@@ -38,9 +38,9 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 			Affinity:          a.Affinity,
 			NodeSelector:      a.NodeSelector,
 			SecurityContext: &corev1.PodSecurityContext{
-				RunAsUser:  pointer.Int64(nonRootId),
-				RunAsGroup: pointer.Int64(nonRootId),
-				FSGroup:    pointer.Int64(nonRootId),
+				RunAsUser:  ptr.To[int64](nonRootId),
+				RunAsGroup: ptr.To[int64](nonRootId),
+				FSGroup:    ptr.To[int64](nonRootId),
 			},
 			Volumes: []corev1.Volume{
 				{
@@ -75,7 +75,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 					VolumeMounts: []corev1.VolumeMount{configVolumeMount},
 				},
 			},
-			TerminationGracePeriodSeconds: pointer.Int64(0),
+			TerminationGracePeriodSeconds: ptr.To[int64](0),
 		},
 	}
 	if err := controllerutil.SetControllerReference(a.owner, pod, a.scheme); err != nil {
@@ -88,7 +88,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 	_ = ph.Delete(ctx)
 
 	// Delete the pod independently of the result
-	defer ph.Delete(ctx)
+	defer func() { _ = ph.Delete(ctx) }()
 
 	// Create the pod
 	if err := ph.Create(ctx); err != nil {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 type envTest[K comparable] struct {
@@ -37,13 +37,13 @@ func TestGetBool(t *testing.T) {
 		{
 			name:     "bool2",
 			fallback: true,
-			set:      pointer.String("false"),
+			set:      ptr.To("false"),
 			expected: false,
 		},
 		{
 			name:     "bool3",
 			fallback: false,
-			set:      pointer.String("true"),
+			set:      ptr.To("true"),
 			expected: true,
 		},
 	}
@@ -61,7 +61,7 @@ func TestGetDuration(t *testing.T) {
 		{
 			name:     "duration2",
 			fallback: time.Minute,
-			set:      pointer.String("1d"),
+			set:      ptr.To("1d"),
 			expected: 24 * time.Hour,
 		},
 	}
@@ -79,7 +79,7 @@ func TestGetInt(t *testing.T) {
 		{
 			name:     "int2",
 			fallback: 0,
-			set:      pointer.String("10"),
+			set:      ptr.To("10"),
 			expected: 10,
 		},
 	}
@@ -97,7 +97,7 @@ func TestGetInt64(t *testing.T) {
 		{
 			name:     "int64_2",
 			fallback: 0,
-			set:      pointer.String("10"),
+			set:      ptr.To("10"),
 			expected: 10,
 		},
 	}
@@ -115,7 +115,7 @@ func TestGetUint64(t *testing.T) {
 		{
 			name:     "uint64_2",
 			fallback: 0,
-			set:      pointer.String("10"),
+			set:      ptr.To("10"),
 			expected: 10,
 		},
 	}
@@ -133,7 +133,7 @@ func TestGetString(t *testing.T) {
 		{
 			name:     "string2",
 			fallback: "hello",
-			set:      pointer.String("world"),
+			set:      ptr.To("world"),
 			expected: "world",
 		},
 	}

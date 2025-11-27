@@ -7,7 +7,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
@@ -34,7 +34,7 @@ func New(ctx context.Context, cfgs ...Config) (*TestFramework, error) {
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths:     []string{crdsPath},
 		ErrorIfCRDPathMissing: true,
-		UseExistingCluster:    pointer.Bool(true),
+		UseExistingCluster:    ptr.To(true),
 	}
 
 	restConfig, err := testEnv.Start()

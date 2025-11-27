@@ -25,7 +25,7 @@ var deleteCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.WithField("time-elapsed", time.Now().Sub(start)).Info("delete successful")
+		log.WithField("time-elapsed", time.Since(start)).Info("delete successful")
 	},
 }
 

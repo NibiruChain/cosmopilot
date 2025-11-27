@@ -285,7 +285,7 @@ func (v HashicorpProvider) UploadKey(ctx context.Context, kms *KMS, key string) 
 	_ = ph.Delete(ctx)
 
 	// Delete the pod independently of the result
-	defer ph.Delete(ctx)
+	defer func() { _ = ph.Delete(ctx) }()
 
 	if err := ph.Create(ctx); err != nil {
 		return err

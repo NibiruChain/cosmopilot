@@ -8,7 +8,7 @@ import (
 	"github.com/NibiruChain/cosmoseed/pkg/cosmoseed"
 	"github.com/goccy/go-json"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
@@ -61,7 +61,7 @@ func (nodeSet *ChainNodeSet) GetAppSpecWithUpgrades() AppSpec {
 			Image:  u.Image,
 		}
 		if u.Source == OnChainUpgrade {
-			upgradeSpec.ForceOnChain = pointer.Bool(true)
+			upgradeSpec.ForceOnChain = ptr.To(true)
 		}
 
 		if !utils.SliceContainsObj(spec.Upgrades, upgradeSpec, func(a UpgradeSpec, b UpgradeSpec) bool {

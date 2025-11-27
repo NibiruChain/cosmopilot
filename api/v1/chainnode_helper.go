@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -407,7 +407,7 @@ func (val *ValidatorConfig) GetMinSelfDelegation() *string {
 		}
 		return val.CreateValidator.MinSelfDelegation
 	}
-	return pointer.String(DefaultMinimumSelfDelegation)
+	return ptr.To(DefaultMinimumSelfDelegation)
 }
 
 // ChainNode ingress helper methods
@@ -449,5 +449,5 @@ func (chainNode *ChainNode) GetServiceName() string {
 	if chainNode.UseInternal() {
 		return fmt.Sprintf("%s-internal", chainNode.GetName())
 	}
-	return fmt.Sprintf("%s", chainNode.GetName())
+	return chainNode.GetName()
 }

@@ -8,7 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
@@ -86,7 +86,7 @@ func (a *App) CreateValidator(
 					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
 				},
 			},
-			TerminationGracePeriodSeconds: pointer.Int64(0),
+			TerminationGracePeriodSeconds: ptr.To[int64](0),
 		},
 	}
 
@@ -100,7 +100,7 @@ func (a *App) CreateValidator(
 	_ = ph.Delete(ctx)
 
 	// Delete the pod independently of the result
-	defer ph.Delete(ctx)
+	defer func() { _ = ph.Delete(ctx) }()
 
 	// Create the pod
 	if err := ph.Create(ctx); err != nil {

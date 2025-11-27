@@ -90,12 +90,6 @@ const (
 	DefaultLimitPercentage = 150
 )
 
-var (
-	defaultServiceMonitorSelector = map[string]string{
-		"release": "monitoring-stack",
-	}
-)
-
 // GetImage returns the versioned image to be used
 func (app *AppSpec) GetImage() string {
 	return fmt.Sprintf("%s:%s", app.Image, app.GetImageVersion())

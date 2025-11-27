@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -178,6 +178,9 @@ func (r *Reconciler) ensureConfigs(ctx context.Context, app *chainutils.App, cha
 			}
 			if _, ok := configs[filename]; ok {
 				configs[filename], err = utils.Merge(configs[filename], data)
+				if err != nil {
+					return "", err
+				}
 			} else {
 				configs[filename] = data
 			}
@@ -456,16 +459,16 @@ func (r *Reconciler) getChainPeers(ctx context.Context, chainNode *appsv1.ChainN
 		peer := appsv1.Peer{
 			ID:            svc.Labels[controllers.LabelNodeID],
 			Address:       svc.Name,
-			Port:          pointer.Int(chainutils.P2pPort),
-			Unconditional: pointer.Bool(true),
+			Port:          ptr.To(chainutils.P2pPort),
+			Unconditional: ptr.To(true),
 		}
 
 		if svc.Labels[controllers.LabelSeed] == controllers.StringValueTrue {
-			peer.Seed = pointer.Bool(true)
+			peer.Seed = ptr.To(true)
 		}
 
 		if svc.Labels[controllers.LabelValidator] == controllers.StringValueTrue {
-			peer.Private = pointer.Bool(true)
+			peer.Private = ptr.To(true)
 		}
 
 		peers = append(peers, peer)

@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 type PvcHelper struct {
@@ -36,7 +36,7 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path, pc string, a
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: pointer.Int64(0),
+			TerminationGracePeriodSeconds: ptr.To[int64](0),
 			PriorityClassName:             pc,
 			Affinity:                      af,
 			NodeSelector:                  ns,
@@ -78,7 +78,7 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path, pc string, a
 	_ = ph.Delete(ctx)
 
 	// Delete the pod independently of the result
-	defer ph.Delete(ctx)
+	defer func() { _ = ph.Delete(ctx) }()
 
 	// Create the pod
 	if err := ph.Create(ctx); err != nil {
@@ -115,7 +115,7 @@ func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path, pc string, a
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: pointer.Int64(0),
+			TerminationGracePeriodSeconds: ptr.To[int64](0),
 			PriorityClassName:             pc,
 			Affinity:                      af,
 			NodeSelector:                  ns,
@@ -152,7 +152,7 @@ func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path, pc string, a
 	_ = ph.Delete(ctx)
 
 	// Delete the pod independently of the result
-	defer ph.Delete(ctx)
+	defer func() { _ = ph.Delete(ctx) }()
 
 	// Create the pod
 	if err := ph.Create(ctx); err != nil {

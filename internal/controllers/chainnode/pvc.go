@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -140,7 +140,7 @@ func (r *Reconciler) ensureDataVolume(ctx context.Context, app *chainutils.App, 
 
 		if chainNode.ShouldRestoreFromSnapshot() {
 			pvc.Spec.DataSource = &corev1.TypedLocalObjectReference{
-				APIGroup: pointer.String(VolumeSnapshotDataSourceApiGroup),
+				APIGroup: ptr.To(VolumeSnapshotDataSourceApiGroup),
 				Kind:     VolumeSnapshotDataSourceKind,
 				Name:     chainNode.Spec.Persistence.RestoreFromSnapshot.Name,
 			}

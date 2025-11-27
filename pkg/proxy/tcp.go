@@ -80,7 +80,12 @@ func (p *TCP) handle(lconn *net.TCPConn) error {
 	go func() {
 		defer lconn.Close()
 		defer rconn.Close()
-		io.Copy(rconn, lconn)
+		if _, err := io.Copy(rconn, lconn); err != nil {
+			log.WithFields(log.Fields{
+				"laddr": p.laddr,
+				"raddr": p.raddr,
+			}).Tracef("error copying from %v: %v", lconn.RemoteAddr(), err)
+		}
 		log.WithFields(log.Fields{
 			"laddr": p.laddr,
 			"raddr": p.raddr,
@@ -91,7 +96,12 @@ func (p *TCP) handle(lconn *net.TCPConn) error {
 	go func() {
 		defer lconn.Close()
 		defer rconn.Close()
-		io.Copy(lconn, rconn)
+		if _, err := io.Copy(lconn, rconn); err != nil {
+			log.WithFields(log.Fields{
+				"laddr": p.laddr,
+				"raddr": p.raddr,
+			}).Tracef("error copying to %v: %v", lconn.RemoteAddr(), err)
+		}
 		log.WithFields(log.Fields{
 			"laddr": p.laddr,
 			"raddr": p.raddr,
