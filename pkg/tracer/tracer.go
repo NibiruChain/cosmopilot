@@ -71,7 +71,9 @@ func (t *StoreTracer) Stop() error {
 
 // Start begins processing trace events and sending them to the Traces channel.
 // This method blocks until the tracer is stopped or the file is closed.
+// The Traces channel is closed when Start returns, allowing consumers to detect completion.
 func (t *StoreTracer) Start() {
+	defer close(t.Traces)
 	for line := range t.tail.Lines {
 		if line.Err != nil {
 			t.Traces <- &Trace{Err: line.Err}

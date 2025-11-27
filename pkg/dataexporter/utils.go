@@ -9,6 +9,7 @@ import (
 	"github.com/NibiruChain/cosmopilot/pkg/utils"
 )
 
+// GetDirSize calculates the total size of a directory and its contents.
 func GetDirSize(path string) (datasize.ByteSize, error) {
 	totalSize, err := utils.DirSize(path)
 	if err != nil {

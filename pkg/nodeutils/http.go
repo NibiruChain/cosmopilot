@@ -226,6 +226,10 @@ func (s *NodeUtils) statsCPU(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid duration format", http.StatusBadRequest)
 		return
 	}
+	if dur <= 0 || dur > 24*time.Hour {
+		http.Error(w, "duration must be between 0 and 24h", http.StatusBadRequest)
+		return
+	}
 
 	collector := s.selectCollector(dur)
 	avg := collector.AverageCPUUsage(dur)
@@ -252,6 +256,10 @@ func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
 	dur, err := time.ParseDuration(query)
 	if err != nil {
 		http.Error(w, "invalid duration format", http.StatusBadRequest)
+		return
+	}
+	if dur <= 0 || dur > 24*time.Hour {
+		http.Error(w, "duration must be between 0 and 24h", http.StatusBadRequest)
 		return
 	}
 

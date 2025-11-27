@@ -122,9 +122,9 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 		} else {
 			logLines := strings.Split(logs, "\n")
 			if len(logLines) > defaultLogsLineCount {
-				logger.Info("app error: " + strings.Join(logLines[len(logLines)-defaultLogsLineCount:], "/n"))
+				logger.Info("app error: " + strings.Join(logLines[len(logLines)-defaultLogsLineCount:], "\n"))
 			} else {
-				logger.Info("app error: " + strings.Join(logLines, "/n"))
+				logger.Info("app error: " + strings.Join(logLines, "\n"))
 			}
 		}
 		return r.recreatePod(ctx, chainNode, pod, false)
@@ -242,9 +242,9 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 		} else {
 			logLines := strings.Split(logs, "\n")
 			if len(logLines) > defaultLogsLineCount {
-				logger.Info("app error: " + strings.Join(logLines[len(logLines)-defaultLogsLineCount:], "/n"))
+				logger.Info("app error: " + strings.Join(logLines[len(logLines)-defaultLogsLineCount:], "\n"))
 			} else {
-				logger.Info("app error: " + strings.Join(logLines, "/n"))
+				logger.Info("app error: " + strings.Join(logLines, "\n"))
 			}
 		}
 		return r.recreatePod(ctx, chainNode, pod, false)

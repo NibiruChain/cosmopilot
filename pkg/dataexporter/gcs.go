@@ -22,10 +22,12 @@ const (
 	CompositionBatchLimit int      = 32
 )
 
+// GcsExporter implements Exporter for Google Cloud Storage.
 type GcsExporter struct {
 	client *storage.Client
 }
 
+// NewGcsExporter creates a new GCS exporter using application default credentials.
 func NewGcsExporter() (*GcsExporter, error) {
 	ctx := context.Background()
 	client, err := storage.NewClient(ctx)

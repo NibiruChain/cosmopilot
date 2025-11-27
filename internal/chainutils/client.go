@@ -31,13 +31,13 @@ type Client struct {
 }
 
 func NewClient(host string) (*Client, error) {
-	grpcConn, err := grpc.Dial(
+	grpcConn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", host, GrpcPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("could not connect to grpc server")
+		return nil, fmt.Errorf("could not connect to grpc server at %s:%d: %w", host, GrpcPort, err)
 	}
 
 	tmClient, err := http.NewWithTimeout(
@@ -46,7 +46,9 @@ func NewClient(host string) (*Client, error) {
 		uint(httpTimeout.Seconds()),
 	)
 	if err != nil {
-		return nil, err
+		// Close gRPC connection to avoid leak
+		grpcConn.Close()
+		return nil, fmt.Errorf("could not connect to rpc server at %s:%d: %w", host, RpcPort, err)
 	}
 
 	return &Client{
