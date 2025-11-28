@@ -79,7 +79,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 		},
 	}
 	if err := controllerutil.SetControllerReference(a.owner, pod, a.scheme); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setting controller reference: %w", err)
 	}
 
 	ph := k8s.NewPodHelper(a.client, a.restConfig, pod)
@@ -92,12 +92,12 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 
 	// Create the pod
 	if err := ph.Create(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating config generator pod: %w", err)
 	}
 
 	// Wait for the pod to be running
 	if err := ph.WaitForPodRunning(ctx, time.Minute); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("waiting for config generator pod: %w", err)
 	}
 
 	// Grab list of config files
@@ -106,7 +106,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 		[]string{"sh", "-c", fmt.Sprintf("find %s -type f -name '*.toml' -exec basename {} \\;", filepath.Join(defaultHome, defaultConfig))},
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing config files: %w", err)
 	}
 	filenames := strings.Split(strings.TrimSpace(out), "\n")
 
@@ -115,7 +115,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 	for _, filename := range filenames {
 		configs[filename], _, err = ph.Exec(ctx, "busybox", []string{"cat", filepath.Join(defaultHome, defaultConfig, filename)})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reading config file %s: %w", filename, err)
 		}
 	}
 

@@ -296,7 +296,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 				cfg := *node.Spec.Config.Override
 				var cfgData map[string]interface{}
 				if err := json.Unmarshal(cfg[controllers.AppTomlFile].Raw, &cfgData); err != nil {
-					return nil, err
+					return nil, fmt.Errorf("unmarshaling app config: %w", err)
 				}
 
 				cfgData[controllers.MinimumGasPricesKey] = price

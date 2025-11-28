@@ -85,7 +85,7 @@ func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1
 	}
 	b, err := json.Marshal(upgrades)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshaling upgrades config: %w", err)
 	}
 
 	spec := &corev1.ConfigMap{
@@ -96,7 +96,7 @@ func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1
 		Data: map[string]string{upgradesConfigFile: string(b)},
 	}
 	if err := controllerutil.SetControllerReference(chainNode, spec, r.Scheme); err != nil {
-		return err
+		return fmt.Errorf("setting controller reference: %w", err)
 	}
 
 	cm := &corev1.ConfigMap{}
@@ -154,12 +154,12 @@ func (r *Reconciler) setUpgradeStatus(ctx context.Context, chainNode *appsv1.Cha
 func (r *Reconciler) getGovUpgrades(ctx context.Context, chainNode *appsv1.ChainNode) ([]appsv1.Upgrade, error) {
 	c, err := r.getChainNodeClient(chainNode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating chain client: %w", err)
 	}
 
 	plannedUpgrade, err := c.GetNextUpgrade(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying next upgrade: %w", err)
 	}
 
 	upgrades := make([]appsv1.Upgrade, 0)

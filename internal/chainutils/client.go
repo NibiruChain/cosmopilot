@@ -69,7 +69,7 @@ func (c *Client) QueryValidator(ctx context.Context, address string) (*stakingTy
 		ValidatorAddr: address,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying validator %s: %w", address, err)
 	}
 	return &response.Validator, nil
 }
@@ -81,7 +81,7 @@ func (c *Client) GetValidators(ctx context.Context) ([]stakingTypes.Validator, e
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying validators: %w", err)
 	}
 	return response.Validators, nil
 }
@@ -89,7 +89,7 @@ func (c *Client) GetValidators(ctx context.Context) ([]stakingTypes.Validator, e
 func (c *Client) GetLatestBlock(ctx context.Context) (*tmtypes.Block, error) {
 	response, err := c.nodeClient.GetLatestBlock(ctx, &tmservice.GetLatestBlockRequest{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting latest block: %w", err)
 	}
 	return response.Block, nil
 }
@@ -99,7 +99,7 @@ func (c *Client) GetBlockHash(ctx context.Context, height int64) (string, error)
 		Height: height,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("getting block hash at height %d: %w", height, err)
 	}
 	return hex.EncodeToString(response.BlockId.Hash), nil
 }
@@ -107,7 +107,7 @@ func (c *Client) GetBlockHash(ctx context.Context, height int64) (string, error)
 func (c *Client) IsNodeSyncing(ctx context.Context) (bool, error) {
 	response, err := c.nodeClient.GetSyncing(ctx, &tmservice.GetSyncingRequest{})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("checking node sync status: %w", err)
 	}
 	return response.Syncing, nil
 }
@@ -115,7 +115,7 @@ func (c *Client) IsNodeSyncing(ctx context.Context) (bool, error) {
 func (c *Client) NodeInfo(ctx context.Context) (*p2p.DefaultNodeInfo, error) {
 	response, err := c.nodeClient.GetNodeInfo(ctx, &tmservice.GetNodeInfoRequest{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting node info: %w", err)
 	}
 	return response.DefaultNodeInfo, nil
 }
@@ -123,9 +123,9 @@ func (c *Client) NodeInfo(ctx context.Context) (*p2p.DefaultNodeInfo, error) {
 func (c *Client) GetNextUpgrade(ctx context.Context) (*upgradetypes.Plan, error) {
 	response, err := c.upgradeClient.CurrentPlan(ctx, &upgradetypes.QueryCurrentPlanRequest{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting next upgrade plan: %w", err)
 	}
-	return response.Plan, err
+	return response.Plan, nil
 }
 
 func (c *Client) GetNodeStatus(ctx context.Context) (*coretypes.ResultStatus, error) {
@@ -135,7 +135,7 @@ func (c *Client) GetNodeStatus(ctx context.Context) (*coretypes.ResultStatus, er
 func (c *Client) GetAbciInfo(ctx context.Context) (abci.ResponseInfo, error) {
 	response, err := c.rpcClient.ABCIInfo(ctx)
 	if err != nil {
-		return abci.ResponseInfo{}, err
+		return abci.ResponseInfo{}, fmt.Errorf("getting ABCI info: %w", err)
 	}
-	return response.Response, err
+	return response.Response, nil
 }
