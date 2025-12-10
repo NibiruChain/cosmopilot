@@ -44,5 +44,5 @@ $ helm install \
 ## Installation Options
 
 A full list of available Helm values is available [here](https://github.com/NibiruChain/cosmopilot/blob/main/helm/cosmopilot/values.yaml).
-For other advanced configurations please refer to the [Configuration](03-configuration) page.
+For other advanced configurations please refer to the [Configuration](04-configuration) page.
 

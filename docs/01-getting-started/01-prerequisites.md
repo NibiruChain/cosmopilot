@@ -14,6 +14,13 @@ To use `Cosmopilot`, ensure you meet the following prerequisites before proceedi
 - **[helm](https://helm.sh/)**: Required for installing `Cosmopilot`.
 - **[kubectl](https://kubernetes.io/docs/reference/kubectl/)**: Required for creating and managing resources in your Kubernetes cluster.
 
+## **Chain Compatibility**
+
+Cosmopilot works with chains built on the Cosmos SDK. Before deploying, verify your chain is compatible by checking the [Chain Compatibility](02-chain-compatibility) page, which lists:
+- Required CLI commands your chain binary must support
+- Required API endpoints (gRPC and RPC)
+- Tested chains and their verification status
+
 ---
 
-Ensure all dependencies are installed and your cluster is correctly configured before proceeding to the [Installation](02-installation) page.
+Ensure all dependencies are installed, your cluster is correctly configured, and your chain is compatible before proceeding to the [Installation](03-installation) page.

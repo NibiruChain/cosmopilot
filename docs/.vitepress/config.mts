@@ -20,7 +20,8 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Getting Started', link: '/01-getting-started/01-prerequisites' },
-      { text: 'Usage', link: '/02-usage/01-deploy-node' }
+      { text: 'Chain Compatibility', link: '/01-getting-started/02-chain-compatibility' },
+      { text: 'Usage', link: '/02-usage/01-deploy-node' },
     ],
     sidebar: [
       {
@@ -28,6 +29,7 @@ export default defineConfig({
         base: '/01-getting-started/',
         items: [
           { text: 'Prerequisites', link: '01-prerequisites' },
+          { text: 'Chain Compatibility', link: '02-chain-compatibility' },
           { text: 'Installation', link: '02-installation' },
           { text: 'Configuration', link: '03-configuration' }
         ]

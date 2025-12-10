@@ -13,6 +13,9 @@ hero:
       text: Getting Started
       link: /01-getting-started/01-prerequisites
     - theme: alt
+      text: Chain Compatibility
+      link: /01-getting-started/02-chain-compatibility
+    - theme: alt
       text: Usage
       link: /02-usage/01-deploy-node
 
