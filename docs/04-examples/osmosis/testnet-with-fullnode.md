@@ -1,4 +1,4 @@
-# Osmosis Devnet Validator + Fullnode
+# Osmosis Testnet With Fullnode
 
 ```yaml
 apiVersion: apps.k8s.nibiru.org/v1
@@ -8,14 +8,13 @@ metadata:
 spec:
   app:
     image: osmolabs/osmosis
-    version: 25.2.0
+    version: 31.0.0
     app: osmosisd
     sdkVersion: v0.45 # Old version of genesis commands
 
   validator:
     info:
-      moniker: nibiru-0
-      website: https://nibiru.fi
+      moniker: cosmopilot
 
     config:
       runFlags: ["--reject-config-defaults=true"]
@@ -31,15 +30,9 @@ spec:
       override:
         app.toml:
           minimum-gas-prices: 0.025uosmo
-          mempool:
-            max-txs: 100000
-        config.toml:
-          mempool:
-            size: 100000
-            cache_size: 200000
 
     init:
-      chainID: osmosis-devnet-0
+      chainID: osmosis-testnet-0
       accountPrefix: osmo
       valPrefix: osmovaloper
       assets: [ "100000000000000000000uosmo" ]
@@ -74,7 +67,5 @@ spec:
         override:
           app.toml:
             minimum-gas-prices: 0.025uosmo
-            pruning: custom
-            pruning-keep-recent: "100"
-            pruning-interval: "10"
+
 ```

@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { examplesSidebar } from './examples-sidebar'
 
 export default defineConfig({
   ignoreDeadLinks: true,
@@ -64,41 +65,7 @@ export default defineConfig({
       },
       {
         text: 'Examples',
-        items: [
-          {
-            text: 'Nibiru',
-            base: '/04-examples/nibiru/',
-            items: [
-              { text: 'Validator + Fullnode', link: 'devnet-one-fullnode' },
-              { text: 'Validator with TmKMS', link: 'validator-tmkms' },
-              { text: 'Multi-Validator Devnet', link: 'multi-validator-devnet' },
-            ]
-          },
-          {
-            text: 'Osmosis',
-            base: '/04-examples/osmosis/',
-            items: [
-              { text: 'Validator + Fullnode', link: 'devnet-one-fullnode' },
-              { text: 'Multi-Validator Devnet', link: 'multi-validator-devnet' },
-            ]
-          },
-          {
-            text: 'Cosmos',
-            base: '/04-examples/cosmos/',
-            items: [
-              { text: 'Validator + Fullnode', link: 'devnet-one-fullnode' },
-              { text: 'Multi-Validator Devnet', link: 'multi-validator-devnet' },
-            ]
-          },
-          {
-            text: 'Sei',
-            base: '/04-examples/sei/',
-            items: [
-              { text: 'Validator + Fullnode', link: 'devnet-one-fullnode' },
-              { text: 'Multi-Validator Devnet', link: 'multi-validator-devnet' },
-            ]
-          },
-        ]
+        items: examplesSidebar
       }
     ],
     socialLinks: [

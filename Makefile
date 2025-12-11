@@ -77,6 +77,7 @@ docs: crd-to-markdown ## Generate markdown docs of CRD spec.
 		--header ./docs/03-reference/crds/header.md \
 		-n ChainNode \
 		-n ChainNodeSet > ./docs/03-reference/crds/crds.md
+	@./contrib/scripts/generate-example-docs.sh
 
 ##@ Tests
 

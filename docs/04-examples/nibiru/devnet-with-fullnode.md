@@ -1,4 +1,4 @@
-# Nibiru Devnet Validator + Fullnode
+# Nibiru Devnet With Fullnode
 
 ```yaml
 apiVersion: apps.k8s.nibiru.org/v1
@@ -68,4 +68,5 @@ spec:
             pruning: custom
             pruning-keep-recent: "100"
             pruning-interval: "10"
+
 ```
