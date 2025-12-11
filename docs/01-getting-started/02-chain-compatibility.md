@@ -189,9 +189,11 @@ For automatic upgrade handling, your chain should implement the standard Cosmos 
 
 The following table lists chains that have been tested with Cosmopilot:
 
-| Chain | Version | SDK Version | Image                          | Join Network | New Network | Notes |
-|-------|---------|-------------|--------------------------------|:------------:|:-----------:|-------|
-| [Nibiru](https://nibiru.fi/) | v2.9.0 | v0.47 | `ghcr.io/nibiruchain/nibiru:2.9.0`  | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | All previous versions work |
+| Chain | Version | SDK Version | Image                              | Join Network |                           New Network                            | Notes                                           |
+|-------|---------|-------------|------------------------------------|:------------:|:----------------------------------------------------------------:|-------------------------------------------------|
+| [Cosmos Hub](https://cosmos.network/) | v25.2.0 | v0.50       | `ghcr.io/cosmos/gaia:v25.2.0`      | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)  |                                                 |
+| [Osmosis](https://osmosis.zone/) | v31.0.0 | v0.50       | `osmolabs/osmosis:31.0.0`          | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)* | Use sdkVersion `v0.45` for old genesis commands |
+| [Nibiru](https://nibiru.fi/) | v2.9.0  | v0.47       | `ghcr.io/nibiruchain/nibiru:2.9.0` | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)  | All previous versions work                      |
 
 **Status Legend:**
 - ![Verified](https://img.shields.io/badge/-Verified-brightgreen) - Fully tested and working

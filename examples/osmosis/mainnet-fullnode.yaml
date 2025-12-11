@@ -1,0 +1,46 @@
+apiVersion: apps.k8s.nibiru.org/v1
+kind: ChainNodeSet
+metadata:
+  name: osmosis
+spec:
+  app:
+    image: osmolabs/osmosis
+    version: 31.0.0
+    app: osmosisd
+
+  genesis:
+    url: https://github.com/osmosis-labs/networks/raw/main/osmosis-1/genesis.json
+    chainID: osmosis-1
+    useDataVolume: true
+
+  nodes:
+    - name: fullnodes
+      instances: 1
+
+      persistence:
+        size: 100Gi
+        initTimeout: 10m
+        additionalInitCommands:
+          - image: ghcr.io/nibiruchain/node-tools
+            command: [ "sh" ]
+            args:
+              - "-c"
+              - |
+                SNAPSHOT_URL=$(wget -qO- https://snapshots.osmosis.zone/index.html | sed -n 's/.*href="\(https:\/\/hel1\.your-objectstorage\.com\/osmosis\/osmosis-1\/snapshots\/v31\/[^"]*\.tar\.lz4\)".*/\1/p' | tail -1) && \
+                echo "Downloading snapshot: $SNAPSHOT_URL" && \
+                wget -qO- "$SNAPSHOT_URL" | lz4 -d | tar -C /home/app -xvf -
+
+      config:
+        runFlags: [ "--reject-config-defaults=true" ]
+        volumes:
+          - name: wasm
+            size: 1Gi
+            path: /home/app/wasm
+            deleteWithNode: true
+          - name: ibc-08-wasm
+            size: 1Gi
+            path: /home/app/ibc_08-wasm
+            deleteWithNode: true
+        override:
+          app.toml:
+            minimum-gas-prices: 0.025uosmo
