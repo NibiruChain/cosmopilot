@@ -19,7 +19,7 @@ const (
 	timeoutPodRunning              = 5 * time.Minute
 	timeoutPodDeleted              = 2 * time.Minute
 	timeoutWaitServiceIP           = 5 * time.Minute
-	minimumTimeBeforeFirstSnapshot = 10 * time.Minute
+	minimumTimeBeforeFirstSnapshot = 1 * time.Minute
 
 	// Probe configuration constants
 	startupProbePeriodSeconds      = 5

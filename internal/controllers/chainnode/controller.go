@@ -90,6 +90,7 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=pods/exec;pods/attach,verbs=create
 //+kubebuilder:rbac:groups="",resources=pods/log,verbs=get
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch;patch;create;update;delete
@@ -108,6 +109,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		logger.Error(err, "unable to fetch chainnode")
 		return ctrl.Result{}, err
+	}
+
+	// Check if namespace is being terminated - if so, skip reconcile to avoid errors
+	ns := &corev1.Namespace{}
+	if err := r.Get(ctx, client.ObjectKey{Name: req.Namespace}, ns); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if ns.DeletionTimestamp != nil {
+		logger.V(1).Info("namespace is being terminated, skipping reconcile")
+		return ctrl.Result{}, nil
 	}
 
 	if chainNode.Labels[controllers.LabelWorkerName] != r.opts.WorkerName {

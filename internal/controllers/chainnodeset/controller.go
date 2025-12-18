@@ -69,6 +69,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	// Check if namespace is being terminated - if so, skip reconcile to avoid errors
+	ns := &corev1.Namespace{}
+	if err := r.Get(ctx, client.ObjectKey{Name: req.Namespace}, ns); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if ns.DeletionTimestamp != nil {
+		logger.V(1).Info("namespace is being terminated, skipping reconcile")
+		return ctrl.Result{}, nil
+	}
+
 	if nodeSet.Labels[controllers.LabelWorkerName] != r.opts.WorkerName {
 		logger.V(1).Info("skipping chainnodeset due to worker-name mismatch.")
 		return ctrl.Result{}, nil

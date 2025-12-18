@@ -42,7 +42,7 @@ all: build
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} \
-/^[a-zA-Z0-9_.-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } \
+/^[a-zA-Z0-9_.-]+:.*?##/ { printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2 } \
 /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
 
 ##@ Development
@@ -85,46 +85,53 @@ docs: crd-to-markdown ## Generate markdown docs of CRD spec.
 test.unit: manifests generate fmt vet ## Run unit tests.
 	go test ./api/... ./cmd/... ./internal/... ./pkg/... -coverprofile cover.out
 
+.PHONY: test.integration
+test.integration: FOCUS?=
+test.integration: SKIP?=
+test.integration: TEST_TIMEOUT?=10m
+test.integration: manifests generate fmt vet envtest ## Run integration tests (envtest-based, no cluster needed).
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
+	go test -v ./test/integration/... -timeout $(TEST_TIMEOUT) \
+		--ginkgo.v \
+		--ginkgo.focus="$(FOCUS)" \
+		--ginkgo.skip="$(SKIP)"
+
 .PHONY: test.e2e
-test.e2e: EVENTUALLY_TIMEOUT?=5m
-test.e2e: CERTS_DIR?=/tmp/cosmopilot-e2e
+test.e2e: CLUSTER_NAME?=cosmopilot-e2e
+test.e2e: REUSE_CLUSTER?=true
 test.e2e: FOCUS?=
 test.e2e: SKIP?=
-test.e2e: WORKER_COUNT?=1
-test.e2e: TEST_TIMEOUT?=20m
-test.e2e: manifests generate fmt vet mirrord setup-test-env install ## Run integration tests.
-	@# Create dummy cosmopilot service just to have all resources. mirrod will steal its traffic then.
-	@$(HELM) get metadata cosmopilot -n cosmopilot-system || $(MAKE) NAME=nginxinc/nginx-unprivileged APP_VERSION=latest PROBES_ENABLED=false deploy
-	@mkdir -p $(CERTS_DIR)
-	@for f in tls.key ca.crt tls.crt; do \
-		$(KUBECTL) -n cosmopilot-system get secret cosmopilot-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
-	done
-	@$(MIRRORD) exec -t deployment/cosmopilot \
-		-n cosmopilot-system \
-		-a cosmopilot-system \
-		-p --steal \
-		--fs-mode local \
-		--no-telemetry \
-		--disable-version-check \
-		go -- test -v ./test/... -timeout $(TEST_TIMEOUT) \
-			--certs-dir=$(CERTS_DIR) \
-			--nodeutils-image=$(NODE_UTILS_IMG) \
-			--eventually-timeout=$(EVENTUALLY_TIMEOUT) \
-			--cert-issuer-name=cosmopilot-e2e \
-			--worker-count=$(WORKER_COUNT) \
-			--ginkgo.focus=$(FOCUS) \
-			--ginkgo.skip=$(SKIP)
+test.e2e: TEST_TIMEOUT?=30m
+test.e2e: PROCS?=10
+test.e2e: manifests generate fmt vet docker-build kind kubectl helm ginkgo ## Run e2e tests with locally built image.
+	E2E_TEST=true \
+	CLUSTER_NAME=$(CLUSTER_NAME) \
+	CONTROLLER_IMAGE=$(IMG) \
+	NODE_UTILS_IMAGE=$(NODE_UTILS_IMG) \
+	REUSE_CLUSTER=$(REUSE_CLUSTER) \
+	$(GINKGO) -v -procs=$(PROCS) --timeout=$(TEST_TIMEOUT) \
+		--focus="$(FOCUS)" \
+		--skip="$(SKIP)" \
+		./test/e2e/...
 
-.PHONY: setup-test-env
-setup-test-env: CLUSTER_NAME?=cosmopilot-e2e
-setup-test-env: kind kubectl helm ## Setup test environment (kind cluster).
-	@./contrib/scripts/test-env/env.sh up --cluster-name $(CLUSTER_NAME) --issuer-name cosmopilot-e2e --kind-bin $(KIND) --kubectl-bin $(KUBECTL) --helm-bin $(HELM)
-	@sleep 5 #Wait for cert-manager to be available to respond to webhook requests
-
-.PHONY: teardown-test-env
-teardown-test-env: CLUSTER_NAME?=cosmopilot-e2e
-teardown-test-env: kind ## Tear down test environment (kind cluster).
-	@./contrib/scripts/test-env/env.sh down --cluster-name $(CLUSTER_NAME) --kind-bin $(KIND)
+.PHONY: test.e2e.release
+test.e2e.release: CLUSTER_NAME?=cosmopilot-e2e
+test.e2e.release: CHART_VERSION?=$(HELM_CHART_VERSION)
+test.e2e.release: REUSE_CLUSTER?=true
+test.e2e.release: FOCUS?=
+test.e2e.release: SKIP?=
+test.e2e.release: TEST_TIMEOUT?=30m
+test.e2e.release: PROCS?=10
+test.e2e.release: kind kubectl helm ginkgo ## Run e2e tests with released chart version.
+	E2E_TEST=true \
+	CLUSTER_NAME=$(CLUSTER_NAME) \
+	CHART_VERSION=$(CHART_VERSION) \
+	NODE_UTILS_IMAGE=$(NODE_UTILS_IMG) \
+	REUSE_CLUSTER=$(REUSE_CLUSTER) \
+	$(GINKGO) -v -procs=$(PROCS) --timeout=$(TEST_TIMEOUT) \
+		--focus="$(FOCUS)" \
+		--skip="$(SKIP)" \
+		./test/e2e/...
 
 
 ##@ Build
@@ -135,6 +142,10 @@ $(BUILDDIR)/:
 .PHONY: build
 build: manifests generate fmt vet $(BUILDDIR)/ ## Build manager binary.
 	go build -o $(BUILDDIR)/cosmopilot ./cmd/manager
+
+.PHONY: docker-build
+docker-build: ## Build docker image.
+	docker build -t $(IMG) .
 
 .PHONY: helm.package
 helm.package: manifests helm $(BUILDDIR)/ ## Package helm chart. Final package name is cosmopilot-<<VERSION>>.tgz
@@ -148,55 +159,6 @@ run: WORKER_COUNT?=1
 run: manifests generate ## Run the controller locally on your host.
 	go run ./cmd/manager --nodeutils-image="$(NODE_UTILS_IMG)" --worker-name="$(WORKER_NAME)" -worker-count=$(WORKER_COUNT) -debug-mode -disable-webhooks
 
-.PHONY: run.mirrord
-run.mirrord: RELEASE_NAME?=cosmopilot
-run.mirrord: NAMESPACE?=cosmopilot-system
-run.mirrord: WORKER_NAME?=
-run.mirrord: WORKER_COUNT?=1
-run.mirrord: CERTS_DIR?=/tmp
-run.mirrord: manifests generate mirrord ## Run the controller in a cluster using mirrord.
-	@# Create dummy cosmopilot service just to have all resources. mirrod will steal its traffic then.
-	@$(HELM) get metadata $(RELEASE_NAME) -n $(NAMESPACE) || \
-		$(MAKE) RELEASE_NAME=$(RELEASE_NAME) NAMESPACE=$(NAMESPACE) NAME=nginxinc/nginx-unprivileged VERSION=latest PROBES_ENABLED=false deploy
-	@mkdir -p $(CERTS_DIR)
-	@for f in tls.key ca.crt tls.crt; do \
-		$(KUBECTL) -n $(NAMESPACE) get secret $(RELEASE_NAME)-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
-	done
-	$(MIRRORD) exec -t deployment/$(RELEASE_NAME) \
-		-n $(NAMESPACE) \
-		-a $(NAMESPACE) \
-		-p --steal \
-		--no-telemetry \
-		go -- run ./cmd/manager \
-			-nodeutils-image="$(NODE_UTILS_IMG)" \
-			-worker-count=$(WORKER_COUNT) \
-			-worker-name="$(WORKER_NAME)" \
-			-certs-dir="$(CERTS_DIR)" \
-			-debug-mode
-
-.PHONY: attach.mirrord
-attach.mirrord: RELEASE_NAME?=cosmopilot
-attach.mirrord: NAMESPACE?=cosmopilot-system
-attach.mirrord: WORKER_NAME?=
-attach.mirrord: WORKER_COUNT?=1
-attach.mirrord: CERTS_DIR?=/tmp
-attach.mirrord: manifests generate mirrord ## Run the controller using mirrord by attaching to existing deployment in cluster.
-	@mkdir -p $(CERTS_DIR)
-	@for f in tls.key ca.crt tls.crt; do \
-		$(KUBECTL) -n $(NAMESPACE) get secret $(RELEASE_NAME)-cert -o=go-template='{{index .data "'$$f'"|base64decode}}' > $(CERTS_DIR)/$$f; \
-	done
-	$(MIRRORD) exec -t deployment/$(RELEASE_NAME) \
-		-n $(NAMESPACE) \
-		-a $(NAMESPACE) \
-		-p --steal \
-		--no-telemetry \
-		go -- run ./cmd/manager \
-			-nodeutils-image="$(NODE_UTILS_IMG)" \
-			-worker-count=$(WORKER_COUNT) \
-			-worker-name="$(WORKER_NAME)" \
-			-certs-dir="$(CERTS_DIR)" \
-			-debug-mode
-
 ##@ Deployment
 
 ifndef ignore-not-found
@@ -205,7 +167,7 @@ endif
 
 .PHONY: install
 install: manifests kubectl ## Install CRDs into the K8s cluster
-	@$(KUBECTL) apply -f helm/cosmopilot/crds
+	@$(KUBECTL) apply -f helm/cosmopilot/crds --server-side --force-conflicts
 
 .PHONY: uninstall
 uninstall: manifests kubectl ## Uninstall CRDs from the K8s cluster
@@ -259,15 +221,17 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 HELM ?= $(LOCALBIN)/helm
 CRD_TO_MARKDOWN ?= $(LOCALBIN)/crd-to-markdown
 KIND ?= $(LOCALBIN)/kind
-MIRRORD ?= $(LOCALBIN)/mirrord
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+GINKGO ?= $(LOCALBIN)/ginkgo
 
 ## Tool Versions
-KUBECTL_VERSION ?= v1.32.3
+KUBECTL_VERSION ?= v1.34.3
 CONTROLLER_TOOLS_VERSION ?= v0.17.3
 HELM_VERSION ?= v3.17.3
 CRD_TO_MARKDOWN_VERSION ?= 0.0.3
-KIND_VERSION ?= 0.21.0
-MIRRORD_VERSION ?= 3.86.1
+KIND_VERSION ?= 0.25.0
+ENVTEST_K8S_VERSION ?= 1.32.0
+GINKGO_VERSION ?= v2.27.3
 
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -321,23 +285,17 @@ $(KIND): $(LOCALBIN)
 		GOBIN=$(LOCALBIN) go install sigs.k8s.io/kind@v$(KIND_VERSION) ;\
 	}
 
-# find or download mirrord
-.PHONY: mirrord
-mirrord: $(MIRRORD) ## Download mirrord locally if necessary. If wrong version is installed, it will be overwritten.
-$(MIRRORD): $(LOCALBIN)
-	@if test -x $(MIRRORD) && ! $(MIRRORD) -V | grep -q $(MIRRORD_VERSION); then \
-		echo "$(MIRRORD) version is not expected $(MIRRORD_VERSION). Removing it before installing."; \
-		rm -rf $(MIRRORD); \
-	fi
-	@test -s $(MIRRORD) || { \
-		if [ "$(OS_NAME)" = "darwin" ]; then \
-			curl -sfL https://github.com/metalbear-co/mirrord/releases/download/$(MIRRORD_VERSION)/mirrord_mac_universal -o $(MIRRORD); \
-		else \
-			if [ "$(ARCH_NAME)" = "amd64" ]; then \
-			  curl -sfL https://github.com/metalbear-co/mirrord/releases/download/$(MIRRORD_VERSION)/mirrord_linux_x86_64 -o $(MIRRORD); \
-			else \
-			  curl -sfL https://github.com/metalbear-co/mirrord/releases/download/$(MIRRORD_VERSION)/mirrord_linux_aarch64 -o $(MIRRORD); \
-			fi; \
-		fi; \
-		chmod a+x $(MIRRORD); \
+# find or download setup-envtest
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	@test -s $(ENVTEST) || { \
+		GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest ;\
 	}
+
+# find or download ginkgo
+.PHONY: ginkgo
+ginkgo: $(GINKGO) ## Download ginkgo locally if necessary.
+$(GINKGO): $(LOCALBIN)
+	@test -s $(GINKGO) && $(GINKGO) version | grep -q $(GINKGO_VERSION) || \
+	GOBIN=$(LOCALBIN) go install github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)

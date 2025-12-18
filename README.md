@@ -1,6 +1,7 @@
 # Cosmopilot
 
 [![Test](https://github.com/voluzi/cosmopilot/actions/workflows/test.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/test.yaml)
+[![E2E](https://github.com/voluzi/cosmopilot/actions/workflows/e2e.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/e2e.yaml)
 [![Builds](https://github.com/voluzi/cosmopilot/actions/workflows/release.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/release.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/voluzi/cosmopilot/blob/main/LICENSE.md)
 
