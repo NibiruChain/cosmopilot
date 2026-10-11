@@ -79,7 +79,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/dataexporter
           tags: |
@@ -92,7 +92,7 @@ jobs:
         with:
           file: Dockerfile.dataExporter
           push: true
-          platforms: ${{ matrix.platform }}
+          platforms: ${{ matrix.build.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
 
@@ -115,7 +115,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/dataexporter
           tags: |

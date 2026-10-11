@@ -5,6 +5,10 @@ on:
     tags:
       - "chart/v*"
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -23,10 +27,12 @@ jobs:
         run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.repository_owner }} --password-stdin ghcr.io
 
       - name: Package Chart
-        run: make helm.package
+        env:
+          CHART_TAG: ${{ github.ref_name }}
+        run: make helm.package HELM_CHART_LATEST_TAG="$CHART_TAG" VERSION="${CHART_TAG#chart/}"
 
       - name: Push Chart
-        run: helm push build/cosmopilot-*.tgz oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/helm
+        run: helm push build/cosmopilot-*.tgz "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/helm"
 
       - name: Logout
         run: helm registry logout ghcr.io

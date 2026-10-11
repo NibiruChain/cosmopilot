@@ -1,4 +1,4 @@
-NAME 	?= ghcr.io/voluzi/cosmopilot
+NAME 	?= ghcr.io/nibiruchain/cosmopilot
 VERSION ?= $(shell git describe --tags --exclude 'node-*/*' --exclude 'vault-*/*' --exclude 'chart/*' --exclude 'dataexporter/*' --abbrev=0)
 IMG 	?= $(NAME):$(VERSION:v%=%)
 
