@@ -236,7 +236,7 @@ func (chainNode *ChainNode) GetAppVersion() string {
 			version = u.GetVersion()
 		}
 	}
-	return version
+	return chainNode.applyCompatiblePatch(version, h)
 }
 
 func (chainNode *ChainNode) GetLatestVersion() string {
@@ -250,6 +250,13 @@ func (chainNode *ChainNode) GetLatestVersion() string {
 			h = u.Height
 			version = u.GetVersion()
 		}
+	}
+	return chainNode.applyCompatiblePatch(version, h)
+}
+
+func (chainNode *ChainNode) applyCompatiblePatch(version string, upgradeHeight int64) string {
+	if patch := chainNode.Spec.CompatiblePatch; patch != nil && patch.UpgradeHeight == upgradeHeight {
+		return patch.Version
 	}
 	return version
 }

@@ -28,6 +28,7 @@ This page provides a detailed reference for the available Custom Resource Defini
 * [AccountAssets](#accountassets)
 * [AppSpec](#appspec)
 * [ChainNodeAssets](#chainnodeassets)
+* [CompatiblePatchSpec](#compatiblepatchspec)
 * [Config](#config)
 * [CosmoGuardConfig](#cosmoguardconfig)
 * [CreateValidatorConfig](#createvalidatorconfig)
@@ -102,6 +103,7 @@ ChainNodeSpec defines the desired state of ChainNode.
 | ignoreGroupOnDisruptionChecks | Whether ChainNodeSet group label should be ignored on pod disruption checks. This is useful to ensure no downtime globally or per global ingress, instead of just per group. Defaults to `false`. | *bool | false |
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 | overrideVersion | OverrideVersion will force this node to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version based on upgrade history. | *string | false |
+| compatiblePatch | CompatiblePatch selects a compatible version only for its upgrade period. OverrideVersion, when present, takes precedence. | *[CompatiblePatchSpec](#compatiblepatchspec) | false |
 | ingress | Indicates if an ingress should be created to access API endpoints of this node and configures it. | *[IngressConfig](#ingressconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
@@ -342,6 +344,7 @@ NodeGroupSpec sets chainnode configurations for a group.
 | pdb | Pod Disruption Budget configuration for this group. | *[PdbConfig](#pdbconfig) | false |
 | snapshotNodeIndex | Index of the node in the group to take volume snapshots from (if enabled). Defaults to `0`. | *int | false |
 | overrideVersion | OverrideVersion will force this group to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the nodes, nor will set the version based on upgrade history. For unsetting this, you will have to do it here and individually per ChainNode | *string | false |
+| compatiblePatch | CompatiblePatch selects a compatible version only for its upgrade period. OverrideVersion, when present, takes precedence. | *[CompatiblePatchSpec](#compatiblepatchspec) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -366,6 +369,7 @@ NodeSetValidatorConfig contains validator configurations.
 | vpa | Vertical Pod Autoscaling configuration for this node. | *[VerticalAutoscalingConfig](#verticalautoscalingconfig) | false |
 | pdb | Pod Disruption Budget configuration for the validator pod. This is mainly useful in testnets where multiple validators might run in the same namespace. In production mainnet environments, where typically only one validator runs per namespace, this is rarely needed. | *[PdbConfig](#pdbconfig) | false |
 | overrideVersion | OverrideVersion will force validator to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version based on upgrade history. For unsetting this, you will have to do it here and on the ChainNode itself. | *string | false |
+| compatiblePatch | CompatiblePatch selects a compatible version only for its upgrade period. OverrideVersion, when present, takes precedence. | *[CompatiblePatchSpec](#compatiblepatchspec) | false |
 | ingress | Indicates if an ingress should be created to access API endpoints of validator node and configures it. | *[IngressConfig](#ingressconfig) | false |
 | accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
 | accountPrefix | Prefix for accounts. Defaults to `cosmos`. | *string | false |
@@ -432,6 +436,17 @@ ChainNodeAssets represents the assets associated with an account from another Ch
 | ----- | ----------- | ------ | -------- |
 | chainNode | Name of the ChainNode. | string | true |
 | assets | Assets assigned to this account. | []string | true |
+
+[Back to Custom Resources](#custom-resources)
+
+#### CompatiblePatchSpec
+
+CompatiblePatchSpec selects a compatible binary within one upgrade period. Compatibility must be verified by the operator; Cosmopilot does not check it.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| version | Version is an image tag in the application's existing image repository. | string | true |
+| upgradeHeight | UpgradeHeight identifies the upgrade period this patch belongs to. Zero identifies the initial genesis version. A later active upgrade automatically supersedes the patch, even if this setting remains present. | int64 | true |
 
 [Back to Custom Resources](#custom-resources)
 

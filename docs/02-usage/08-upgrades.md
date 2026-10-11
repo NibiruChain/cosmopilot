@@ -54,3 +54,50 @@ app:
 - Manual upgrades provide a flexible way to apply updates directly through `.spec.app.upgrades`.
 - Use the `forceOnChain` field to handle governance upgrades that lack required images.
 :::
+## Compatible patches
+
+A compatible patch replaces the binary without an on-chain upgrade. Configure
+`compatiblePatch` on a ChainNode, a ChainNodeSet node group, or its validator.
+For example, on a node group:
+
+```yaml
+nodes:
+- name: snapshot
+  compatiblePatch:
+    version: "2.21.2"
+    upgradeHeight: 12345678 # Replace with this chain's current upgrade height.
+```
+
+The version is an image tag in the existing application image repository.
+`upgradeHeight` identifies the upgrade period to patch, not a new height at
+which to schedule an upgrade. Use the height of the currently active upgrade
+from the node's status. Use `0` for the initial genesis version.
+
+Cosmopilot applies the patch only when the selected upgrade has that exact
+height. A scheduled future governance upgrade leaves the patch active. When
+the next upgrade becomes active, Cosmopilot uses its image and continues to
+use it after restarts, even while the old patch setting remains in IaC.
+State-sync restores use the latest completed or skipped upgrade history.
+
+You must verify that the patch is compatible with the chain's state machine
+and consensus. Cosmopilot does not compare version numbers or establish binary
+compatibility. Changing this field can restart affected nodes, and removing an
+active patch returns them to the image recorded for that upgrade period.
+Clearing a group patch also clears it from that group's individual nodes.
+
+### Migrating a permanent override
+
+`overrideVersion` retains its existing precedence and behavior. Adding
+`compatiblePatch` does not remove or bypass it. To migrate existing pins:
+
+1. Install the updated CRDs and operator before setting the new field.
+2. Set the compatible patch against the verified active upgrade height, keeping
+   its version equal to the existing override version.
+3. Remove the group override, then clear each individual node override through
+   a controlled deployment, checking node health between changes. Group removal
+   alone still preserves existing individual overrides.
+4. Confirm that the selected image remains the patch image and that a later
+   active upgrade supersedes it without clearing the patch setting.
+
+Encode this one-time migration in the deployment process. It is not a cleanup
+step required for subsequent governance upgrades.
