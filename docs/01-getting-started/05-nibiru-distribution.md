@@ -18,9 +18,11 @@ AMD64 and ARM64 operator images; the second packages the chart with the
 matching image version. Wait for the image publication to succeed before
 publishing the chart. Verify both artifacts before merging the IaC switch.
 
-Historical upstream tags identify upstream commits. Do not move those tags
-to Nibiru patch commits. Importing release tags triggers publishing workflows,
-so import them deliberately after reviewing the org publishing configuration.
+Historical upstream tags identify upstream commits. The v2.1 and v2.2 release
+and chart tags are preserved in this org under `upstream/`, such as
+`upstream/v2.2.1` and `upstream/chart/v2.2.1`. These names do not trigger release
+publishing. Do not move those tags to Nibiru patch commits. Unprefixed release
+tags trigger publishing workflows and are reserved for reviewed org releases.
 
 ## Mainnet adoption
 
