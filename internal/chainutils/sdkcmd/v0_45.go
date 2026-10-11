@@ -4,18 +4,21 @@ import (
 	"fmt"
 	"strings"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
 )
 
 func init() {
-	sdkCreator := func(globalOptions ...Option) SDK {
-		options := newDefaultOptions()
-		for _, option := range globalOptions {
-			option(options)
-		}
-		return &v0_45{options: options}
+	RegisterSDK(appsv1.V0_45, func(globalOptions ...Option) SDK {
+		return newV0_45(globalOptions...)
+	})
+}
+
+func newV0_45(globalOptions ...Option) *v0_45 {
+	options := newDefaultOptions()
+	for _, option := range globalOptions {
+		option(options)
 	}
-	RegisterSDK(appsv1.V0_45, sdkCreator)
+	return &v0_45{options: options}
 }
 
 type v0_45 struct {
@@ -90,4 +93,9 @@ func (sdk *v0_45) GenesisSetVotingPeriodCmd(votingPeriod, genesisFile string) st
 	return fmt.Sprintf("jq '.app_state.gov.voting_params.voting_period = %q' %s > /tmp/genesis.tmp && mv /tmp/genesis.tmp %s",
 		votingPeriod, genesisFile, genesisFile,
 	)
+}
+
+// GenesisSetExpeditedVotingPeriodCmd is not supported in v0.45, returns empty string.
+func (sdk *v0_45) GenesisSetExpeditedVotingPeriodCmd(votingPeriod, genesisFile string) string {
+	return ""
 }

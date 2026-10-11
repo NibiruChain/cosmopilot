@@ -19,7 +19,7 @@ With these features, [ChainNodeSet](/03-reference/crds/crds#chainnodeset) simpli
 Below is a base manifest example for deploying a node set with one archive node and two full nodes:
 
 ```yaml
-apiVersion: apps.k8s.nibiru.org/v1
+apiVersion: cosmopilot.voluzi.com/v1
 kind: ChainNodeSet
 metadata:
   name: nibiru-cataclysm-1
@@ -94,7 +94,7 @@ The additional nodes will be created automatically.
 When operating multiple `Cosmopilot` deployments, it's crucial to manage which instance controls specific resources. This can be achieved by utilizing the `worker-name` label on your `ChainNode` and `ChainNodeSet` resources. By assigning this label, you define which `Cosmopilot` instance is responsible for managing the resource (you should define `worker-name` in `Cosmopilot` [configuration](/01-getting-started/03-configuration#workername)). Below is the label usage example:
 
 ```yaml
-apiVersion: apps.k8s.nibiru.org/v1
+apiVersion: cosmopilot.voluzi.com/v1
 kind: ChainNodeSet
 metadata:
   name: nibiru-cataclysm-1

@@ -1,12 +1,15 @@
 package chainnode
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
 )
 
 func TestGetConfigHash(t *testing.T) {
@@ -189,57 +192,88 @@ func TestGetExternalAddress(t *testing.T) {
 		name        string
 		chainNode   *appsv1.ChainNode
 		wantAddress string
-		wantOk      bool
 	}{
 		{
-			name: "valid public address",
+			name: "returns public address when PublicAddress is set",
 			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mynode",
+					Namespace: "cosmos",
+				},
 				Status: appsv1.ChainNodeStatus{
 					PublicAddress: "nodeid@example.com:26656",
 				},
 			},
 			wantAddress: "example.com:26656",
-			wantOk:      true,
 		},
 		{
-			name: "empty public address",
+			name: "returns internal FQDN without PublicAddress",
 			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mynode",
+					Namespace: "cosmos",
+				},
 				Status: appsv1.ChainNodeStatus{
 					PublicAddress: "",
 				},
 			},
-			wantAddress: "",
-			wantOk:      false,
+			wantAddress: fmt.Sprintf("mynode-internal.cosmos.svc.cluster.local:%d", chainutils.P2pPort),
 		},
 		{
-			name: "invalid format - no @",
+			name: "returns internal FQDN when PublicAddress has invalid format",
 			chainNode: &appsv1.ChainNode{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mynode",
+					Namespace: "cosmos",
+				},
 				Status: appsv1.ChainNodeStatus{
-					PublicAddress: "example.com:26656",
+					PublicAddress: "invalid-no-at-sign",
 				},
 			},
-			wantAddress: "",
-			wantOk:      false,
-		},
-		{
-			name: "invalid format - multiple @",
-			chainNode: &appsv1.ChainNode{
-				Status: appsv1.ChainNodeStatus{
-					PublicAddress: "nodeid@host@example.com:26656",
-				},
-			},
-			wantAddress: "",
-			wantOk:      false,
+			wantAddress: fmt.Sprintf("mynode-internal.cosmos.svc.cluster.local:%d", chainutils.P2pPort),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			address, ok := getExternalAddress(tt.chainNode)
+			address := getExternalAddress(tt.chainNode)
 			assert.Equal(t, tt.wantAddress, address)
-			assert.Equal(t, tt.wantOk, ok)
 		})
 	}
+}
+
+func TestGetExternalAddress_FQDNFormat(t *testing.T) {
+	// Verify non-public nodes get FQDN following the expected pattern:
+	// <name>-internal.<namespace>.svc.cluster.local:26656
+	chainNode := &appsv1.ChainNode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "gaia-validator-0",
+			Namespace: "mainnet",
+		},
+	}
+
+	address := getExternalAddress(chainNode)
+	assert.Equal(t, "gaia-validator-0-internal.mainnet.svc.cluster.local:26656", address)
+
+	// Verify it matches GetNodeFQDN + P2P port
+	expectedFQDN := chainNode.GetNodeFQDN()
+	assert.Equal(t, fmt.Sprintf("%s:%d", expectedFQDN, chainutils.P2pPort), address)
+}
+
+func TestGetExternalAddress_PublicNodeFormat(t *testing.T) {
+	// Verify public nodes advertise their public address
+	chainNode := &appsv1.ChainNode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "gaia-sentry-0",
+			Namespace: "mainnet",
+		},
+		Status: appsv1.ChainNodeStatus{
+			PublicAddress: "abc123@203.0.113.50:26656",
+		},
+	}
+
+	address := getExternalAddress(chainNode)
+	assert.Equal(t, "203.0.113.50:26656", address)
 }
 
 func TestNewConfigLockManager(t *testing.T) {

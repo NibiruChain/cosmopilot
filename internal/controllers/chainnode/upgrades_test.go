@@ -3,7 +3,7 @@ package chainnode
 import (
 	"testing"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
 )
 
 func TestGetUpgrade(t *testing.T) {

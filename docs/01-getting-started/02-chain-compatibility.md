@@ -12,16 +12,17 @@ Cosmopilot adapts its behavior based on the SDK version, as different versions h
 
 | SDK Version | Status |
 |-------------|--------|
-| `v0.47` | Default |
+| `v0.53` | Default |
+| `v0.50` | Supported |
+| `v0.47` | Supported |
 | `v0.45` | Supported |
-| `v0.50` | Coming soon |
 
 You can specify the SDK version in your `ChainNode` or `ChainNodeSet` manifest:
 
 ```yaml
 spec:
   app:
-    sdkVersion: v0.47  # or v0.45
+    sdkVersion: v0.53  # or v0.50, v0.47, v0.45
 ```
 
 ## Required CLI Commands
@@ -65,7 +66,7 @@ Recovers an account from a mnemonic. The `--keyring-backend test` flag must be s
 These commands are only required when [initializing a new network](/02-usage/10-initializing-new-network).
 
 <details>
-<summary><b>SDK v0.47+ (Default)</b></summary>
+<summary><b>SDK v0.47 and Later (Default)</b></summary>
 
 ```bash
 # Add account to genesis
@@ -189,11 +190,12 @@ For automatic upgrade handling, your chain should implement the standard Cosmos 
 
 The following table lists chains that have been tested with Cosmopilot:
 
-| Chain | Version | SDK Version | Image                              | Join Network |                           New Network                            | Notes                                           |
-|-------|---------|-------------|------------------------------------|:------------:|:----------------------------------------------------------------:|-------------------------------------------------|
-| [Cosmos Hub](https://cosmos.network/) | v25.2.0 | v0.50       | `ghcr.io/cosmos/gaia:v25.2.0`      | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)  |                                                 |
-| [Osmosis](https://osmosis.zone/) | v31.0.0 | v0.50       | `osmolabs/osmosis:31.0.0`          | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)* | Use sdkVersion `v0.45` for old genesis commands |
-| [Nibiru](https://nibiru.fi/) | v2.9.0  | v0.47       | `ghcr.io/nibiruchain/nibiru:2.9.0` | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)  | All previous versions work                      |
+| Chain                                     | Version | SDK Version | Image                              | Join Network |                           New Network                            | Notes                                          |
+|-------------------------------------------|---------|-------------|------------------------------------|:------------:|:----------------------------------------------------------------:|------------------------------------------------|
+| [Cosmos Hub](https://cosmos.network/)     | v25.2.0 | v0.53       | `ghcr.io/cosmos/gaia:v25.2.0`      | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)  |                                                |
+| [Osmosis](https://osmosis.zone/)          | v31.0.0 | v0.53       | `osmolabs/osmosis:31.0.0`          | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)* | Set `.app.sdkOptions.genesisSubcommand = false` |
+| [Nibiru](https://nibiru.fi/)              | v2.9.0  | v0.47       | `ghcr.io/nibiruchain/nibiru:2.9.0` | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)  | All previous versions work                     |
+| [Allora-Network](https://allora.betwork/) | v0.14.0 | v0.50       | `alloranetwork/allora-chain:v0.14.0` | ![Verified](https://img.shields.io/badge/-Verified-brightgreen) | ![Verified](https://img.shields.io/badge/-Verified-brightgreen)  |                      |
 
 **Status Legend:**
 - ![Verified](https://img.shields.io/badge/-Verified-brightgreen) - Fully tested and working

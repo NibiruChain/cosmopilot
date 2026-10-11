@@ -12,10 +12,10 @@ import (
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/pkg/proxy"
-	"github.com/NibiruChain/cosmopilot/pkg/statscollector"
-	"github.com/NibiruChain/cosmopilot/pkg/tracer"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/pkg/proxy"
+	"github.com/voluzi/cosmopilot/v2/pkg/statscollector"
+	"github.com/voluzi/cosmopilot/v2/pkg/tracer"
 )
 
 const (
@@ -38,6 +38,7 @@ type NodeUtils struct {
 	appProcess        *process.Process
 	fineStats         *statscollector.Collector
 	coarseStats       *statscollector.Collector
+	mockStats         *MockStats
 }
 
 func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
@@ -46,31 +47,41 @@ func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
 		opt(options)
 	}
 
-	client, err := chainutils.NewClient("127.0.0.1")
-	if err != nil {
-		return nil, err
-	}
-
-	t, err := tracer.NewStoreTracer(options.TraceStore, options.CreateFifo)
-	if err != nil {
-		return nil, err
-	}
-
-	uc, err := NewUpgradeChecker(options.UpgradesConfig)
-	if err != nil {
-		return nil, err
-	}
-
 	nodeUtils := &NodeUtils{
 		cfg:            options,
 		router:         mux.NewRouter(),
-		client:         client,
-		tracer:         t,
-		upgradeChecker: uc,
 		nodeBinaryName: nodeBinaryName,
 		fineStats:      statscollector.NewCollector(int(time.Hour / fineStatsCollectorInterval)),
 		coarseStats:    statscollector.NewCollector(int((24 * time.Hour) / coarseStatsCollectorInterval)),
 	}
+
+	// Initialize tracer - needed in both normal and mock mode to track block heights
+	t, err := tracer.NewStoreTracer(options.TraceStore, options.CreateFifo)
+	if err != nil {
+		return nil, err
+	}
+	nodeUtils.tracer = t
+
+	// Initialize upgrade checker - needed in both normal and mock mode
+	uc, err := NewUpgradeChecker(options.UpgradesConfig)
+	if err != nil {
+		return nil, err
+	}
+	nodeUtils.upgradeChecker = uc
+
+	// In mock mode, we only mock CPU/memory stats - the blockchain still runs
+	if options.MockMode {
+		nodeUtils.mockStats = NewMockStats()
+		log.Info("node-utils starting in mock mode")
+		return nodeUtils, nil
+	}
+
+	// Initialize components only needed in normal mode
+	client, err := chainutils.NewClient("127.0.0.1")
+	if err != nil {
+		return nil, err
+	}
+	nodeUtils.client = client
 
 	if options.TmkmsProxy {
 		nodeUtils.tmkmsProxy, err = proxy.NewTCPProxy(":26659", "127.0.0.1:5555", true)
@@ -84,6 +95,7 @@ func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
 
 func (s *NodeUtils) Start() error {
 	s.registerRoutes()
+
 	go s.tracer.Start()
 	go func() {
 		if err := s.upgradeChecker.WatchConfigFile(); err != nil {
@@ -194,7 +206,9 @@ func (s *NodeUtils) Stop(force bool) error {
 	// requirement.
 	// Another case is when respecting halt-height. We want to keep node-utils alive a bit
 	// more so that cosmopilot can retrieve latest height before total shutdown.
-	if !force && (s.requiresUpgrade.Load() || s.cfg.HaltHeight == s.latestBlockHeight.Load()) {
+	// Note: Only check halt-height if it's actually configured (> 0), otherwise
+	// halt-height=0 would match latestBlockHeight=0 and prevent shutdown.
+	if !force && (s.requiresUpgrade.Load() || (s.cfg.HaltHeight > 0 && s.cfg.HaltHeight == s.latestBlockHeight.Load())) {
 		log.Warn("node requires upgrade or is set to halt on specific height. ignoring stop call")
 		return nil
 	}

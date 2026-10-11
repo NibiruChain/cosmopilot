@@ -17,6 +17,26 @@ genesis:
 - The `URL` must point to a publicly accessible genesis file.
 - Ensure the `URL` is updated to match the desired network or version.
 
+### Compressed Genesis Files
+
+Cosmopilot automatically detects and extracts compressed genesis files. You can provide URLs to compressed genesis files, and Cosmopilot will handle the decompression automatically:
+
+```yaml
+genesis:
+  url: https://example.com/genesis.json.gz
+  useDataVolume: true
+```
+
+Supported compression formats:
+- **gzip** (`.gz`) - Most common format
+- **zstd** (`.zst`) - Faster decompression, better compression ratio
+
+This is particularly useful for large genesis files, as compression can significantly reduce download times.
+
+::: info
+Compressed genesis extraction requires `useDataVolume: true` since the file is decompressed directly into the data volume using an init container.
+:::
+
 ## Fetch from an RPC Endpoint
 
 Its also possible to configure your [ChainNode](/03-reference/crds/crds#chainnode) or [ChainNodeSet](/03-reference/crds/crds#chainnodeset) to fetch the genesis directly from another node’s `RPC` endpoint.

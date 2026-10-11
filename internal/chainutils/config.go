@@ -12,7 +12,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
 )
 
 func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error) {
@@ -37,11 +37,7 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 			PriorityClassName: a.priorityClassName,
 			Affinity:          a.Affinity,
 			NodeSelector:      a.NodeSelector,
-			SecurityContext: &corev1.PodSecurityContext{
-				RunAsUser:  ptr.To[int64](nonRootId),
-				RunAsGroup: ptr.To[int64](nonRootId),
-				FSGroup:    ptr.To[int64](nonRootId),
-			},
+			SecurityContext:   k8s.RestrictedPodSecurityContext(),
 			Volumes: []corev1.Volume{
 				{
 					Name: configVolumeMount.Name,
@@ -64,15 +60,17 @@ func (a *App) GenerateConfigFiles(ctx context.Context) (map[string]string, error
 					Command:         []string{a.binary},
 					Args:            a.cmd.InitArgs(none, none),
 					VolumeMounts:    []corev1.VolumeMount{homeVolumeMount, configVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 			},
 			Containers: []corev1.Container{
 				{
-					Name:         "busybox",
-					Image:        "busybox",
-					Command:      []string{"cat"},
-					Stdin:        true,
-					VolumeMounts: []corev1.VolumeMount{configVolumeMount},
+					Name:            "busybox",
+					Image:           "busybox",
+					Command:         []string{"cat"},
+					Stdin:           true,
+					VolumeMounts:    []corev1.VolumeMount{configVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 			},
 			TerminationGracePeriodSeconds: ptr.To[int64](0),

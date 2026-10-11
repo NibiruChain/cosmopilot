@@ -1,0 +1,49 @@
+apiVersion: cosmopilot.voluzi.com/v1
+kind: ChainNodeSet
+metadata:
+  name: allora
+spec:
+  app:
+    image: alloranetwork/allora-chain
+    version: v0.14.0
+    app: allorad
+    sdkVersion: v0.50
+
+  genesis:
+    url: https://raw.githubusercontent.com/allora-network/networks/main/allora-mainnet-1/genesis.json
+
+  nodes:
+    - name: fullnodes
+      instances: 1
+
+      peers:
+        # Allora
+        - id: 557d0d381bb7edf7e390465cdad8343862cdd025
+          address: peer-1.mainnet.allora.network
+          port: 26656
+        # Allora
+        - id: aa75a17ad0e42c2cf449e3ffcf3f477405571104
+          address: peer-2.mainnet.allora.network
+          port: 26656
+        # Allora
+        - id: d1bdd4803dd928a13bd08c4a6e7e2ea216dfa28c
+          address: peer-3.mainnet.allora.network
+          port: 26656
+
+      persistence:
+        size: 100Gi
+        initTimeout: 1h
+        additionalInitCommands:
+          - image: ghcr.io/voluzi/node-tools
+            command: [ "sh" ]
+            args:
+              - "-c"
+              - |
+                SNAPSHOT_URL=$(curl -s "https://api.imperator.co/services?network=mainnets" | jq -r '.Allora.snapshots[0]."eu-west-1"[0]'.dl_url)
+                echo "Downloading snapshot: $SNAPSHOT_URL" && \
+                curl -sL "$SNAPSHOT_URL" | zstd -d --stdout | tar xf - -C /home/app
+
+      config:
+        override:
+          app.toml:
+            minimum-gas-prices: 10uallo

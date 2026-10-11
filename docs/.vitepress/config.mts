@@ -69,7 +69,7 @@ export default defineConfig({
       }
     ],
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/NibiruChain/cosmopilot' }
+      { icon: 'github', link: 'https://github.com/voluzi/cosmopilot' }
     ],
     footer: {
       message: 'Released under the MIT License.'

@@ -14,7 +14,7 @@ Use the following command to install `Cosmopilot` using Helm:
 
 ```bash
 $ helm install \
-    cosmopilot oci://ghcr.io/nibiruchain/helm/cosmopilot \
+    cosmopilot oci://ghcr.io/voluzi/helm/cosmopilot \
     --namespace cosmopilot-system \
     --create-namespace
 ```
@@ -23,7 +23,7 @@ Or, if you need to install a specific version:
 
 ```bash
 $ helm install \
-    cosmopilot oci://ghcr.io/nibiruchain/helm/cosmopilot \
+    cosmopilot oci://ghcr.io/voluzi/helm/cosmopilot \
     --namespace cosmopilot-system \
     --create-namespace \
     --version 1.35.2
@@ -35,7 +35,7 @@ If you opted for not installing cert-manager (one of the recommended controllers
 
 ```bash
 $ helm install \
-    cosmopilot oci://ghcr.io/nibiruchain/helm/cosmopilot \
+    cosmopilot oci://ghcr.io/voluzi/helm/cosmopilot \
     --namespace cosmopilot-system \
     --create-namespace \
     --set webHooksEnabled=false
@@ -43,6 +43,6 @@ $ helm install \
 
 ## Installation Options
 
-A full list of available Helm values is available [here](https://github.com/NibiruChain/cosmopilot/blob/main/helm/cosmopilot/values.yaml).
+A full list of available Helm values is available [here](https://github.com/voluzi/cosmopilot/blob/main/helm/cosmopilot/values.yaml).
 For other advanced configurations please refer to the [Configuration](04-configuration) page.
 

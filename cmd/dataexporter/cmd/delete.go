@@ -6,8 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/NibiruChain/cosmopilot/pkg/dataexporter"
-	"github.com/NibiruChain/cosmopilot/pkg/environ"
+	"github.com/voluzi/cosmopilot/v2/pkg/dataexporter"
+	"github.com/voluzi/cosmopilot/v2/pkg/environ"
 )
 
 var concurrentDeleteJobs int

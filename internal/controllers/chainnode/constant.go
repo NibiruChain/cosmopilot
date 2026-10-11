@@ -19,7 +19,7 @@ const (
 	timeoutPodRunning              = 5 * time.Minute
 	timeoutPodDeleted              = 2 * time.Minute
 	timeoutWaitServiceIP           = 5 * time.Minute
-	minimumTimeBeforeFirstSnapshot = 10 * time.Minute
+	minimumTimeBeforeFirstSnapshot = 1 * time.Minute
 
 	// Probe configuration constants
 	startupProbePeriodSeconds      = 5
@@ -39,8 +39,11 @@ const (
 	defaultStateSyncTrustPeriod = "168h0m0s"
 	defaultLogsLineCount        = 50
 
-	snapshotCheckPeriod   = 15 * time.Second
-	pvcDeletionWaitPeriod = 15 * time.Second
+	snapshotCheckPeriod        = 15 * time.Second
+	pvcDeletionWaitPeriod      = 15 * time.Second
+	initDataCheckPeriod        = 30 * time.Second
+	initDataRetryPeriod        = 10 * time.Second
+	initDataUnknownPhasePeriod = 10 * time.Second
 
 	cosmoGuardContainerName = "cosmoguard"
 	cosmoGuardVolumeName    = "cosmoguard-config"

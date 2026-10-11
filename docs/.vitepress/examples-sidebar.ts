@@ -3,6 +3,14 @@
 
 export const examplesSidebar = [
   {
+    text: 'Allora-network',
+    base: '/04-examples/allora-network/',
+    items: [
+      { text: 'Mainnet Fullnode', link: 'mainnet-fullnode' },
+      { text: 'Testnet With Fullnode', link: 'testnet-with-fullnode' }
+    ]
+  },
+  {
     text: 'Cosmoshub',
     base: '/04-examples/cosmoshub/',
     items: [
@@ -14,9 +22,8 @@ export const examplesSidebar = [
     text: 'Nibiru',
     base: '/04-examples/nibiru/',
     items: [
-      { text: 'Devnet With Fullnode', link: 'devnet-with-fullnode' },
-      { text: 'Multi Validator Devnet', link: 'multi-validator-devnet' },
-      { text: 'Nibid Init Tmkms', link: 'nibid_init_tmkms' }
+      { text: 'Mainnet Fullnode', link: 'mainnet-fullnode' },
+      { text: 'Testnet With Fullnode', link: 'testnet-with-fullnode' }
     ]
   },
   {

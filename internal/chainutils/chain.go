@@ -7,8 +7,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils/sdkcmd"
 )
 
 type App struct {
@@ -34,6 +34,7 @@ type Params struct {
 	Accounts                []AccountAssets
 	UnbondingTime           string
 	VotingPeriod            string
+	ExpeditedVotingPeriod   string
 	CommissionMaxChangeRate string
 	CommissionMaxRate       string
 	CommissionRate          string
@@ -54,14 +55,23 @@ type AccountAssets struct {
 }
 
 type InitCommand struct {
-	Image   string
-	Command []string
-	Args    []string
+	Image     string
+	Command   []string
+	Args      []string
+	Resources corev1.ResourceRequirements
+	Env       []corev1.EnvVar
+}
+
+type AdditionalVolume struct {
+	Name    string // Volume name
+	PVCName string // Full PVC name (nodeName-volumeName)
+	Path    string // Mount path
 }
 
 func NewApp(client *kubernetes.Clientset, scheme *runtime.Scheme, cfg *rest.Config,
-	owner metav1.Object, sdkVersion appsv1.SdkVersion, options ...Option) (*App, error) {
-	cmd, err := sdkcmd.GetSDK(sdkVersion, sdkcmd.WithGlobalArg(sdkcmd.Home, defaultHome))
+	owner metav1.Object, sdkVersion appsv1.SdkVersion, sdkOpts []sdkcmd.Option, options ...Option) (*App, error) {
+	allSdkOpts := append([]sdkcmd.Option{sdkcmd.WithGlobalArg(sdkcmd.Home, defaultHome)}, sdkOpts...)
+	cmd, err := sdkcmd.GetSDK(sdkVersion, allSdkOpts...)
 	if err != nil {
 		return nil, err
 	}

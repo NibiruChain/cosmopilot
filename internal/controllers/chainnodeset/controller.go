@@ -14,9 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils/sdkcmd"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
 )
 
 // Reconciler reconciles a ChainNode object
@@ -44,9 +45,9 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 	return r, nil
 }
 
-//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodesets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodesets/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodesets/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cosmopilot.voluzi.com,resources=chainnodesets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cosmopilot.voluzi.com,resources=chainnodesets/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=cosmopilot.voluzi.com,resources=chainnodesets/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -66,6 +67,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		logger.Error(err, "unable to fetch chainnodeset")
 		return ctrl.Result{}, err
+	}
+
+	// Check if namespace is being terminated - if so, skip reconcile to avoid errors
+	ns := &corev1.Namespace{}
+	if err := r.Get(ctx, client.ObjectKey{Name: req.Namespace}, ns); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if ns.DeletionTimestamp != nil {
+		logger.V(1).Info("namespace is being terminated, skipping reconcile")
+		return ctrl.Result{}, nil
 	}
 
 	if nodeSet.Labels[controllers.LabelWorkerName] != r.opts.WorkerName {
@@ -96,6 +107,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, nodeSet,
 		nodeSet.Spec.App.GetSdkVersion(),
+		[]sdkcmd.Option{sdkcmd.WithGenesisSubcommand(nodeSet.Spec.App.UseGenesisSubcommand())},
 		chainutils.WithImage(nodeSet.Spec.App.GetImage()),
 		chainutils.WithImagePullPolicy(nodeSet.Spec.App.ImagePullPolicy),
 		chainutils.WithBinary(nodeSet.Spec.App.App),

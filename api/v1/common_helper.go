@@ -9,8 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/kube-openapi/pkg/validation/strfmt"
 
-	"github.com/NibiruChain/cosmopilot/internal/tmkms"
-	"github.com/NibiruChain/cosmopilot/pkg/dataexporter"
+	"github.com/voluzi/cosmopilot/v2/internal/tmkms"
+	"github.com/voluzi/cosmopilot/v2/pkg/dataexporter"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 	DefaultImageVersion = "latest"
 
 	// DefaultBlockThreshold is the duration to wait for a block before marking the node unhealthy.
-	DefaultBlockThreshold = "15s"
+	DefaultBlockThreshold = "0s"
 
 	// DefaultStartupTime is the time after which a node is restarted if it fails to start.
 	DefaultStartupTime = time.Hour
@@ -45,10 +45,10 @@ const (
 	DefaultHDPath = "m/44'/118'/0'/0/0"
 
 	// DefaultAccountPrefix is the default bech32 prefix for accounts.
-	DefaultAccountPrefix = "nibi"
+	DefaultAccountPrefix = "cosmos"
 
 	// DefaultValPrefix is the default bech32 prefix for validator operator accounts.
-	DefaultValPrefix = "nibivaloper"
+	DefaultValPrefix = "cosmosvaloper"
 
 	// DefaultP2pPort is the default port used for P2P connections.
 	DefaultP2pPort = 26656
@@ -57,7 +57,7 @@ const (
 	DefaultStateSyncKeepRecent = 2
 
 	// DefaultSdkVersion is the default Cosmos SDK version.
-	DefaultSdkVersion = V0_47
+	DefaultSdkVersion = V0_53
 
 	// DefaultCommissionMaxChangeRate is the default maximum commission change rate.
 	DefaultCommissionMaxChangeRate = "0.1"
@@ -88,6 +88,21 @@ const (
 
 	// DefaultLimitPercentage is the default percentage used when applying limit-based scaling strategies.
 	DefaultLimitPercentage = 150
+
+	// DefaultSafetyMarginPercent is the default safety margin for VPA scale-down operations.
+	DefaultSafetyMarginPercent = 15
+
+	// DefaultHysteresisPercent is the default hysteresis for VPA scale-down thresholds.
+	DefaultHysteresisPercent = 5
+
+	// DefaultEmergencyScaleUpPercent is the default percentage to scale up on OOM detection.
+	DefaultEmergencyScaleUpPercent = 25
+
+	// DefaultMaxOOMRecoveries is the default maximum OOM recoveries allowed within the recovery window.
+	DefaultMaxOOMRecoveries = 3
+
+	// DefaultOOMRecoveryWindow is the default time window for counting OOM recoveries.
+	DefaultOOMRecoveryWindow = 1 * time.Hour
 )
 
 // GetImage returns the versioned image to be used
@@ -126,6 +141,21 @@ func (app *AppSpec) ShouldQueryGovUpgrades() bool {
 		return *app.CheckGovUpgrades
 	}
 	return true
+}
+
+// UseGenesisSubcommand returns whether genesis commands should use the "genesis" subcommand
+// (e.g., "genesis gentx" vs "gentx"). Defaults to true for sdkVersion >= v0.47.
+func (app *AppSpec) UseGenesisSubcommand() bool {
+	if app.SdkOptions != nil && app.SdkOptions.GenesisSubcommand != nil {
+		return *app.SdkOptions.GenesisSubcommand
+	}
+	// Default based on SDK version: v0.47+ uses genesis subcommand
+	switch app.GetSdkVersion() {
+	case V0_45:
+		return false
+	default:
+		return true
+	}
 }
 
 // GenesisConfig helper methods
@@ -255,11 +285,18 @@ func (cfg *Config) GetNodeUtilsLogLevel() string {
 	return DefaultNodeUtilsLogLevel
 }
 
+func (cfg *Config) GetNodeUtilsEnv() []corev1.EnvVar {
+	if cfg != nil {
+		return cfg.NodeUtilsEnv
+	}
+	return nil
+}
+
 func (cfg *Config) ShouldPersistAddressBook() bool {
 	if cfg != nil && cfg.PersistAddressBook != nil {
 		return *cfg.PersistAddressBook
 	}
-	return false
+	return true
 }
 
 func (cfg *Config) GetTerminationGracePeriodSeconds() *int64 {
@@ -314,6 +351,30 @@ func (cfg *Config) GetHaltHeight() int64 {
 		return *cfg.HaltHeight
 	}
 	return 0
+}
+
+// GetSecurityContext returns the custom security context for the main app container if specified, or nil otherwise.
+func (cfg *Config) GetSecurityContext() *corev1.SecurityContext {
+	if cfg != nil {
+		return cfg.SecurityContext
+	}
+	return nil
+}
+
+// GetPodSecurityContext returns the custom pod security context if specified, or nil otherwise.
+func (cfg *Config) GetPodSecurityContext() *corev1.PodSecurityContext {
+	if cfg != nil {
+		return cfg.PodSecurityContext
+	}
+	return nil
+}
+
+// GetServiceAccountName returns the service account name if specified, or empty string otherwise.
+func (cfg *Config) GetServiceAccountName() string {
+	if cfg != nil && cfg.ServiceAccountName != nil {
+		return *cfg.ServiceAccountName
+	}
+	return ""
 }
 
 func (exp *ExposeConfig) Enabled() bool {
@@ -582,6 +643,16 @@ func (v *VolumeSpec) ShouldDeleteWithNode() bool {
 	return false
 }
 
+// GetStorageClass returns the storage class for this volume.
+// If not explicitly set, it falls back to the provided fallback value (typically the main persistence storage class).
+// If the fallback is also nil, the cluster default storage class will be used.
+func (v *VolumeSpec) GetStorageClass(fallback *string) *string {
+	if v.StorageClassName != nil {
+		return v.StorageClassName
+	}
+	return fallback
+}
+
 // Vertical Pod Autoscaling
 
 func (vpa *VerticalAutoscalingConfig) IsEnabled() bool {
@@ -597,13 +668,6 @@ func (vpam *VerticalAutoscalingMetricConfig) GetCooldownDuration() time.Duration
 	return DefaultVpaCooldown
 }
 
-func (vpam *VerticalAutoscalingMetricConfig) GetSource() LimitSource {
-	if vpam != nil && vpam.Source != nil {
-		return *vpam.Source
-	}
-	return EffectiveLimit
-}
-
 func (vpam *VerticalAutoscalingMetricConfig) GetLimitUpdateStrategy() LimitUpdateStrategy {
 	if vpam != nil && vpam.LimitStrategy != nil {
 		return *vpam.LimitStrategy
@@ -616,6 +680,43 @@ func (vpam *VerticalAutoscalingMetricConfig) GetLimitPercentage() int {
 		return *vpam.LimitPercentage
 	}
 	return DefaultLimitPercentage
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetSafetyMarginPercent() int {
+	if vpam != nil && vpam.SafetyMarginPercent != nil {
+		return *vpam.SafetyMarginPercent
+	}
+	return DefaultSafetyMarginPercent
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetHysteresisPercent() int {
+	if vpam != nil && vpam.HysteresisPercent != nil {
+		return *vpam.HysteresisPercent
+	}
+	return DefaultHysteresisPercent
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetEmergencyScaleUpPercent() int {
+	if vpam != nil && vpam.EmergencyScaleUpPercent != nil {
+		return *vpam.EmergencyScaleUpPercent
+	}
+	return DefaultEmergencyScaleUpPercent
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetMaxOOMRecoveries() int {
+	if vpam != nil && vpam.MaxOOMRecoveries != nil {
+		return *vpam.MaxOOMRecoveries
+	}
+	return DefaultMaxOOMRecoveries
+}
+
+func (vpam *VerticalAutoscalingMetricConfig) GetOOMRecoveryWindow() time.Duration {
+	if vpam != nil && vpam.OOMRecoveryWindow != nil {
+		if d, err := strfmt.ParseDuration(*vpam.OOMRecoveryWindow); err == nil {
+			return d
+		}
+	}
+	return DefaultOOMRecoveryWindow
 }
 
 func (vpar *VerticalAutoscalingRule) GetDuration() time.Duration {

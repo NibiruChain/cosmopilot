@@ -8,11 +8,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/cometbft"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/tmkms"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/cometbft"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/internal/tmkms"
 )
 
 func (r *Reconciler) ensureTmKMSConfig(ctx context.Context, chainNode *appsv1.ChainNode) error {
@@ -94,7 +94,7 @@ func (r *Reconciler) getTmkms(chainNode *appsv1.ChainNode) (tmkms.Provider, *tmk
 		tmkmsOptions = append(tmkmsOptions, tmkms.WithProvider(provider))
 
 		// TODO: remove this when we have official release of tmkms (see https://github.com/iqlusioninc/tmkms/pull/843)
-		tmkmsOptions = append(tmkmsOptions, tmkms.WithImage("ghcr.io/nibiruchain/tmkms:0.14.0-vault"))
+		tmkmsOptions = append(tmkmsOptions, tmkms.WithImage("ghcr.io/voluzi/tmkms:0.14.0-vault"))
 
 	default:
 		return nil, nil, fmt.Errorf("no supported provider configured")

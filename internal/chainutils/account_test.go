@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
 )
 
 const testMnemonic = "upset promote follow flag you way eagle plunge scorpion oil version afraid churn fog tiger almost noise define license pistol post raise report time"
@@ -22,8 +22,8 @@ func TestAccountFromMnemonic(t *testing.T) {
 			provided: testMnemonic,
 			expected: &Account{
 				Mnemonic:         testMnemonic,
-				Address:          "nibi1ll3njapxnyqqvfz65puwvmmya23a0xcqhfkkat",
-				ValidatorAddress: "nibivaloper1ll3njapxnyqqvfz65puwvmmya23a0xcq7jcdfk",
+				Address:          "cosmos1ll3njapxnyqqvfz65puwvmmya23a0xcqqvj05c",
+				ValidatorAddress: "cosmosvaloper1ll3njapxnyqqvfz65puwvmmya23a0xcq9cx6ct",
 			},
 		},
 		{
@@ -57,8 +57,8 @@ func TestAccountAddressFromValidatorAddress(t *testing.T) {
 	}{
 		{
 			name:     "validator to account",
-			provided: "nibivaloper1efeydq3s4wgrv5yslxcevsstwtrkmkel5zkqgx",
-			expected: "nibi1efeydq3s4wgrv5yslxcevsstwtrkmkelaecmum",
+			provided: "cosmosvaloper1ll3njapxnyqqvfz65puwvmmya23a0xcq9cx6ct",
+			expected: "cosmos1ll3njapxnyqqvfz65puwvmmya23a0xcqqvj05c",
 		},
 	}
 

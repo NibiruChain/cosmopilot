@@ -5,13 +5,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/NibiruChain/cosmoseed/pkg/cosmoseed"
 	"github.com/goccy/go-json"
+	"github.com/voluzi/cosmoseed/pkg/cosmoseed"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/NibiruChain/cosmopilot/pkg/utils"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 const (
@@ -189,8 +189,15 @@ func (val *NodeSetValidatorConfig) GetPrivKeySecretName(obj client.Object) strin
 }
 
 func (val *NodeSetValidatorConfig) GetAccountHDPath() string {
-	if val != nil && val.Init != nil && val.Init.AccountHDPath != nil {
-		return *val.Init.AccountHDPath
+	if val != nil {
+		switch {
+		case val.AccountHDPath != nil:
+			return *val.AccountHDPath
+		case val.Init != nil && val.Init.AccountHDPath != nil:
+			return *val.Init.AccountHDPath
+		case val.CreateValidator != nil && val.CreateValidator.AccountHDPath != nil:
+			return *val.CreateValidator.AccountHDPath
+		}
 	}
 	return DefaultHDPath
 }
@@ -204,15 +211,29 @@ func (val *NodeSetValidatorConfig) GetAccountSecretName(obj client.Object) strin
 }
 
 func (val *NodeSetValidatorConfig) GetAccountPrefix() string {
-	if val != nil && val.Init != nil && val.Init.AccountPrefix != nil {
-		return *val.Init.AccountPrefix
+	if val != nil {
+		switch {
+		case val.AccountPrefix != nil:
+			return *val.AccountPrefix
+		case val.Init != nil && val.Init.AccountPrefix != nil:
+			return *val.Init.AccountPrefix
+		case val.CreateValidator != nil && val.CreateValidator.AccountPrefix != nil:
+			return *val.CreateValidator.AccountPrefix
+		}
 	}
 	return DefaultAccountPrefix
 }
 
 func (val *NodeSetValidatorConfig) GetValPrefix() string {
-	if val != nil && val.Init != nil && val.Init.ValPrefix != nil {
-		return *val.Init.ValPrefix
+	if val != nil {
+		switch {
+		case val.ValPrefix != nil:
+			return *val.ValPrefix
+		case val.Init != nil && val.Init.ValPrefix != nil:
+			return *val.Init.ValPrefix
+		case val.CreateValidator != nil && val.CreateValidator.ValPrefix != nil:
+			return *val.CreateValidator.ValPrefix
+		}
 	}
 	return DefaultValPrefix
 }
@@ -221,14 +242,21 @@ func (val *NodeSetValidatorConfig) GetInitUnbondingTime() string {
 	if val != nil && val.Init != nil && val.Init.UnbondingTime != nil {
 		return *val.Init.UnbondingTime
 	}
-	return DefaultUnbondingTime
+	return ""
 }
 
 func (val *NodeSetValidatorConfig) GetInitVotingPeriod() string {
 	if val != nil && val.Init != nil && val.Init.VotingPeriod != nil {
 		return *val.Init.VotingPeriod
 	}
-	return DefaultVotingPeriod
+	return ""
+}
+
+func (val *NodeSetValidatorConfig) GetInitExpeditedVotingPeriod() string {
+	if val != nil && val.Init != nil && val.Init.ExpeditedVotingPeriod != nil {
+		return *val.Init.ExpeditedVotingPeriod
+	}
+	return ""
 }
 
 func (val *NodeSetValidatorConfig) HasPdbEnabled() bool {

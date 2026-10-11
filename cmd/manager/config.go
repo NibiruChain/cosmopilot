@@ -6,8 +6,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/pkg/environ"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/pkg/environ"
 )
 
 func init() {
@@ -30,17 +30,17 @@ func init() {
 	)
 
 	flag.StringVar(&runOpts.NodeUtilsImage, "nodeutils-image",
-		environ.GetString("NODE_UTILS_IMAGE", "ghcr.io/nibiruchain/node-utils"),
+		environ.GetString("NODE_UTILS_IMAGE", "ghcr.io/voluzi/node-utils"),
 		"nodeutils image to be deployed with nodes.",
 	)
 
 	flag.StringVar(&runOpts.CosmoGuardImage, "cosmoguard-image",
-		environ.GetString("COSMOGUARD_IMAGE", "ghcr.io/nibiruchain/cosmoguard"),
+		environ.GetString("COSMOGUARD_IMAGE", "ghcr.io/voluzi/cosmoguard"),
 		"cosmoguard image to be deployed with nodes when enabled.",
 	)
 
 	flag.StringVar(&runOpts.CosmoseedImage, "cosmoseed-image",
-		environ.GetString("COSMOSEED_IMAGE", "ghcr.io/nibiruchain/cosmoseed"),
+		environ.GetString("COSMOSEED_IMAGE", "ghcr.io/voluzi/cosmoseed"),
 		"image to be used in cosmoseed deployments when enabled.",
 	)
 

@@ -21,12 +21,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/cometbft"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	"github.com/NibiruChain/cosmopilot/pkg/utils"
+	"github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/cometbft"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 func (r *Reconciler) ensureSeedNodes(ctx context.Context, nodeSet *v1.ChainNodeSet) error {
@@ -327,16 +327,13 @@ func (r *Reconciler) getStatefulSet(nodeSet *v1.ChainNodeSet, configHash string,
 				},
 				Spec: corev1.PodSpec{
 					PriorityClassName: r.opts.GetNodesPriorityClassName(),
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsUser:  ptr.To[int64](controllers.NonRootId),
-						RunAsGroup: ptr.To[int64](controllers.NonRootId),
-						FSGroup:    ptr.To[int64](controllers.NonRootId),
-					},
+					SecurityContext:   k8s.RestrictedPodSecurityContext(),
 					Containers: []corev1.Container{
 						{
 							Name:            controllers.CosmoseedName,
 							Image:           r.opts.CosmoseedImage,
 							ImagePullPolicy: corev1.PullAlways,
+							SecurityContext: k8s.RestrictedSecurityContext(),
 							Args: []string{
 								"--home", cosmoseedMountPoint,
 								"--log-level", nodeSet.Spec.Cosmoseed.GetLogLevel(),

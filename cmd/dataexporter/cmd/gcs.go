@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/NibiruChain/cosmopilot/pkg/dataexporter"
+	"github.com/voluzi/cosmopilot/v2/pkg/dataexporter"
 )
 
 var gcsCmd = &cobra.Command{

@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
 )
 
 const (
@@ -143,8 +143,9 @@ func (v HashicorpProvider) getContainers() []corev1.Container {
 
 	if v.AutoRenewToken {
 		spec := corev1.Container{
-			Name:  "vault-token-renewer",
-			Image: "ghcr.io/nibiruchain/vault-token-renewer",
+			Name:            "vault-token-renewer",
+			Image:           "ghcr.io/voluzi/vault-token-renewer",
+			SecurityContext: k8s.RestrictedSecurityContext(),
 			Env: []corev1.EnvVar{
 				{
 					Name:  "VAULT_ADDR",
@@ -235,6 +236,7 @@ func (v HashicorpProvider) UploadKey(ctx context.Context, kms *KMS, key string) 
 					Name:            tmkmsAppName,
 					Image:           kms.Config.Image,
 					ImagePullPolicy: corev1.PullAlways,
+					SecurityContext: k8s.RestrictedSecurityContext(),
 					Args: []string{"hashicorp", "upload", hashicorpKey.Key,
 						"--payload", key,
 						"--payload-format", "base64",

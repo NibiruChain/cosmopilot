@@ -14,5 +14,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Test
+      - name: Run Unit Tests
         run: make test.unit
+
+      - name: Run Integration Tests
+        run: make test.integration

@@ -46,17 +46,21 @@ validator:
 
 ## Account Prefixes
 
-By default, `Cosmopilot` uses the `nibi` prefix for accounts. If the network requires different prefixes, you can customize them:
+By default, `Cosmopilot` uses the `cosmos` prefix for accounts. If the network requires different prefixes, you can customize them:
 
-```yaml{5-6}
+```yaml{2-3}
 validator:
+  accountPrefix: cosmos
+  valPrefix: cosmosvaloper
   init:
     chainID: my-testnet-1
     stakeAmount: "1000000uatom"
-    accountPrefix: cosmos
-    valPrefix: cosmosvaloper
     assets: ["100000000uatom"]
 ```
+
+::: info
+The `accountPrefix` and `valPrefix` fields should be set directly under `.validator` as shown above. While these fields also exist under `.validator.init` and `.validator.createValidator` for backward compatibility, those locations are deprecated.
+:::
 
 ## Additional Accounts
 
@@ -110,6 +114,22 @@ validator:
     assets:
       - "100000000unibi"
       - "500000000uusdt"
+```
+
+### Expedited Voting Period
+
+For governance proposals that require faster resolution, you can also configure an expedited voting period. This is only supported on chains using SDK v0.50 or later:
+
+```yaml{7}
+validator:
+  init:
+    chainID: my-testnet-1
+    stakeAmount: "1000000unibi"
+    unbondingTime: 60s
+    votingPeriod: 60s
+    expeditedVotingPeriod: 30s
+    assets:
+      - "100000000unibi"
 ```
 
 ## Custom Genesis Changes

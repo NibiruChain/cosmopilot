@@ -5,63 +5,73 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/NibiruChain/cosmopilot/internal/tmkms"
+	"github.com/voluzi/cosmopilot/v2/internal/tmkms"
 )
 
 // Reasons for events.
 const (
-	ReasonPvcResized             = "PvcResized"
-	ReasonPvcMaxReached          = "PvcMaxSizeReached"
-	ReasonDataInitialized        = "DataInitialized"
-	ReasonNodeKeyCreated         = "NodeKeyCreated"
-	ReasonNodeKeyImported        = "NodeKeyImported"
-	ReasonPrivateKeyCreated      = "PrivateKeyCreated"
-	ReasonPrivateKeyImported     = "PrivateKeyImported"
-	ReasonAccountCreated         = "AccountCreated"
-	ReasonAccountImported        = "AccountImported"
-	ReasonGenesisInitialized     = "GenesisCreated"
-	ReasonGenesisImported        = "GenesisImported"
-	ReasonConfigsCreated         = "ConfigsCreated"
-	ReasonConfigsUpdated         = "ConfigsUpdated"
-	ReasonNodeStarted            = "NodeStarted"
-	ReasonNodeRestarted          = "NodeRestarted"
-	ReasonNodeError              = "NodeError"
-	ReasonNodeSyncing            = "NodeSyncing"
-	ReasonNodeStateSyncing       = "NodeStateSyncing"
-	ReasonNodeRunning            = "NodeRunning"
-	ReasonValidatorJailed        = "ValidatorJailed"
-	ReasonValidatorUnjailed      = "ValidatorUnjailed"
-	ReasonNodeCreated            = "NodeCreated"
-	ReasonNodeUpdated            = "NodeUpdated"
-	ReasonNodeDeleted            = "NodeDeleted"
-	ReasonInitGenesisFailure     = "InitGenesisFail"
-	ReasonUploadFailure          = "UploadFailed"
-	ReasonGenesisError           = "GenesisError"
-	ReasonNoTrustHeight          = "NoTrustHeight"
-	ReasonNoPeers                = "NoPeers"
-	ReasonStartedSnapshot        = "SnapshotStarted"
-	ReasonFinishedSnapshot       = "SnapshotFinished"
-	ReasonDeletedSnapshot        = "SnapshotDeleted"
-	ReasonTarballExportStart     = "ExportingTarball"
-	ReasonTarballExportFinish    = "TarballFinished"
-	ReasonTarballDeleted         = "TarballDeleted"
-	ReasonTarballExportError     = "TarballExportError"
-	ReasonSnapshotIntegrityStart = "IntegrityCheckStart"
-	ReasonUpgradeCompleted       = "UpgradeCompleted"
-	ReasonUpgradeFailed          = "UpgradeFailed"
-	ReasonUpgradeMissingData     = "UpgradeMissingData"
-	ReasonCreateValidatorFailure = "FailedCreateValidator"
-	ReasonCreateValidatorSuccess = "CreateValidatorSuccess"
-	ReasonInvalid                = "Invalid"
-	ReasonVPAScaleUp             = "VPAScaleUp"
-	ReasonVPAScaleDown           = "VPAScaleDown"
+	ReasonPvcResized                 = "PvcResized"
+	ReasonPvcMaxReached              = "PvcMaxSizeReached"
+	ReasonDataInitialized            = "DataInitialized"
+	ReasonDataInitStarted            = "DataInitStarted"
+	ReasonDataInitFailed             = "DataInitFailed"
+	ReasonNodeKeyCreated             = "NodeKeyCreated"
+	ReasonNodeKeyImported            = "NodeKeyImported"
+	ReasonPrivateKeyCreated          = "PrivateKeyCreated"
+	ReasonPrivateKeyImported         = "PrivateKeyImported"
+	ReasonAccountCreated             = "AccountCreated"
+	ReasonAccountImported            = "AccountImported"
+	ReasonGenesisInitialized         = "GenesisCreated"
+	ReasonGenesisImported            = "GenesisImported"
+	ReasonConfigsCreated             = "ConfigsCreated"
+	ReasonConfigsUpdated             = "ConfigsUpdated"
+	ReasonNodeStarted                = "NodeStarted"
+	ReasonNodeRestarted              = "NodeRestarted"
+	ReasonNodeError                  = "NodeError"
+	ReasonNodeSyncing                = "NodeSyncing"
+	ReasonNodeStateSyncing           = "NodeStateSyncing"
+	ReasonNodeRunning                = "NodeRunning"
+	ReasonValidatorJailed            = "ValidatorJailed"
+	ReasonValidatorUnjailed          = "ValidatorUnjailed"
+	ReasonNodeCreated                = "NodeCreated"
+	ReasonNodeUpdated                = "NodeUpdated"
+	ReasonNodeDeleted                = "NodeDeleted"
+	ReasonInitGenesisFailure         = "InitGenesisFail"
+	ReasonUploadFailure              = "UploadFailed"
+	ReasonGenesisError               = "GenesisError"
+	ReasonNoTrustHeight              = "NoTrustHeight"
+	ReasonNoPeers                    = "NoPeers"
+	ReasonStartedSnapshot            = "SnapshotStarted"
+	ReasonFinishedSnapshot           = "SnapshotFinished"
+	ReasonDeletedSnapshot            = "SnapshotDeleted"
+	ReasonTarballExportStart         = "ExportingTarball"
+	ReasonTarballExportFinish        = "TarballFinished"
+	ReasonTarballDeleted             = "TarballDeleted"
+	ReasonTarballExportError         = "TarballExportError"
+	ReasonSnapshotIntegrityStart     = "IntegrityCheckStart"
+	ReasonUpgradeCompleted           = "UpgradeCompleted"
+	ReasonUpgradeFailed              = "UpgradeFailed"
+	ReasonUpgradeMissingData         = "UpgradeMissingData"
+	ReasonCreateValidatorFailure     = "FailedCreateValidator"
+	ReasonCreateValidatorSuccess     = "CreateValidatorSuccess"
+	ReasonInvalid                    = "Invalid"
+	ReasonVPAScaleUp                 = "VPAScaleUp"
+	ReasonVPAScaleDown               = "VPAScaleDown"
+	ReasonVPAEmergencyScaleUp        = "VPAEmergencyScaleUp"
+	ReasonVPAOOMRecoveryLimitReached = "VPAOOMRecoveryLimitReached"
 )
 
 // SdkVersion specifies the cosmos-sdk version used by this application.
-// +kubebuilder:validation:Enum=v0.45;v0.47
+// +kubebuilder:validation:Enum=v0.45;v0.47;v0.50;v0.53
 type SdkVersion string
 
 const (
+	// Cosmos-sdk version v0.53.x.
+	V0_53 SdkVersion = "v0.53"
+
+	// Cosmos-sdk version v0.50.x.
+	V0_50 SdkVersion = "v0.50"
+
 	// Cosmos-sdk version v0.47.x.
 	V0_47 SdkVersion = "v0.47"
 
@@ -112,10 +122,12 @@ type AppSpec struct {
 
 	// SdkVersion specifies the version of cosmos-sdk used by this app.
 	// Valid options are:
-	// - "v0.47" (default)
+	// - "v0.53" (default)
+	// - "v0.50"
+	// - "v0.47"
 	// - "v0.45"
 	// +optional
-	// +default="v0.47"
+	// +default="v0.53"
 	SdkVersion *SdkVersion `json:"sdkVersion,omitempty"`
 
 	// Whether cosmopilot should query gov proposals to find and schedule upgrades.
@@ -127,6 +139,19 @@ type AppSpec struct {
 	// List of upgrades to schedule for this node.
 	// +optional
 	Upgrades []UpgradeSpec `json:"upgrades,omitempty"`
+
+	// SdkOptions allows customizing SDK command behavior for chains that diverge from standard SDK CLI.
+	// +optional
+	SdkOptions *SdkOptions `json:"sdkOptions,omitempty"`
+}
+
+// SdkOptions allows customizing SDK command behavior for chains that diverge from standard SDK CLI structure.
+type SdkOptions struct {
+	// GenesisSubcommand controls whether genesis commands use the "genesis" subcommand
+	// (e.g., "genesis gentx" vs "gentx"). Some chains like Osmosis don't use this subcommand.
+	// Defaults to true for sdkVersion >= v0.47, false otherwise.
+	// +optional
+	GenesisSubcommand *bool `json:"genesisSubcommand,omitempty"`
 }
 
 // Config allows setting specific configurations for a node, including overriding configs in app.toml and config.toml.
@@ -146,9 +171,9 @@ type Config struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// The time to wait for a block before considering node unhealthy.
-	// Defaults to `15s`.
+	// Defaults to `0s`.
 	// +optional
-	// +default="15s"
+	// +default="0s"
 	// +kubebuilder:validation:Format=duration
 	BlockThreshold *string `json:"blockThreshold,omitempty"`
 
@@ -206,7 +231,11 @@ type Config struct {
 	// +optional
 	NodeUtilsResources *corev1.ResourceRequirements `json:"nodeUtilsResources,omitempty"`
 
-	// Whether to persist address book file in data directory. Defaults to `false`.
+	// Additional environment variables for the node-utils container.
+	// +optional
+	NodeUtilsEnv []corev1.EnvVar `json:"nodeUtilsEnv,omitempty"`
+
+	// Whether to persist address book file in data directory. Defaults to `true`.
 	// +optional
 	PersistAddressBook *bool `json:"persistAddressBook,omitempty"`
 
@@ -222,10 +251,6 @@ type Config struct {
 	// +optional
 	RunFlags []string `json:"runFlags,omitempty"`
 
-	// Additional volumes to be created and mounted on this node.
-	// +optional
-	Volumes []VolumeSpec `json:"volumes,omitempty"`
-
 	// Whether field naming in config.toml should use dashes instead of underscores. Defaults to `false`.
 	// +optional
 	DashedConfigToml *bool `json:"dashedConfigToml,omitempty"`
@@ -234,6 +259,24 @@ type Config struct {
 	// Cosmopilot will not attempt to restart the node beyond this height.
 	// +optional
 	HaltHeight *int64 `json:"haltHeight,omitempty"`
+
+	// SecurityContext allows overriding the default restricted security context for the main app container.
+	// When not specified, a restricted security context is applied (runAsNonRoot, runAsUser=1000, drop all capabilities).
+	// Use this only if your app image requires running as root or with different security settings.
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
+
+	// PodSecurityContext allows overriding the default restricted pod security context.
+	// When not specified, a restricted pod security context is applied (runAsNonRoot, runAsUser=1000, fsGroup=1000).
+	// Use this only if your app or sidecars require running as root or with different security settings.
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use for the node's pod.
+	// If not specified, the default service account in the namespace is used.
+	// This is useful when sidecars need specific permissions (e.g., for leader election using leases).
+	// +optional
+	ServiceAccountName *string `json:"serviceAccountName,omitempty"`
 }
 
 // VolumeSpec describes an additional volume to mount on a node.
@@ -247,7 +290,9 @@ type VolumeSpec struct {
 	// Path specifies where this volume should be mounted.
 	Path string `json:"path"`
 
-	// Name of the storage class to use for this volume. Uses the default class if not specified.
+	// Name of the storage class to use for this volume.
+	// If not specified, defaults to .persistence.storageClass. If that is also not specified,
+	// the cluster default storage class will be used.
 	// +optional
 	StorageClassName *string `json:"storageClass,omitempty"`
 
@@ -368,18 +413,21 @@ type GenesisInitConfig struct {
 	AccountMnemonicSecret *string `json:"accountMnemonicSecret,omitempty"`
 
 	// HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
+	// Deprecated: Use `.validator.accountHDPath` instead.
 	// +optional
 	// +default="m/44'/118'/0'/0/0"
 	AccountHDPath *string `json:"accountHDPath,omitempty"`
 
-	// Prefix for accounts. Defaults to `nibi`.
+	// Prefix for accounts. Defaults to `cosmos`.
+	// Deprecated: Use `.validator.accountPrefix` instead.
 	// +optional
-	// +default="nibi"
+	// +default="cosmos"
 	AccountPrefix *string `json:"accountPrefix,omitempty"`
 
-	// Prefix for validator operator accounts. Defaults to `nibivaloper`.
+	// Prefix for validator operator accounts. Defaults to `cosmosvaloper`.
+	// Deprecated: Use `.validator.valPrefix` instead.
 	// +optional
-	// +default="nibivaloper"
+	// +default="cosmosvaloper"
 	ValPrefix *string `json:"valPrefix,omitempty"`
 
 	// Maximum commission change rate percentage (per day). Defaults to `0.1`.
@@ -418,17 +466,21 @@ type GenesisInitConfig struct {
 	// NOTE: Cosmopilot will wait for the ChainNodes to exist and have accounts before proceeding.
 	ChainNodeAccounts []ChainNodeAssets `json:"chainNodeAccounts,omitempty"`
 
-	// Time required to totally unbond delegations. Defaults to `1814400s` (21 days).
+	// Time required to totally unbond delegations. If not set, the chain's default is used.
 	// +optional
-	// +default="1814400s"
 	// +kubebuilder:validation:Format=duration
 	UnbondingTime *string `json:"unbondingTime,omitempty"`
 
-	// Voting period for this chain. Defaults to `120h`.
+	// Voting period for governance proposals. If not set, the chain's default is used.
 	// +optional
-	// +default="120h"
 	// +kubebuilder:validation:Format=duration
 	VotingPeriod *string `json:"votingPeriod,omitempty"`
+
+	// Expedited voting period for governance proposals. If not set, the chain's default is used.
+	// Only supported in SDK >= v0.50.
+	// +optional
+	// +kubebuilder:validation:Format=duration
+	ExpeditedVotingPeriod *string `json:"expeditedVotingPeriod,omitempty"`
 
 	// Additional commands to run on genesis initialization.
 	// Note: App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers.
@@ -467,6 +519,14 @@ type InitCommand struct {
 
 	// Args to be passed to this command.
 	Args []string `json:"args"`
+
+	// Resources specifies the resource requirements for this init command container.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Env specifies additional environment variables for this init command container.
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // GenesisConfig specifies how genesis will be retrieved.
@@ -558,9 +618,9 @@ type TmKMS struct {
 	Provider TmKmsProvider `json:"provider"`
 
 	// Format and type of key for chain.
-	// Defaults to `{"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix": "nibivalconspub"}`.
+	// Defaults to `{"type": "bech32", "account_key_prefix": "cosmospub", "consensus_key_prefix": "cosmosvalconspub"}`.
 	// +optional
-	// +default={"type": "bech32", "account_key_prefix": "nibipub", "consensus_key_prefix": "nibivalconspub"}
+	// +default={"type": "bech32", "account_key_prefix": "cosmospub", "consensus_key_prefix": "cosmosvalconspub"}
 	KeyFormat *TmKmsKeyFormat `json:"keyFormat,omitempty"`
 
 	// Tendermint's protocol version to be used.
@@ -713,6 +773,12 @@ type Persistence struct {
 	// Time to wait for data initialization pod to be successful. Defaults to `5m`.
 	// +optional
 	InitTimeout *string `json:"initTimeout,omitempty"`
+
+	// Additional volumes to be created and mounted on this node.
+	// These volumes are also mounted during data initialization, so they can be used
+	// with `additionalInitCommands` to extract snapshots or initialize data.
+	// +optional
+	AdditionalVolumes []VolumeSpec `json:"additionalVolumes,omitempty"`
 }
 
 // VolumeSnapshotsConfig holds the configuration of snapshotting feature.
@@ -900,18 +966,21 @@ type CreateValidatorConfig struct {
 	AccountMnemonicSecret *string `json:"accountMnemonicSecret,omitempty"`
 
 	// HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
+	// Deprecated: Use `.validator.accountHDPath` instead.
 	// +optional
 	// +default="m/44'/118'/0'/0/0"
 	AccountHDPath *string `json:"accountHDPath,omitempty"`
 
-	// Prefix for accounts. Defaults to `nibi`.
+	// Prefix for accounts. Defaults to `cosmos`.
+	// Deprecated: Use `.validator.accountPrefix` instead.
 	// +optional
-	// +default="nibi"
+	// +default="cosmos"
 	AccountPrefix *string `json:"accountPrefix,omitempty"`
 
-	// Prefix for validator operator accounts. Defaults to `nibivaloper`.
+	// Prefix for validator operator accounts. Defaults to `cosmosvaloper`.
+	// Deprecated: Use `.validator.valPrefix` instead.
 	// +optional
-	// +default="nibivaloper"
+	// +default="cosmosvaloper"
 	ValPrefix *string `json:"valPrefix,omitempty"`
 
 	// Maximum commission change rate percentage (per day). Defaults to `0.1`.
@@ -961,21 +1030,6 @@ type VerticalAutoscalingConfig struct {
 	Memory *VerticalAutoscalingMetricConfig `json:"memory,omitempty"`
 }
 
-// LimitSource specifies which resource value should be used as the scaling reference.
-// +kubebuilder:validation:Enum=effective-limit;requests;limits
-type LimitSource string
-
-const (
-	// EffectiveLimit means use limits if set; otherwise fallback to requests.
-	EffectiveLimit LimitSource = "effective-limit"
-
-	// Requests means always use the pod's requested resource value.
-	Requests LimitSource = "requests"
-
-	// Limits means always use the pod's resource limit value.
-	Limits LimitSource = "limits"
-)
-
 // LimitUpdateStrategy defines how resource limits should be managed when autoscaling.
 // +kubebuilder:validation:Enum=equal;max;percentage;retain;unset
 type LimitUpdateStrategy string
@@ -999,15 +1053,6 @@ const (
 
 // VerticalAutoscalingMetricConfig defines autoscaling behavior for a specific resource type (CPU or memory).
 type VerticalAutoscalingMetricConfig struct {
-	// Source determines whether to base autoscaling decisions on requests, limits, or effective limit.
-	// Valid values are:
-	// `effective-limit` (default) (use limits if set; otherwise fallback to requests)
-	// `requests` (use the pod’s requested resource value)
-	// `limits` (use the pod’s resource limit value)
-	// +optional
-	// +default="effective-limit"
-	Source *LimitSource `json:"source,omitempty"`
-
 	// Minimum resource value allowed during scaling (e.g. "100m" or "128Mi").
 	Min resource.Quantity `json:"min"`
 
@@ -1040,6 +1085,40 @@ type VerticalAutoscalingMetricConfig struct {
 	// Only used when LimitStrategy = "percentage". Defaults to `150` when not set.
 	// +optional
 	LimitPercentage *int `json:"limitPercentage,omitempty"`
+
+	// SafetyMarginPercent prevents scaling down below (current_usage * (1 + margin/100)).
+	// Provides headroom to prevent OOM from usage spikes. Defaults to 15.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	SafetyMarginPercent *int `json:"safetyMarginPercent,omitempty"`
+
+	// HysteresisPercent creates a deadband between scale-up and scale-down zones.
+	// For scale-down rules, effective threshold = configured threshold - hysteresis.
+	// This prevents oscillation when usage hovers near a threshold. Defaults to 5.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=50
+	HysteresisPercent *int `json:"hysteresisPercent,omitempty"`
+
+	// EmergencyScaleUpPercent defines how much to scale up on OOM detection.
+	// Only applicable to memory. Defaults to 25.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	EmergencyScaleUpPercent *int `json:"emergencyScaleUpPercent,omitempty"`
+
+	// MaxOOMRecoveries limits how many OOM emergency scale-ups can happen within
+	// OOMRecoveryWindow. Prevents runaway scaling on apps with memory leaks. Defaults to 3.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxOOMRecoveries *int `json:"maxOOMRecoveries,omitempty"`
+
+	// OOMRecoveryWindow is the time window for counting OOM recoveries.
+	// Defaults to "1h".
+	// +optional
+	// +kubebuilder:validation:Format=duration
+	OOMRecoveryWindow *string `json:"oomRecoveryWindow,omitempty"`
 }
 
 // ScalingDirection determines whether the scaling action is an increase or decrease in resource.

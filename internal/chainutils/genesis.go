@@ -16,9 +16,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	"github.com/NibiruChain/cosmopilot/pkg/utils"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils/sdkcmd"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 var (
@@ -108,13 +108,15 @@ func (a *App) NewGenesis(ctx context.Context,
 					Command:         []string{a.binary},
 					Args:            a.cmd.InitArgs(nodeInfo.Moniker, params.ChainID),
 					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 				{
-					Name:         "load-priv-key",
-					Image:        "busybox",
-					Command:      []string{"/bin/sh"},
-					Args:         []string{"-c", "cp /secrets/priv_validator_key.json /home/app/config/priv_validator_key.json"},
-					VolumeMounts: []corev1.VolumeMount{dataVolumeMount, privKeyVolumeMount},
+					Name:            "load-priv-key",
+					Image:           "busybox",
+					Command:         []string{"/bin/sh"},
+					Args:            []string{"-c", "cp /secrets/priv_validator_key.json /home/app/config/priv_validator_key.json"},
+					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount, privKeyVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 				{
 					Name:            "load-account",
@@ -125,6 +127,7 @@ func (a *App) NewGenesis(ctx context.Context,
 					Stdin:           true,
 					StdinOnce:       true,
 					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 				{
 					Name:            "add-validator-account",
@@ -133,33 +136,53 @@ func (a *App) NewGenesis(ctx context.Context,
 					Command:         []string{a.binary},
 					Args:            a.cmd.AddGenesisAccountArgs(account.Address, params.Assets),
 					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
-				},
-				{
-					Name:         "set-unbonding-time",
-					Image:        "apteno/alpine-jq",
-					Command:      []string{"sh", "-c"},
-					Args:         []string{a.cmd.GenesisSetUnbondingTimeCmd(params.UnbondingTime, filepath.Join(defaultHome, defaultGenesisFile))},
-					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
-				},
-				{
-					Name:         "set-voting-period",
-					Image:        "apteno/alpine-jq",
-					Command:      []string{"sh", "-c"},
-					Args:         []string{a.cmd.GenesisSetVotingPeriodCmd(params.VotingPeriod, filepath.Join(defaultHome, defaultGenesisFile))},
-					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 			},
 			Containers: []corev1.Container{
 				{
-					Name:         "busybox",
-					Image:        "busybox",
-					Command:      []string{"cat"},
-					Stdin:        true,
-					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
+					Name:            "busybox",
+					Image:           "busybox",
+					Command:         []string{"cat"},
+					Stdin:           true,
+					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 			},
 			TerminationGracePeriodSeconds: ptr.To[int64](0),
 		},
+	}
+
+	// Add genesis parameter modifications (only when explicitly set)
+	if params.UnbondingTime != "" {
+		pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
+			Name:            "set-unbonding-time",
+			Image:           "apteno/alpine-jq",
+			Command:         []string{"sh", "-c"},
+			Args:            []string{a.cmd.GenesisSetUnbondingTimeCmd(params.UnbondingTime, filepath.Join(defaultHome, defaultGenesisFile))},
+			VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+			SecurityContext: k8s.RestrictedSecurityContext(),
+		})
+	}
+	if params.VotingPeriod != "" {
+		pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
+			Name:            "set-voting-period",
+			Image:           "apteno/alpine-jq",
+			Command:         []string{"sh", "-c"},
+			Args:            []string{a.cmd.GenesisSetVotingPeriodCmd(params.VotingPeriod, filepath.Join(defaultHome, defaultGenesisFile))},
+			VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+			SecurityContext: k8s.RestrictedSecurityContext(),
+		})
+	}
+	if cmd := a.cmd.GenesisSetExpeditedVotingPeriodCmd(params.ExpeditedVotingPeriod, filepath.Join(defaultHome, defaultGenesisFile)); params.ExpeditedVotingPeriod != "" && cmd != "" {
+		pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
+			Name:            "set-expedited-voting-period",
+			Image:           "apteno/alpine-jq",
+			Command:         []string{"sh", "-c"},
+			Args:            []string{cmd},
+			VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+			SecurityContext: k8s.RestrictedSecurityContext(),
+		})
 	}
 
 	// Add additional accounts
@@ -171,17 +194,21 @@ func (a *App) NewGenesis(ctx context.Context,
 			Command:         []string{a.binary},
 			Args:            a.cmd.AddGenesisAccountArgs(acc.Address, acc.Assets),
 			VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+			SecurityContext: k8s.RestrictedSecurityContext(),
 		})
 	}
 
 	// Add additional commands
 	for i, cmd := range initCommands {
 		pod.Spec.InitContainers = append(pod.Spec.InitContainers, corev1.Container{
-			Name:         fmt.Sprintf("init-command-%d", i),
-			Image:        cmd.Image,
-			Command:      cmd.Command,
-			Args:         cmd.Args,
-			VolumeMounts: []corev1.VolumeMount{dataVolumeMount, tempVolumeMount},
+			Name:            fmt.Sprintf("init-command-%d", i),
+			Image:           cmd.Image,
+			Command:         cmd.Command,
+			Args:            cmd.Args,
+			VolumeMounts:    []corev1.VolumeMount{dataVolumeMount, tempVolumeMount},
+			Resources:       cmd.Resources,
+			Env:             cmd.Env,
+			SecurityContext: k8s.RestrictedSecurityContext(),
 		})
 	}
 
@@ -200,7 +227,8 @@ func (a *App) NewGenesis(ctx context.Context,
 			sdkcmd.WithOptionalArg(sdkcmd.Website, nodeInfo.Website),
 			sdkcmd.WithOptionalArg(sdkcmd.Identity, nodeInfo.Identity),
 		),
-		VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
+		VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+		SecurityContext: k8s.RestrictedSecurityContext(),
 	})
 
 	// Add collect-gentxs container
@@ -211,6 +239,7 @@ func (a *App) NewGenesis(ctx context.Context,
 		Command:         []string{a.binary},
 		Args:            a.cmd.CollectGenTxsArgs(),
 		VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+		SecurityContext: k8s.RestrictedSecurityContext(),
 	})
 
 	if err := controllerutil.SetControllerReference(a.owner, pod, a.scheme); err != nil {

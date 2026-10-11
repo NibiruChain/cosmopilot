@@ -19,13 +19,22 @@ type ControllerRunOptions struct {
 }
 
 func (opts *ControllerRunOptions) GetDefaultPriorityClassName() string {
+	if opts.ReleaseName == "" {
+		return ""
+	}
 	return fmt.Sprintf("%s-default", opts.ReleaseName)
 }
 
 func (opts *ControllerRunOptions) GetNodesPriorityClassName() string {
+	if opts.ReleaseName == "" {
+		return ""
+	}
 	return fmt.Sprintf("%s-nodes", opts.ReleaseName)
 }
 
 func (opts *ControllerRunOptions) GetValidatorsPriorityClassName() string {
+	if opts.ReleaseName == "" {
+		return ""
+	}
 	return fmt.Sprintf("%s-validators", opts.ReleaseName)
 }

@@ -12,10 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
 )
 
 func (r *Reconciler) ensureGenesis(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode) error {
@@ -215,6 +215,7 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 		MinSelfDelegation:       chainNode.Spec.Validator.GetMinSelfDelegation(),
 		UnbondingTime:           chainNode.Spec.Validator.GetInitUnbondingTime(),
 		VotingPeriod:            chainNode.Spec.Validator.GetInitVotingPeriod(),
+		ExpeditedVotingPeriod:   chainNode.Spec.Validator.GetInitExpeditedVotingPeriod(),
 	}
 
 	for _, a := range chainNode.Spec.Validator.Init.ChainNodeAccounts {
@@ -240,7 +241,12 @@ func (r *Reconciler) initGenesis(ctx context.Context, app *chainutils.App, chain
 
 	initCommands := make([]*chainutils.InitCommand, len(chainNode.Spec.Validator.Init.AdditionalInitCommands))
 	for i, c := range chainNode.Spec.Validator.Init.AdditionalInitCommands {
-		initCommands[i] = &chainutils.InitCommand{Args: c.Args, Command: c.Command}
+		initCommands[i] = &chainutils.InitCommand{
+			Args:      c.Args,
+			Command:   c.Command,
+			Resources: c.Resources,
+			Env:       c.Env,
+		}
 		if c.Image != nil {
 			initCommands[i].Image = *c.Image
 		} else {

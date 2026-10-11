@@ -21,10 +21,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/pkg/utils"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 const (
@@ -122,16 +122,14 @@ func (r *Reconciler) ensureConfigs(ctx context.Context, app *chainutils.App, cha
 		}
 	}
 
-	// Set external address if there is one
-	if addr, ok := getExternalAddress(chainNode); ok {
-		configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
-			kf.P2P(): map[string]interface{}{
-				kf.ExternalAddress(): addr,
-			},
-		})
-		if err != nil {
-			return "", err
-		}
+	// Set external address to internal service FQDN for reliable P2P reconnection.
+	configs[configTomlFilename], err = utils.Merge(configs[configTomlFilename], map[string]interface{}{
+		kf.P2P(): map[string]interface{}{
+			kf.ExternalAddress(): getExternalAddress(chainNode),
+		},
+	})
+	if err != nil {
+		return "", err
 	}
 
 	// Apply state-sync config
@@ -510,12 +508,17 @@ func getMostRecentHeightFromServicesAnnotations(annotationsList []map[string]str
 	return trustHeight, trustHash
 }
 
-func getExternalAddress(chainNode *appsv1.ChainNode) (string, bool) {
+// getExternalAddress returns the address this node advertises to peers.
+// For public nodes (with PublicAddress set), it returns the public address so
+// the node is correctly advertised on the network for PEX discovery.
+// For non-public nodes, it returns the internal service FQDN which resolves to
+// a stable ClusterIP, ensuring reliable P2P reconnection after pod reschedules.
+func getExternalAddress(chainNode *appsv1.ChainNode) string {
 	if chainNode.Status.PublicAddress != "" {
 		parts := strings.Split(chainNode.Status.PublicAddress, "@")
 		if len(parts) == 2 {
-			return parts[1], true
+			return parts[1]
 		}
 	}
-	return "", false
+	return fmt.Sprintf("%s:%d", chainNode.GetNodeFQDN(), chainutils.P2pPort)
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -40,6 +41,7 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path, pc string, a
 			PriorityClassName:             pc,
 			Affinity:                      af,
 			NodeSelector:                  ns,
+			SecurityContext:               RestrictedPodSecurityContext(),
 			Volumes: []corev1.Volume{
 				{
 					Name: "pvc",
@@ -52,9 +54,10 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path, pc string, a
 			},
 			Containers: []corev1.Container{
 				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"/bin/sh"},
+					Name:            "busybox",
+					Image:           "busybox",
+					Command:         []string{"/bin/sh"},
+					SecurityContext: RestrictedSecurityContext(),
 					Args: []string{
 						"-c",
 						fmt.Sprintf("cp /dev/stdin %s", filepath.Join("/pvc", path)),
@@ -106,7 +109,11 @@ func (h *PvcHelper) WriteToFile(ctx context.Context, content, path, pc string, a
 }
 
 func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path, pc string, af *corev1.Affinity, ns map[string]string) error {
-	cmd := fmt.Sprintf("wget -O %s %s", filepath.Join("/pvc", path), url)
+	destPath := filepath.Join("/pvc", path)
+	cmd := buildGenesisDownloadCommand(url, destPath)
+
+	// Use node-tools image which has compression tools (gzip, zstd)
+	image := "ghcr.io/voluzi/node-tools"
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -119,6 +126,7 @@ func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path, pc string, a
 			PriorityClassName:             pc,
 			Affinity:                      af,
 			NodeSelector:                  ns,
+			SecurityContext:               RestrictedPodSecurityContext(),
 			Volumes: []corev1.Volume{
 				{
 					Name: "pvc",
@@ -131,10 +139,11 @@ func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path, pc string, a
 			},
 			Containers: []corev1.Container{
 				{
-					Name:    "downloader",
-					Image:   "apteno/alpine-jq",
-					Command: []string{"/bin/sh"},
-					Args:    []string{"-c", cmd},
+					Name:            "downloader",
+					Image:           image,
+					Command:         []string{"/bin/sh"},
+					SecurityContext: RestrictedSecurityContext(),
+					Args:            []string{"-c", cmd},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "pvc",
@@ -160,4 +169,19 @@ func (h *PvcHelper) DownloadGenesis(ctx context.Context, url, path, pc string, a
 	}
 
 	return ph.WaitForPodSucceeded(ctx, time.Hour)
+}
+
+// buildGenesisDownloadCommand returns the appropriate download command based on URL extension.
+// It auto-detects compression format (.gz, .zst) and decompresses accordingly.
+func buildGenesisDownloadCommand(url, destPath string) string {
+	lowerURL := strings.ToLower(url)
+
+	switch {
+	case strings.HasSuffix(lowerURL, ".gz"):
+		return fmt.Sprintf("wget -qO- '%s' | gunzip > %s", url, destPath)
+	case strings.HasSuffix(lowerURL, ".zst"):
+		return fmt.Sprintf("wget -qO- '%s' | zstd -d > %s", url, destPath)
+	default:
+		return fmt.Sprintf("wget -O %s '%s'", destPath, url)
+	}
 }

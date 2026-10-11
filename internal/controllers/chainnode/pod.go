@@ -25,11 +25,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils/sdkcmd"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/pkg/nodeutils"
 )
 
 func (r *Reconciler) isChainNodePodRunning(ctx context.Context, chainNode *appsv1.ChainNode) (bool, bool, error) {
@@ -177,6 +178,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 		// Force update config files, to prevent restarting again because of config changes
 		app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode,
 			chainNode.Spec.App.GetSdkVersion(),
+			[]sdkcmd.Option{sdkcmd.WithGenesisSubcommand(chainNode.Spec.App.UseGenesisSubcommand())},
 			chainutils.WithImage(chainNode.GetAppImage()),
 			chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
 			chainutils.WithBinary(chainNode.Spec.App.App),
@@ -386,6 +388,7 @@ func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) co
 		Image:           r.opts.NodeUtilsImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		RestartPolicy:   &sidecarRestartAlways,
+		SecurityContext: k8s.RestrictedSecurityContext(),
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          nodeUtilsPortName,
@@ -408,7 +411,7 @@ func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) co
 				MountPath: "/config",
 			},
 		},
-		Env: []corev1.EnvVar{
+		Env: append([]corev1.EnvVar{
 			{
 				Name:  "BLOCK_THRESHOLD",
 				Value: chainNode.Spec.Config.GetBlockThreshold(),
@@ -437,7 +440,7 @@ func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) co
 				Name:  "HALT_HEIGHT",
 				Value: strconv.FormatInt(chainNode.Spec.Config.GetHaltHeight(), 10),
 			},
-		},
+		}, chainNode.Spec.Config.GetNodeUtilsEnv()...),
 		Resources: chainNode.Spec.Config.GetNodeUtilsResources(),
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
@@ -457,11 +460,12 @@ func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) co
 }
 
 // buildAppContainer creates the main application container with its configuration.
-func (r *Reconciler) buildAppContainer(chainNode *appsv1.ChainNode, configFilesMounts []corev1.VolumeMount, readinessPath string, appResources corev1.ResourceRequirements) corev1.Container {
+func (r *Reconciler) buildAppContainer(chainNode *appsv1.ChainNode, configFilesMounts []corev1.VolumeMount, readinessPath string, appResources corev1.ResourceRequirements, securityContext *corev1.SecurityContext) corev1.Container {
 	return corev1.Container{
 		Name:            chainNode.Spec.App.App,
 		Image:           chainNode.GetAppImage(),
 		ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
+		SecurityContext: securityContext,
 		Command:         []string{chainNode.Spec.App.App},
 		Args: append([]string{"start",
 			"--home", "/home/app",
@@ -611,6 +615,18 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	// System annotations override user annotations
 	annotations[controllers.AnnotationConfigHash] = configHash
 
+	// Use custom pod security context if provided, otherwise use restricted
+	podSecurityContext := chainNode.Spec.Config.GetPodSecurityContext()
+	if podSecurityContext == nil {
+		podSecurityContext = k8s.RestrictedPodSecurityContext()
+	}
+
+	// Use custom container security context if provided, otherwise use restricted
+	appSecurityContext := chainNode.Spec.Config.GetSecurityContext()
+	if appSecurityContext == nil {
+		appSecurityContext = k8s.RestrictedSecurityContext()
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        chainNode.GetName(),
@@ -624,38 +640,33 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			}),
 		},
 		Spec: corev1.PodSpec{
-			ShareProcessNamespace: ptr.To(true),
-			RestartPolicy:         corev1.RestartPolicyNever,
-			PriorityClassName:     r.opts.GetNodesPriorityClassName(),
-			Affinity:              chainNode.Spec.Affinity,
-			NodeSelector:          chainNode.Spec.NodeSelector,
-			SecurityContext: &corev1.PodSecurityContext{
-				RunAsUser:  ptr.To[int64](controllers.NonRootId),
-				RunAsGroup: ptr.To[int64](controllers.NonRootId),
-				FSGroup:    ptr.To[int64](controllers.NonRootId),
-			},
+			ShareProcessNamespace:         ptr.To(true),
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			ServiceAccountName:            chainNode.Spec.Config.GetServiceAccountName(),
+			PriorityClassName:             r.opts.GetNodesPriorityClassName(),
+			Affinity:                      chainNode.Spec.Affinity,
+			NodeSelector:                  chainNode.Spec.NodeSelector,
+			SecurityContext:               podSecurityContext,
 			TerminationGracePeriodSeconds: chainNode.Spec.Config.GetTerminationGracePeriodSeconds(),
 			Volumes:                       r.buildBaseVolumes(chainNode),
 			InitContainers:                []corev1.Container{r.buildNodeUtilsInitContainer(chainNode)},
-			Containers:                    []corev1.Container{r.buildAppContainer(chainNode, configFilesMounts, readinessPath, appResources)},
+			Containers:                    []corev1.Container{r.buildAppContainer(chainNode, configFilesMounts, readinessPath, appResources, appSecurityContext)},
 		},
 	}
 
-	if chainNode.Spec.Config != nil && chainNode.Spec.Config.Volumes != nil {
-		for _, volume := range chainNode.Spec.Config.Volumes {
-			pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-				Name: volume.Name,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: fmt.Sprintf("%s-%s", chainNode.GetName(), volume.Name),
-					},
+	for _, volume := range chainNode.GetPersistenceAdditionalVolumes() {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: volume.Name,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: fmt.Sprintf("%s-%s", chainNode.GetName(), volume.Name),
 				},
-			})
-			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-				Name:      volume.Name,
-				MountPath: volume.Path,
-			})
-		}
+			},
+		})
+		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      volume.Name,
+			MountPath: volume.Path,
+		})
 	}
 
 	if chainNode.Spec.Config.IsEvmEnabled() {
@@ -696,9 +707,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 		//TODO: This is a workaround. Remove this when issue with genesis_file field not being used is fixed
 		pod.Spec.InitContainers = append([]corev1.Container{
 			{
-				Name:    "link-genesis",
-				Image:   "busybox",
-				Command: []string{"/bin/sh"},
+				Name:            "link-genesis",
+				Image:           "busybox",
+				Command:         []string{"/bin/sh"},
+				SecurityContext: k8s.RestrictedSecurityContext(),
 				Args: []string{
 					"-c",
 					"ln -s /home/app/data/genesis.json /home/app/config/genesis.json",
@@ -763,6 +775,12 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			if r.shouldSkipSidecar(ctx, chainNode, c, pod.Labels) {
 				continue
 			}
+			// Use custom security context if provided, otherwise use restricted
+			sidecarSecurityContext := c.SecurityContext
+			if sidecarSecurityContext == nil {
+				sidecarSecurityContext = k8s.RestrictedSecurityContext()
+			}
+
 			sidecar := corev1.Container{
 				Name:            c.Name,
 				Image:           c.GetImage(chainNode),
@@ -770,7 +788,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 				Command:         c.Command,
 				Args:            c.Args,
 				Env:             c.Env,
-				SecurityContext: c.SecurityContext,
+				SecurityContext: sidecarSecurityContext,
 				Resources:       c.Resources,
 			}
 
@@ -831,6 +849,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			Image:           r.opts.CosmoGuardImage,
 			ImagePullPolicy: corev1.PullAlways,
 			RestartPolicy:   &sidecarRestartAlways,
+			SecurityContext: k8s.RestrictedSecurityContext(),
 			Args:            []string{"-config", filepath.Join("/config/", chainNode.Spec.Config.GetCosmoGuardConfig().Key)},
 			Ports: []corev1.ContainerPort{
 				{
@@ -926,11 +945,16 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 		defer lock.Unlock()
 		logger.Info("acquired lock for recreating pod", "pod", pod.GetName(), "labels", disruptionLabels)
 
-		logger.Info("checking pod disruption", "pod", pod.GetName(), "labels", disruptionLabels)
-		err := r.checkDisruptionAllowance(ctx, disruptionLabels)
-		if err != nil {
-			logger.Info("delaying pod recreation due to disruption limits", "pod", pod.GetName(), "reason", err.Error())
-			return nil
+		// If the pod is already unavailable, recreating it won't increase disruption
+		if isPodRunningAndReady(pod) {
+			logger.Info("checking pod disruption", "pod", pod.GetName(), "labels", disruptionLabels)
+			err := r.checkDisruptionAllowance(ctx, disruptionLabels)
+			if err != nil {
+				logger.Info("delaying pod recreation due to disruption limits", "pod", pod.GetName(), "reason", err.Error())
+				return nil
+			}
+		} else {
+			logger.Info("pod is already unavailable, skipping disruption check", "pod", pod.GetName())
 		}
 	}
 

@@ -10,9 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/pkg/nodeutils"
 )
 
 const OneMiB = int64(1024 * 1024)
@@ -33,7 +33,38 @@ func (r *Reconciler) maybeGetVpaResources(ctx context.Context, chainNode *appsv1
 	updated := getVpaLastAppliedResourcesOrFallback(chainNode)
 	var cpuScaleTs, memScaleTs time.Time
 
-	client := nodeutils.NewClient(chainNode.GetNodeFQDN())
+	// Check for OOM and handle emergency scale-up for memory
+	if chainNode.Spec.VPA.Memory != nil {
+		currentPod, err := r.getChainNodePod(ctx, chainNode)
+		if err == nil && currentPod != nil {
+			if isOOMKilled(currentPod, chainNode.Spec.App.App) {
+				logger.Info("OOM kill detected, checking emergency scale-up")
+				emergencyScaled, newMemRequest, err := r.handleOOMRecovery(ctx, chainNode, updated)
+				if err != nil {
+					logger.Error(err, "failed to handle OOM recovery")
+				} else if emergencyScaled {
+					updated.Requests[corev1.ResourceMemory] = newMemRequest
+					memScaleTs = time.Now()
+
+					// Calculate new limit based on strategy
+					newMemLimit := calculateLimitFromRequest(chainNode, newMemRequest, chainNode.Spec.VPA.Memory, corev1.ResourceMemory)
+					if newMemLimit != nil {
+						if updated.Limits == nil {
+							updated.Limits = corev1.ResourceList{}
+						}
+						updated.Limits[corev1.ResourceMemory] = *newMemLimit
+					} else {
+						delete(updated.Limits, corev1.ResourceMemory)
+					}
+
+					// Store and return immediately - skip normal VPA evaluation for memory
+					return updated, r.storeVpaLastAppliedResources(ctx, chainNode, updated, cpuScaleTs, memScaleTs)
+				}
+			}
+		}
+	}
+
+	client := r.statsClientFactory(chainNode.GetNodeFQDN())
 
 	if chainNode.Spec.VPA.CPU != nil {
 		metricCooldown := chainNode.Spec.VPA.CPU.GetCooldownDuration()
@@ -139,7 +170,7 @@ func getScaleReason(direction appsv1.ScalingDirection) string {
 	return appsv1.ReasonVPAScaleDown
 }
 
-func (r *Reconciler) evaluateCpuRule(ctx context.Context, chainNode *appsv1.ChainNode, client *nodeutils.Client, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
+func (r *Reconciler) evaluateCpuRule(ctx context.Context, chainNode *appsv1.ChainNode, client nodeutils.StatsClient, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
 	logger := log.FromContext(ctx).WithValues("module", "vpa")
 
 	avg, err := client.GetCPUStats(ctx, rule.GetDuration())
@@ -151,30 +182,59 @@ func (r *Reconciler) evaluateCpuRule(ctx context.Context, chainNode *appsv1.Chai
 		return false, resource.Quantity{}, nil
 	}
 
-	limit, err := getSourceCpuQuantity(current, cfg.GetSource())
-	if err != nil {
-		return false, resource.Quantity{}, err
+	// Always use current requests for usage calculation and step calculation
+	currentRequest, ok := current.Requests[corev1.ResourceCPU]
+	if !ok {
+		return false, resource.Quantity{}, fmt.Errorf("no CPU request found")
 	}
 
-	limitMillicores := limit.MilliValue()
-	usedPercent := int((avg * 1000 / float64(limitMillicores)) * 100)
+	requestMillicores := currentRequest.MilliValue()
+	if requestMillicores == 0 {
+		return false, resource.Quantity{}, fmt.Errorf("CPU request is zero, cannot evaluate")
+	}
+
+	usedPercent := int((avg * 1000 / float64(requestMillicores)) * 100)
 	logger.V(1).Info("got cpu usage", "percentage", usedPercent, "duration", rule.GetDuration())
 
-	if (rule.Direction == appsv1.ScaleUp && usedPercent >= rule.UsagePercent) || (rule.Direction == appsv1.ScaleDown && usedPercent <= rule.UsagePercent) {
-		step := limitMillicores * int64(rule.StepPercent) / 100
+	// Apply hysteresis for scale-down rules
+	effectiveThreshold := rule.UsagePercent
+	if rule.Direction == appsv1.ScaleDown {
+		hysteresis := cfg.GetHysteresisPercent()
+		effectiveThreshold = rule.UsagePercent - hysteresis
+		if effectiveThreshold < 0 {
+			effectiveThreshold = 0
+		}
+	}
+
+	shouldScale := (rule.Direction == appsv1.ScaleUp && usedPercent >= effectiveThreshold) ||
+		(rule.Direction == appsv1.ScaleDown && usedPercent <= effectiveThreshold)
+
+	if shouldScale {
+		// Calculate step from current request (not from source/limit)
+		step := requestMillicores * int64(rule.StepPercent) / 100
 		var newVal int64
 		if rule.Direction == appsv1.ScaleUp {
-			newVal = limitMillicores + step
+			newVal = requestMillicores + step
 		} else {
-			newVal = limitMillicores - step
+			newVal = requestMillicores - step
+
+			// Apply safety margin for scale-down: don't go below usage + margin
+			safetyMargin := cfg.GetSafetyMarginPercent()
+			avgMillicores := int64(avg * 1000)
+			minSafeVal := avgMillicores * int64(100+safetyMargin) / 100
+			if newVal < minSafeVal {
+				newVal = minSafeVal
+				logger.V(1).Info("safety margin applied", "minSafeVal", minSafeVal, "avgMillicores", avgMillicores)
+			}
 		}
-		// Clamp
+
+		// Clamp to configured min/max
 		newVal = clamp(newVal, cfg.Min.MilliValue(), cfg.Max.MilliValue())
 		newQuantity := resource.NewMilliQuantity(newVal, resource.DecimalSI)
 
 		r.recorder.Eventf(chainNode, corev1.EventTypeNormal, getScaleReason(rule.Direction),
 			"Scaling CPU requests %s from %s to %s (CPU usage was at %d%% for the past %s)",
-			rule.Direction, limit.String(), newQuantity.String(), usedPercent, rule.GetDuration().String(),
+			rule.Direction, currentRequest.String(), newQuantity.String(), usedPercent, rule.GetDuration().String(),
 		)
 
 		return true, *newQuantity, nil
@@ -183,7 +243,7 @@ func (r *Reconciler) evaluateCpuRule(ctx context.Context, chainNode *appsv1.Chai
 	return false, resource.Quantity{}, nil
 }
 
-func (r *Reconciler) evaluateMemoryRule(ctx context.Context, chainNode *appsv1.ChainNode, client *nodeutils.Client, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
+func (r *Reconciler) evaluateMemoryRule(ctx context.Context, chainNode *appsv1.ChainNode, client nodeutils.StatsClient, current corev1.ResourceRequirements, cfg *appsv1.VerticalAutoscalingMetricConfig, rule *appsv1.VerticalAutoscalingRule) (bool, resource.Quantity, error) {
 	logger := log.FromContext(ctx).WithValues("module", "vpa")
 
 	avg, err := client.GetMemoryStats(ctx, rule.GetDuration())
@@ -195,28 +255,51 @@ func (r *Reconciler) evaluateMemoryRule(ctx context.Context, chainNode *appsv1.C
 		return false, resource.Quantity{}, nil
 	}
 
-	limit, err := getSourceMemoryQuantity(current, cfg.GetSource())
-	if err != nil {
-		return false, resource.Quantity{}, err
+	// Always use current requests for usage calculation and step calculation
+	currentRequest, ok := current.Requests[corev1.ResourceMemory]
+	if !ok {
+		return false, resource.Quantity{}, fmt.Errorf("no memory request found")
 	}
 
-	limitBytes := limit.Value()
-	if limitBytes == 0 {
-		return false, resource.Quantity{}, fmt.Errorf("memory limit is zero, cannot evaluate")
+	requestBytes := currentRequest.Value()
+	if requestBytes == 0 {
+		return false, resource.Quantity{}, fmt.Errorf("memory request is zero, cannot evaluate")
 	}
 
-	usedPercent := int((float64(avg) / float64(limitBytes)) * 100)
+	usedPercent := int((float64(avg) / float64(requestBytes)) * 100)
 	logger.V(1).Info("got memory usage", "percentage", usedPercent, "duration", rule.GetDuration())
 
-	if (rule.Direction == appsv1.ScaleUp && usedPercent >= rule.UsagePercent) ||
-		(rule.Direction == appsv1.ScaleDown && usedPercent <= rule.UsagePercent) {
-		step := int64(float64(limitBytes) * float64(rule.StepPercent) / 100.0)
+	// Apply hysteresis for scale-down rules
+	effectiveThreshold := rule.UsagePercent
+	if rule.Direction == appsv1.ScaleDown {
+		hysteresis := cfg.GetHysteresisPercent()
+		effectiveThreshold = rule.UsagePercent - hysteresis
+		if effectiveThreshold < 0 {
+			effectiveThreshold = 0
+		}
+	}
+
+	shouldScale := (rule.Direction == appsv1.ScaleUp && usedPercent >= effectiveThreshold) ||
+		(rule.Direction == appsv1.ScaleDown && usedPercent <= effectiveThreshold)
+
+	if shouldScale {
+		// Calculate step from current request (not from source/limit)
+		step := int64(float64(requestBytes) * float64(rule.StepPercent) / 100.0)
 		var newVal int64
 		if rule.Direction == appsv1.ScaleUp {
-			newVal = limitBytes + step
+			newVal = requestBytes + step
 		} else {
-			newVal = limitBytes - step
+			newVal = requestBytes - step
+
+			// Apply safety margin for scale-down: don't go below usage + margin
+			safetyMargin := cfg.GetSafetyMarginPercent()
+			minSafeVal := int64(float64(avg) * float64(100+safetyMargin) / 100.0)
+			if newVal < minSafeVal {
+				newVal = minSafeVal
+				logger.V(1).Info("safety margin applied", "minSafeVal", minSafeVal, "avgBytes", avg)
+			}
 		}
+
 		// Clamp within configured min/max
 		newVal = clamp(newVal, cfg.Min.Value(), cfg.Max.Value())
 
@@ -226,50 +309,13 @@ func (r *Reconciler) evaluateMemoryRule(ctx context.Context, chainNode *appsv1.C
 
 		r.recorder.Eventf(chainNode, corev1.EventTypeNormal, getScaleReason(rule.Direction),
 			"Scaling memory requests %s from %s to %s (Memory usage was at %d%% for the past %s)",
-			rule.Direction, limit.String(), newQuantity.String(), usedPercent, rule.GetDuration().String(),
+			rule.Direction, currentRequest.String(), newQuantity.String(), usedPercent, rule.GetDuration().String(),
 		)
 
 		return true, *newQuantity, nil
 	}
 
 	return false, resource.Quantity{}, nil
-}
-
-func getSourceCpuQuantity(current corev1.ResourceRequirements, source appsv1.LimitSource) (resource.Quantity, error) {
-	return getSourceQuantity(current, source, corev1.ResourceCPU)
-}
-
-func getSourceMemoryQuantity(current corev1.ResourceRequirements, source appsv1.LimitSource) (resource.Quantity, error) {
-	return getSourceQuantity(current, source, corev1.ResourceMemory)
-}
-
-func getSourceQuantity(current corev1.ResourceRequirements, source appsv1.LimitSource, name corev1.ResourceName) (resource.Quantity, error) {
-	switch source {
-	case appsv1.Limits:
-		if cpu, ok := current.Limits[name]; ok {
-			return cpu, nil
-		}
-		return resource.Quantity{}, fmt.Errorf("no %s %s found", name, source)
-
-	case appsv1.Requests:
-		if cpu, ok := current.Requests[name]; ok {
-			return cpu, nil
-		}
-		return resource.Quantity{}, fmt.Errorf("no %s %s found", name, source)
-
-	case appsv1.EffectiveLimit:
-		if cpu, ok := current.Limits[name]; ok {
-			return cpu, nil
-		}
-		// Fallback to requests
-		if q, ok := current.Requests[name]; ok {
-			return q, nil
-		}
-		return resource.Quantity{}, fmt.Errorf("no %s limits or requests found", name)
-
-	default:
-		return resource.Quantity{}, fmt.Errorf("invalid limit source")
-	}
 }
 
 func withinCooldown(last time.Time, cooldown time.Duration) bool {
@@ -506,4 +552,140 @@ func calculateLimitFromRequest(chainNode *appsv1.ChainNode, request resource.Qua
 	default:
 		return nil
 	}
+}
+
+// isOOMKilled checks if the specified container was OOM killed in its last termination
+func isOOMKilled(pod *corev1.Pod, containerName string) bool {
+	for _, cs := range pod.Status.ContainerStatuses {
+		if cs.Name == containerName {
+			if cs.LastTerminationState.Terminated != nil &&
+				cs.LastTerminationState.Terminated.Reason == "OOMKilled" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// handleOOMRecovery handles emergency scale-up on OOM detection with rate limiting
+func (r *Reconciler) handleOOMRecovery(ctx context.Context, chainNode *appsv1.ChainNode, current corev1.ResourceRequirements) (bool, resource.Quantity, error) {
+	logger := log.FromContext(ctx).WithValues("module", "vpa")
+	cfg := chainNode.Spec.VPA.Memory
+
+	// Get current memory request
+	currentRequest, ok := current.Requests[corev1.ResourceMemory]
+	if !ok {
+		return false, resource.Quantity{}, fmt.Errorf("no memory request found for OOM recovery")
+	}
+
+	// Check if we're within the OOM recovery limit
+	oomHistory := getOOMRecoveryHistory(chainNode)
+	recoveryWindow := cfg.GetOOMRecoveryWindow()
+	maxRecoveries := cfg.GetMaxOOMRecoveries()
+
+	// Filter history to only include entries within the window
+	cutoff := time.Now().Add(-recoveryWindow)
+	recentRecoveries := 0
+	for _, ts := range oomHistory {
+		if ts.After(cutoff) {
+			recentRecoveries++
+		}
+	}
+
+	if recentRecoveries >= maxRecoveries {
+		logger.Info("OOM recovery limit reached, possible memory leak",
+			"recentRecoveries", recentRecoveries,
+			"maxRecoveries", maxRecoveries,
+			"window", recoveryWindow)
+		r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonVPAOOMRecoveryLimitReached,
+			"OOM recovery limit reached (%d/%d in %s). Possible memory leak - manual intervention required.",
+			recentRecoveries, maxRecoveries, recoveryWindow)
+		return false, resource.Quantity{}, nil
+	}
+
+	// Calculate emergency scale-up
+	emergencyPercent := cfg.GetEmergencyScaleUpPercent()
+	currentBytes := currentRequest.Value()
+	step := int64(float64(currentBytes) * float64(emergencyPercent) / 100.0)
+	newVal := currentBytes + step
+
+	// Clamp to max
+	newVal = clamp(newVal, cfg.Min.Value(), cfg.Max.Value())
+
+	// Round up to nearest MiB
+	rounded := ((newVal + OneMiB - 1) / OneMiB) * OneMiB
+	newQuantity := resource.NewQuantity(rounded, resource.BinarySI)
+
+	// Record event
+	r.recorder.Eventf(chainNode, corev1.EventTypeWarning, appsv1.ReasonVPAEmergencyScaleUp,
+		"Emergency memory scale-up due to OOM: %s -> %s (recovery %d/%d)",
+		currentRequest.String(), newQuantity.String(), recentRecoveries+1, maxRecoveries)
+
+	logger.Info("performing emergency memory scale-up",
+		"old-request", currentRequest.String(),
+		"new-request", newQuantity.String(),
+		"emergencyPercent", emergencyPercent,
+		"recovery", recentRecoveries+1)
+
+	// Append to OOM recovery history
+	if err := r.appendOOMRecoveryHistory(ctx, chainNode); err != nil {
+		return false, resource.Quantity{}, err
+	}
+
+	return true, *newQuantity, nil
+}
+
+// getOOMRecoveryHistory retrieves the OOM recovery history from annotations
+func getOOMRecoveryHistory(chainNode *appsv1.ChainNode) []time.Time {
+	data, ok := chainNode.Annotations[controllers.AnnotationVPAOOMRecoveryHistory]
+	if !ok || data == "" {
+		return nil
+	}
+
+	var timestamps []string
+	if err := json.Unmarshal([]byte(data), &timestamps); err != nil {
+		return nil
+	}
+
+	var history []time.Time
+	for _, ts := range timestamps {
+		if t, err := time.Parse(timeLayout, ts); err == nil {
+			history = append(history, t.UTC())
+		}
+	}
+	return history
+}
+
+// appendOOMRecoveryHistory adds the current timestamp to OOM recovery history
+func (r *Reconciler) appendOOMRecoveryHistory(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	cfg := chainNode.Spec.VPA.Memory
+	recoveryWindow := cfg.GetOOMRecoveryWindow()
+	cutoff := time.Now().Add(-recoveryWindow)
+
+	// Get existing history and filter to keep only recent entries
+	history := getOOMRecoveryHistory(chainNode)
+	var recentHistory []string
+	for _, ts := range history {
+		if ts.After(cutoff) {
+			recentHistory = append(recentHistory, ts.UTC().Format(timeLayout))
+		}
+	}
+
+	// Add current timestamp
+	recentHistory = append(recentHistory, time.Now().UTC().Format(timeLayout))
+
+	// Serialize and store
+	data, err := json.Marshal(recentHistory)
+	if err != nil {
+		return err
+	}
+
+	annotations := chainNode.Annotations
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[controllers.AnnotationVPAOOMRecoveryHistory] = string(data)
+	chainNode.Annotations = annotations
+
+	return r.Update(ctx, chainNode)
 }

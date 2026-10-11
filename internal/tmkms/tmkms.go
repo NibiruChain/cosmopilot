@@ -16,8 +16,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	utils2 "github.com/NibiruChain/cosmopilot/pkg/utils"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 type KMS struct {
@@ -72,12 +72,12 @@ func (kms *KMS) UndeployConfig(ctx context.Context) error {
 }
 
 func (kms *KMS) getConfigToml() (string, error) {
-	return utils2.TomlEncode(kms.Config)
+	return utils.TomlEncode(kms.Config)
 }
 
 func (kms *KMS) getConfigHash() string {
 	cfg, _ := kms.getConfigToml()
-	return utils2.Sha256(cfg)
+	return utils.Sha256(cfg)
 }
 
 func (kms *KMS) ensureIdentityKey(ctx context.Context) error {
@@ -109,7 +109,8 @@ func (kms *KMS) generateKmsIdentityKey(ctx context.Context) (string, error) {
 			Namespace: kms.Owner.GetNamespace(),
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:   corev1.RestartPolicyNever,
+			SecurityContext: k8s.RestrictedPodSecurityContext(),
 			Volumes: []corev1.Volume{
 				{
 					Name: "data",
@@ -123,11 +124,12 @@ func (kms *KMS) generateKmsIdentityKey(ctx context.Context) (string, error) {
 					Name:            tmkmsAppName,
 					Image:           kms.Config.Image,
 					ImagePullPolicy: corev1.PullAlways,
-					Command:         []string{"/bin/sh", "-c", "tmkms init /root/tmkms"},
+					SecurityContext: k8s.RestrictedSecurityContext(),
+					Command:         []string{"/bin/sh", "-c", "tmkms init /data/tmkms"},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "data",
-							MountPath: "/root/tmkms",
+							MountPath: "/data/tmkms",
 						},
 					},
 				},
@@ -137,11 +139,12 @@ func (kms *KMS) generateKmsIdentityKey(ctx context.Context) (string, error) {
 					Name:            "busybox",
 					Image:           kms.Config.Image,
 					ImagePullPolicy: corev1.PullAlways,
-					Command:         []string{"cat", "/root/tmkms/secrets/" + identityKeyName},
+					SecurityContext: k8s.RestrictedSecurityContext(),
+					Command:         []string{"cat", "/data/tmkms/secrets/" + identityKeyName},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "data",
-							MountPath: "/root/tmkms",
+							MountPath: "/data/tmkms",
 						},
 					},
 				},
@@ -319,6 +322,7 @@ func (kms *KMS) GetContainersSpec() []corev1.Container {
 			Name:            tmkmsAppName,
 			Image:           kms.Config.Image,
 			ImagePullPolicy: corev1.PullAlways,
+			SecurityContext: k8s.RestrictedSecurityContext(),
 			Args:            []string{"start", "-c", "/data/" + configFileName},
 			VolumeMounts:    volumeMounts,
 			Env: []corev1.EnvVar{

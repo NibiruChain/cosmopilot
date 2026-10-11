@@ -1,8 +1,9 @@
 # Cosmopilot
 
-[![Test](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml)
-[![Builds](https://github.com/NibiruChain/cosmopilot/actions/workflows/release.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/release.yaml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/NibiruChain/cosmopilot/blob/main/LICENSE.md)
+[![Test](https://github.com/voluzi/cosmopilot/actions/workflows/test.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/test.yaml)
+[![E2E](https://github.com/voluzi/cosmopilot/actions/workflows/e2e.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/e2e.yaml)
+[![Builds](https://github.com/voluzi/cosmopilot/actions/workflows/release.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/release.yaml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/voluzi/cosmopilot/blob/main/LICENSE.md)
 
 **Cosmopilot** is a Kubernetes operator designed to simplify the deployment and management of Cosmos-based blockchain nodes.
 It automates tasks like node deployment, upgrades, disk-resize, api exposure, backup (with data integrity validation), ensuring a seamless experience for blockchain operators.
@@ -22,7 +23,7 @@ It automates tasks like node deployment, upgrades, disk-resize, api exposure, ba
 
 - **API Endpoints Exposure**:
     - Integrates with NGINX and cert-manager to optionally expose API endpoints publicly (RPC, LCD, gRPC and EVM).
-    - Integrates with [cosmoguard](https://github.com/NibiruChain/cosmoguard) for fine-grained control over API access and caching.
+    - Integrates with [cosmoguard](https://github.com/voluzi/cosmoguard) for fine-grained control over API access and caching.
 
 - **Backup and Snapshot Management**:
     - Configurable snapshot frequency and retention policies (with optional node shutdown during snapshot creation).
@@ -51,7 +52,7 @@ It automates tasks like node deployment, upgrades, disk-resize, api exposure, ba
 
 Full documentation, including installation guides, configuration examples, and advanced features, is available at:
 
-📖 [Cosmopilot Documentation](https://cosmopilot.nibiru.fi)
+📖 [Cosmopilot Documentation](https://cosmopilot.voluzi.com)
 
 ---
 
@@ -63,5 +64,5 @@ Cosmopilot is open source and available under the [MIT License](LICENSE.md).
 
 ## Contact
 
-Have questions or need help? Feel free to open an issue or reach out to us via [dev@nibiru.org](mailto:dev@nibiru.org).
+Have questions or need help? Feel free to open an issue or reach out to us via [dev@voluzi.com](mailto:dev@voluzi.com).
 

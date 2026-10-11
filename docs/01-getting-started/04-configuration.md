@@ -3,10 +3,10 @@
 This page describes all Helm configuration options available for installing and customizing `Cosmopilot`.
 These settings allow you to tailor the deployment to your specific needs.
 
-You can find the full list of available Helm values [here](https://github.com/NibiruChain/cosmopilot/blob/main/helm/cosmopilot/values.yaml), or you can run:
+You can find the full list of available Helm values [here](https://github.com/voluzi/cosmopilot/blob/main/helm/cosmopilot/values.yaml), or you can run:
 
 ```bash
-$ helm show values oci://ghcr.io/nibiruchain/helm/cosmopilot
+$ helm show values oci://ghcr.io/voluzi/helm/cosmopilot
 ```
 
 
@@ -22,7 +22,7 @@ $ helm show values oci://ghcr.io/nibiruchain/helm/cosmopilot
 
 ### `image`
 - **Description**: The container image repository for the Cosmopilot operator.
-- **Default**: `ghcr.io/nibiruchain/cosmopilot`
+- **Default**: `ghcr.io/voluzi/cosmopilot`
 
 ### `imageTag`
 - **Description**: The tag with the version to be used.
@@ -30,15 +30,15 @@ $ helm show values oci://ghcr.io/nibiruchain/helm/cosmopilot
 
 ### `nodeUtilsImage`
 - **Description**: The container image of `node-utils` (with version tag included). This is a container deployed by `cosmopilot` as a sidecar with helper methods for calculating data size, handling upgrades, and a few more utilities.
-- **Default**: `ghcr.io/nibiruchain/node-utils`
+- **Default**: `ghcr.io/voluzi/node-utils`
 
 ### `cosmoGuardImage`
-- **Description**: The container image of [CosmoGuard](https://github.com/NibiruChain/cosmoguard) (with version tag included).
-- **Default**: `ghcr.io/nibiruchain/cosmoguard`
+- **Description**: The container image of [CosmoGuard](https://github.com/voluzi/cosmoguard) (with version tag included).
+- **Default**: `ghcr.io/voluzi/cosmoguard`
 
 ### `cosmoseedImage`
-- **Description**: The container image of [Cosmoseed](https://github.com/NibiruChain/cosmoseed) (with version tag included). Used when deploying seed nodes.
-- **Default**: `ghcr.io/nibiruchain/cosmoseed`
+- **Description**: The container image of [Cosmoseed](https://github.com/voluzi/cosmoseed) (with version tag included). Used when deploying seed nodes.
+- **Default**: `ghcr.io/voluzi/cosmoseed`
 
 ### `imagePullSecrets`
 - **Description**: Secrets for pulling images from private repositories.

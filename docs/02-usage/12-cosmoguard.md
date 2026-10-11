@@ -1,8 +1,8 @@
 # Using CosmoGuard
 
-[CosmoGuard](https://github.com/NibiruChain/cosmoguard) is a lightweight firewall designed specifically for protecting Cosmos nodes. With [CosmoGuard](https://github.com/NibiruChain/cosmoguard), you can control access at the API endpoint level, cache responses for performance, and limit WebSocket connections for better resource management.
+[CosmoGuard](https://github.com/voluzi/cosmoguard) is a lightweight firewall designed specifically for protecting Cosmos nodes. With [CosmoGuard](https://github.com/voluzi/cosmoguard), you can control access at the API endpoint level, cache responses for performance, and limit WebSocket connections for better resource management.
 
-`Cosmopilot` integrates seamlessly with [CosmoGuard](https://github.com/NibiruChain/cosmoguard) by allowing easy configuration of [CosmoGuard](https://github.com/NibiruChain/cosmoguard) rules through Kubernetes `ConfigMaps`.
+`Cosmopilot` integrates seamlessly with [CosmoGuard](https://github.com/voluzi/cosmoguard) by allowing easy configuration of [CosmoGuard](https://github.com/voluzi/cosmoguard) rules through Kubernetes `ConfigMaps`.
 
 ## Why Use CosmoGuard?
 
@@ -15,7 +15,7 @@
 
 ### Step 1: Create the CosmoGuard Configuration
 
-Create a configuration file following CosmoGuard's [rules structure](https://github.com/NibiruChain/cosmoguard/blob/main/CONFIG.md). An example configuration allowing only the `/status` endpoint on `RPC` and caching its response:
+Create a configuration file following CosmoGuard's [rules structure](https://github.com/voluzi/cosmoguard/blob/main/CONFIG.md). An example configuration allowing only the `/status` endpoint on `RPC` and caching its response:
 
 ```yaml
 cache:
@@ -33,7 +33,7 @@ rpc:
 ```
 
 ::: warning IMPORTANT
-When using [CosmoGuard](https://github.com/NibiruChain/cosmoguard) with `Cosmopilot`, avoid manually configuring `Global Settings` and `Node Settings` in the `ConfigMap`. `Cosmopilot` will automatically handle these settings to ensure proper integration and functionality.
+When using [CosmoGuard](https://github.com/voluzi/cosmoguard) with `Cosmopilot`, avoid manually configuring `Global Settings` and `Node Settings` in the `ConfigMap`. `Cosmopilot` will automatically handle these settings to ensure proper integration and functionality.
 :::
 
 ### Step 2: Create a ConfigMap in Kubernetes
@@ -69,7 +69,7 @@ config:
 
 ## Customizing Rules
 
-Refer to the [CosmoGuard repo](https://github.com/NibiruChain/cosmoguard) for detailed information on creating custom rules. Here are a few tips:
+Refer to the [CosmoGuard repo](https://github.com/voluzi/cosmoguard) for detailed information on creating custom rules. Here are a few tips:
 
 - **Use Wildcards:**
   - `*` matches any single component in a path.

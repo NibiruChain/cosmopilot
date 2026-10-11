@@ -118,6 +118,13 @@ func (chainNode *ChainNode) GetPersistenceInitTimeout() time.Duration {
 	return 5 * time.Minute
 }
 
+func (chainNode *ChainNode) GetPersistenceAdditionalVolumes() []VolumeSpec {
+	if chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.AdditionalVolumes != nil {
+		return chainNode.Spec.Persistence.AdditionalVolumes
+	}
+	return []VolumeSpec{}
+}
+
 func (chainNode *ChainNode) SnapshotsEnabled() bool {
 	return chainNode.Spec.Persistence != nil && chainNode.Spec.Persistence.Snapshots != nil
 }
@@ -313,11 +320,15 @@ func (val *ValidatorConfig) GetPrivKeySecretName(obj client.Object) string {
 }
 
 func (val *ValidatorConfig) GetAccountHDPath() string {
-	if val.Init != nil && val.Init.AccountHDPath != nil {
-		return *val.Init.AccountHDPath
-	}
-	if val.CreateValidator != nil && val.CreateValidator.AccountHDPath != nil {
-		return *val.CreateValidator.AccountHDPath
+	if val != nil {
+		switch {
+		case val.AccountHDPath != nil:
+			return *val.AccountHDPath
+		case val.Init != nil && val.Init.AccountHDPath != nil:
+			return *val.Init.AccountHDPath
+		case val.CreateValidator != nil && val.CreateValidator.AccountHDPath != nil:
+			return *val.CreateValidator.AccountHDPath
+		}
 	}
 	return DefaultHDPath
 }
@@ -331,21 +342,29 @@ func (val *ValidatorConfig) GetAccountSecretName(obj client.Object) string {
 }
 
 func (val *ValidatorConfig) GetAccountPrefix() string {
-	if val.Init != nil && val.Init.AccountPrefix != nil {
-		return *val.Init.AccountPrefix
-	}
-	if val.CreateValidator != nil && val.CreateValidator.AccountPrefix != nil {
-		return *val.CreateValidator.AccountPrefix
+	if val != nil {
+		switch {
+		case val.AccountPrefix != nil:
+			return *val.AccountPrefix
+		case val.Init != nil && val.Init.AccountPrefix != nil:
+			return *val.Init.AccountPrefix
+		case val.CreateValidator != nil && val.CreateValidator.AccountPrefix != nil:
+			return *val.CreateValidator.AccountPrefix
+		}
 	}
 	return DefaultAccountPrefix
 }
 
 func (val *ValidatorConfig) GetValPrefix() string {
-	if val.Init != nil && val.Init.ValPrefix != nil {
-		return *val.Init.ValPrefix
-	}
-	if val.CreateValidator != nil && val.CreateValidator.ValPrefix != nil {
-		return *val.CreateValidator.ValPrefix
+	if val != nil {
+		switch {
+		case val.ValPrefix != nil:
+			return *val.ValPrefix
+		case val.Init != nil && val.Init.ValPrefix != nil:
+			return *val.Init.ValPrefix
+		case val.CreateValidator != nil && val.CreateValidator.ValPrefix != nil:
+			return *val.CreateValidator.ValPrefix
+		}
 	}
 	return DefaultValPrefix
 }
@@ -354,14 +373,21 @@ func (val *ValidatorConfig) GetInitUnbondingTime() string {
 	if val.Init != nil && val.Init.UnbondingTime != nil {
 		return *val.Init.UnbondingTime
 	}
-	return DefaultUnbondingTime
+	return ""
 }
 
 func (val *ValidatorConfig) GetInitVotingPeriod() string {
 	if val.Init != nil && val.Init.VotingPeriod != nil {
 		return *val.Init.VotingPeriod
 	}
-	return DefaultVotingPeriod
+	return ""
+}
+
+func (val *ValidatorConfig) GetInitExpeditedVotingPeriod() string {
+	if val.Init != nil && val.Init.ExpeditedVotingPeriod != nil {
+		return *val.Init.ExpeditedVotingPeriod
+	}
+	return ""
 }
 
 func (val *ValidatorConfig) GetCommissionMaxChangeRate() string {

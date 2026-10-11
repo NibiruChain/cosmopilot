@@ -16,24 +16,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/pkg/nodeutils"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils/sdkcmd"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/pkg/nodeutils"
 )
+
+// StatsClientFactory is a function that creates a StatsClient for a given host.
+// This can be overridden in tests to inject mock clients.
+type StatsClientFactory func(host string) nodeutils.StatsClient
+
+// DefaultStatsClientFactory creates a real nodeutils client.
+func DefaultStatsClientFactory(host string) nodeutils.StatsClient {
+	return nodeutils.NewClient(host)
+}
+
+// SetStatsClientFactory sets the factory function for creating StatsClient instances.
+// This is primarily used in tests to inject mock clients.
+func (r *Reconciler) SetStatsClientFactory(factory StatsClientFactory) {
+	r.statsClientFactory = factory
+}
 
 // Reconciler reconciles a ChainNode object
 type Reconciler struct {
 	client.Client
-	ClientSet       *kubernetes.Clientset
-	RestConfig      *rest.Config
-	Scheme          *runtime.Scheme
-	configCache     *ttlcache.Cache[string, map[string]interface{}]
-	nodeClients     *ttlcache.Cache[string, *chainutils.Client]
-	recorder        record.EventRecorder
-	opts            *controllers.ControllerRunOptions
-	disruptionLocks *lockManager
-	configLocks     *configLockManager
+	ClientSet          *kubernetes.Clientset
+	RestConfig         *rest.Config
+	Scheme             *runtime.Scheme
+	configCache        *ttlcache.Cache[string, map[string]interface{}]
+	nodeClients        *ttlcache.Cache[string, *chainutils.Client]
+	recorder           record.EventRecorder
+	opts               *controllers.ControllerRunOptions
+	disruptionLocks    *lockManager
+	configLocks        *configLockManager
+	statsClientFactory StatsClientFactory
 }
 
 func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.ControllerRunOptions) (*Reconciler, error) {
@@ -63,16 +80,17 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 	})
 
 	r := &Reconciler{
-		Client:          mgr.GetClient(),
-		ClientSet:       clientSet,
-		RestConfig:      mgr.GetConfig(),
-		Scheme:          mgr.GetScheme(),
-		configCache:     cfgCache,
-		nodeClients:     clientsCache,
-		recorder:        mgr.GetEventRecorderFor("chainnode-controller"),
-		opts:            opts,
-		disruptionLocks: newLockManager(),
-		configLocks:     newConfigLockManager(),
+		Client:             mgr.GetClient(),
+		ClientSet:          clientSet,
+		RestConfig:         mgr.GetConfig(),
+		Scheme:             mgr.GetScheme(),
+		configCache:        cfgCache,
+		nodeClients:        clientsCache,
+		recorder:           mgr.GetEventRecorderFor("chainnode-controller"),
+		opts:               opts,
+		disruptionLocks:    newLockManager(),
+		configLocks:        newConfigLockManager(),
+		statsClientFactory: DefaultStatsClientFactory,
 	}
 	if err := r.setupWithManager(mgr); err != nil {
 		return nil, err
@@ -82,13 +100,14 @@ func New(mgr ctrl.Manager, clientSet *kubernetes.Clientset, opts *controllers.Co
 	return r, nil
 }
 
-//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=apps.k8s.nibiru.org,resources=chainnodes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cosmopilot.voluzi.com,resources=chainnodes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cosmopilot.voluzi.com,resources=chainnodes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=cosmopilot.voluzi.com,resources=chainnodes/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=pods;persistentvolumeclaims;configmaps;secrets;services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=pods/exec;pods/attach,verbs=create
 //+kubebuilder:rbac:groups="",resources=pods/log,verbs=get
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch;patch;create;update;delete
@@ -107,6 +126,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		logger.Error(err, "unable to fetch chainnode")
 		return ctrl.Result{}, err
+	}
+
+	// Check if namespace is being terminated - if so, skip reconcile to avoid errors
+	ns := &corev1.Namespace{}
+	if err := r.Get(ctx, client.ObjectKey{Name: req.Namespace}, ns); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if ns.DeletionTimestamp != nil {
+		logger.V(1).Info("namespace is being terminated, skipping reconcile")
+		return ctrl.Result{}, nil
 	}
 
 	if chainNode.Labels[controllers.LabelWorkerName] != r.opts.WorkerName {
@@ -152,6 +181,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	app, err := chainutils.NewApp(r.ClientSet, r.Scheme, r.RestConfig, chainNode, chainNode.Spec.App.GetSdkVersion(),
+		[]sdkcmd.Option{sdkcmd.WithGenesisSubcommand(chainNode.Spec.App.UseGenesisSubcommand())},
 		chainutils.WithImage(chainNode.GetAppImage()),
 		chainutils.WithImagePullPolicy(chainNode.Spec.App.ImagePullPolicy),
 		chainutils.WithBinary(chainNode.Spec.App.App),
@@ -177,15 +207,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}
 
-	logger.V(1).Info("ensure data volume")
-	pvc, err := r.ensureDataVolume(ctx, app, chainNode)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	logger.V(1).Info("ensure additional volumes")
 	if err = r.ensureAdditionalVolumes(ctx, chainNode); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	logger.V(1).Info("ensure data volume")
+	pvc, result, err := r.ensureDataVolume(ctx, app, chainNode)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// If data initialization is in progress, return early with the requeue result
+	if result.RequeueAfter > 0 || result.Requeue {
+		return result, nil
 	}
 
 	// If PVC is being deleted lets wait before trying again.

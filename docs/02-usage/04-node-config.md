@@ -123,7 +123,7 @@ config:
     another-key: another-value
 ```
 
-These annotations will be merged with system-managed annotations. Note that system annotations (like `apps.k8s.nibiru.org/config-hash`) take precedence and cannot be overridden.
+These annotations will be merged with system-managed annotations. Note that system annotations (like `cosmopilot.voluzi.com/config-hash`) take precedence and cannot be overridden.
 
 ## Configuring Node Startup Time
 
@@ -181,20 +181,9 @@ config:
 
 ## Additional Volumes
 
-`Cosmopilot` creates a single main data `PVC` which will be mounted at `/home/app/data`. However, some applications might need to persist more data outside the `data` diretory. When possible, it is advisable to [Override TOML config files](#overriding-toml-config-files) to store additional data in the volume (in `/home/app/data`). However, this is not always possible. In those cases, additional volumes can be created to store that data as follows:
+`Cosmopilot` creates a single main data `PVC` which will be mounted at `/home/app/data`. However, some applications might need to persist more data outside the `data` directory. When possible, it is advisable to [Override TOML config files](#overriding-toml-config-files) to store additional data in the volume (in `/home/app/data`). However, this is not always possible.
 
-```yaml
-config:
-  volumes:
-  - name: wasm
-    size: 1Gi
-    path: /home/app/wasm
-    deleteWithNode: true
-  - name: ibc-08-wasm
-    size: 1Gi
-    path: /home/app/ibc_08-wasm
-    deleteWithNode: true
-```
+For configuring additional volumes, see [Persistence and Backups - Additional Volumes](/02-usage/05-persistence-and-backup#additional-volumes).
 
 ## Sidecar containers
 
@@ -219,3 +208,56 @@ When configured this way, `Cosmopilot` will:
 - Prevent the pod from restarting after the node stops at the specified height.
 
 This ensures a smooth and controlled node shutdown without unintended restarts.
+
+## Security Context Overrides
+
+By default, Cosmopilot applies a restricted security context to all containers following Kubernetes [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/):
+
+- Runs as non-root user (UID 1000)
+- Drops all Linux capabilities
+- Disables privilege escalation
+- Sets filesystem group to GID 1000
+
+If your application requires different security settings (e.g., running as root or with specific capabilities), you can override these defaults.
+
+### Container Security Context
+
+Override security settings for the main application container:
+
+```yaml
+config:
+  securityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: true
+```
+
+### Pod Security Context
+
+Override pod-level security settings (affects all containers including sidecars):
+
+```yaml
+config:
+  podSecurityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    fsGroup: 0
+```
+
+### Sidecar Security Context
+
+Each sidecar container uses the restricted security context by default. To override it for a specific sidecar, use the `securityContext` field in the sidecar spec:
+
+```yaml
+config:
+  sidecars:
+    - name: my-privileged-sidecar
+      image: some-image:latest
+      securityContext:
+        runAsUser: 0
+        runAsNonRoot: false
+```
+
+::: warning
+Only override security contexts if absolutely necessary. Running containers as root or with elevated privileges increases security risks. Ensure you understand the implications before making changes.
+:::

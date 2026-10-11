@@ -232,6 +232,21 @@ type NodeSetValidatorConfig struct {
 	// and configures it.
 	// +optional
 	Ingress *IngressConfig `json:"ingress,omitempty"`
+
+	// HD path of accounts. Defaults to `m/44'/118'/0'/0/0`.
+	// +optional
+	// +default="m/44'/118'/0'/0/0"
+	AccountHDPath *string `json:"accountHDPath,omitempty"`
+
+	// Prefix for accounts. Defaults to `cosmos`.
+	// +optional
+	// +default="cosmos"
+	AccountPrefix *string `json:"accountPrefix,omitempty"`
+
+	// Prefix for validator operator accounts. Defaults to `cosmosvaloper`.
+	// +optional
+	// +default="cosmosvaloper"
+	ValPrefix *string `json:"valPrefix,omitempty"`
 }
 
 // NodeGroupSpec sets chainnode configurations for a group.

@@ -2,8 +2,8 @@ package tmkms
 
 const (
 	DefaultKeyType         = "bech32"
-	DefaultAccountPrefix   = "nibipub"
-	DefaultConsensusPrefix = "nibivalconspub"
+	DefaultAccountPrefix   = "cosmospub"
+	DefaultConsensusPrefix = "cosmosvalconspub"
 
 	defaultStateFile = "/data/priv_validator_state.json"
 )

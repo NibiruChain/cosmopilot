@@ -14,6 +14,21 @@ To use `Cosmopilot`, ensure you meet the following prerequisites before proceedi
 - **[helm](https://helm.sh/)**: Required for installing `Cosmopilot`.
 - **[kubectl](https://kubernetes.io/docs/reference/kubectl/)**: Required for creating and managing resources in your Kubernetes cluster.
 
+## **Container Image Requirements**
+
+Cosmopilot follows Kubernetes [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) and enforces the **restricted** profile by default:
+
+- All containers run as non-root user (UID 1000)
+- All Linux capabilities are dropped
+- Privilege escalation is disabled
+- Filesystem group is set to GID 1000
+
+Your blockchain node images must support running as a non-root user. Most Cosmos SDK chain images are compatible with this requirement out of the box.
+
+::: tip
+If your image requires different security settings, you can override the security context. See [Security Context Overrides](/02-usage/04-node-config#security-context-overrides) for details.
+:::
+
 ## **Chain Compatibility**
 
 Cosmopilot works with chains built on the Cosmos SDK. Before deploying, verify your chain is compatible by checking the [Chain Compatibility](02-chain-compatibility) page, which lists:

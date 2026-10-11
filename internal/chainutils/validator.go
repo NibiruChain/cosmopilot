@@ -11,8 +11,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/NibiruChain/cosmopilot/internal/chainutils/sdkcmd"
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils/sdkcmd"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
 )
 
 func (a *App) CreateValidator(
@@ -59,6 +59,7 @@ func (a *App) CreateValidator(
 					Stdin:           true,
 					StdinOnce:       true,
 					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 			},
 			Containers: []corev1.Container{
@@ -83,7 +84,8 @@ func (a *App) CreateValidator(
 						sdkcmd.WithOptionalArg(sdkcmd.Identity, nodeInfo.Identity),
 						sdkcmd.WithArg(sdkcmd.Node, node),
 					),
-					VolumeMounts: []corev1.VolumeMount{dataVolumeMount},
+					VolumeMounts:    []corev1.VolumeMount{dataVolumeMount},
+					SecurityContext: k8s.RestrictedSecurityContext(),
 				},
 			},
 			TerminationGracePeriodSeconds: ptr.To[int64](0),

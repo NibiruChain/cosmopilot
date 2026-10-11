@@ -30,6 +30,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - nodes
   verbs:
   - get
@@ -60,7 +68,19 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps.k8s.nibiru.org
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cosmopilot.voluzi.com
   resources:
   - chainnodes
   - chainnodesets
@@ -73,14 +93,14 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps.k8s.nibiru.org
+  - cosmopilot.voluzi.com
   resources:
   - chainnodes/finalizers
   - chainnodesets/finalizers
   verbs:
   - update
 - apiGroups:
-  - apps.k8s.nibiru.org
+  - cosmopilot.voluzi.com
   resources:
   - chainnodes/status
   - chainnodesets/status
@@ -88,18 +108,6 @@ rules:
   - get
   - patch
   - update
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
 - apiGroups:
   - monitoring.coreos.com
   resources:

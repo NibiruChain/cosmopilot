@@ -15,10 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/controllers/chainnode"
-	"github.com/NibiruChain/cosmopilot/internal/controllers/chainnodeset"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers/chainnode"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers/chainnodeset"
 )
 
 var (
@@ -49,9 +49,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	leaderElectionID := fmt.Sprintf("%s.cosmopilot.k8s.nibiru.org", runOpts.ReleaseName)
+	leaderElectionID := fmt.Sprintf("%s.cosmopilot.voluzi.com", runOpts.ReleaseName)
 	if runOpts.WorkerName != "" {
-		leaderElectionID = fmt.Sprintf("%s.%s.cosmopilot.k8s.nibiru.org", runOpts.WorkerName, runOpts.ReleaseName)
+		leaderElectionID = fmt.Sprintf("%s.%s.cosmopilot.voluzi.com", runOpts.WorkerName, runOpts.ReleaseName)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{

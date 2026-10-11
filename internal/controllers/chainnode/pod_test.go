@@ -184,7 +184,7 @@ func TestPodSpecChanged(t *testing.T) {
 			existing: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						"cosmopilot.nibiru.org/pod-spec-hash": "invalid",
+						"cosmopilot.voluzi.com/pod-spec-hash": "invalid",
 					},
 				},
 			},

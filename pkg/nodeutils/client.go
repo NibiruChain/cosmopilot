@@ -18,10 +18,21 @@ var (
 	}
 )
 
+// StatsClient defines the interface for getting node resource stats.
+// This interface is primarily used for VPA (Vertical Pod Autoscaler) functionality
+// and can be mocked in tests.
+type StatsClient interface {
+	GetCPUStats(ctx context.Context, since time.Duration) (float64, error)
+	GetMemoryStats(ctx context.Context, since time.Duration) (uint64, error)
+}
+
 // Client provides methods to interact with the node-utils HTTP server.
 type Client struct {
 	url string
 }
+
+// Ensure Client implements StatsClient
+var _ StatsClient = (*Client)(nil)
 
 // NewClient creates a new node-utils client for the given host.
 // The host should be a hostname or IP address without scheme or port.

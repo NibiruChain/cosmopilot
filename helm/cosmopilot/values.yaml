@@ -1,10 +1,10 @@
-image: ghcr.io/nibiruchain/cosmopilot
-nodeUtilsImage: ghcr.io/nibiruchain/node-utils:2.9.0
-cosmoGuardImage: ghcr.io/nibiruchain/cosmoguard:2.8.2
-cosmoseedImage: ghcr.io/nibiruchain/cosmoseed:0.10.1
+image: ghcr.io/voluzi/cosmopilot
+nodeUtilsImage: ghcr.io/voluzi/node-utils:2.9.0
+cosmoGuardImage: ghcr.io/voluzi/cosmoguard:3.0.0
+cosmoseedImage: ghcr.io/voluzi/cosmoseed:0.11.0
 replicas: 1
 imagePullSecrets: []
-workerCount: 1
+workerCount: 10
 workerName: ""
 webHooksEnabled: true
 nodeSelector: {}

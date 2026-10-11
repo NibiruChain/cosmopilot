@@ -65,6 +65,39 @@ persistence:
 ```
 
 
+## Additional Volumes
+
+Some applications need to persist data outside the main `data` directory. While it's advisable to configure the application to store additional data within `/home/app/data` using [TOML config overrides](/02-usage/04-node-config#overriding-toml-config-files) when possible, this isn't always feasible.
+
+For these cases, you can create additional volumes:
+
+```yaml
+persistence:
+  additionalVolumes:
+    - name: wasm
+      size: 1Gi
+      path: /home/app/wasm
+      deleteWithNode: true
+    - name: ibc-08-wasm
+      size: 1Gi
+      path: /home/app/ibc_08-wasm
+      deleteWithNode: true
+```
+
+### Configuration Options
+
+| Field | Description |
+|-------|-------------|
+| `name` | Name of the volume (used for PVC naming) |
+| `size` | Size of the volume |
+| `path` | Mount path inside the container |
+| `storageClass` | Optional. Storage class to use. Defaults to `.persistence.storageClass`, then cluster default |
+| `deleteWithNode` | Optional. Whether to delete the PVC when the node is deleted. Defaults to `false` |
+
+### Mounted During Initialization
+
+Additional volumes are also mounted during data initialization, allowing them to be used with `.persistence.additionalInitCommands` to extract snapshots or initialize data directly into these volumes.
+
 ## Snapshots
 
 `Cosmopilot` allows configuring periodic snapshots of volumes in order to back up node data. It is also possible to configure cleanup of old snapshots using either time-based retention or count-based retention (by default snapshots are kept forever).

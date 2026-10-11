@@ -20,11 +20,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
-	"github.com/NibiruChain/cosmopilot/internal/datasnapshot"
-	"github.com/NibiruChain/cosmopilot/internal/k8s"
-	"github.com/NibiruChain/cosmopilot/pkg/utils"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
+	"github.com/voluzi/cosmopilot/v2/internal/datasnapshot"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 type SnapshotIntegrityStatus string
@@ -699,9 +699,10 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 					},
 					InitContainers: []corev1.Container{
 						{
-							Name:    "init-config",
-							Image:   "busybox",
-							Command: []string{"sh"},
+							Name:            "init-config",
+							Image:           "busybox",
+							Command:         []string{"sh"},
+							SecurityContext: k8s.RestrictedSecurityContext(),
 							Args: []string{
 								"-c",
 								fmt.Sprintf(
@@ -737,6 +738,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 							Image:           chainNode.GetAppImage(),
 							ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
 							RestartPolicy:   &sidecarRestartAlways,
+							SecurityContext: k8s.RestrictedSecurityContext(),
 							Command:         []string{chainNode.Spec.App.App},
 							Args:            []string{"start", "--grpc-only", "--home", "/home/app"},
 							VolumeMounts: []corev1.VolumeMount{
@@ -757,6 +759,7 @@ func (r *Reconciler) startSnapshotIntegrityCheck(ctx context.Context, chainNode 
 							Name:            "start-checker",
 							Image:           "busybox",
 							ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
+							SecurityContext: k8s.RestrictedSecurityContext(),
 							Command:         []string{"sh"},
 							Args: []string{
 								"-c",

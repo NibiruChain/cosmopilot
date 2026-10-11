@@ -5,7 +5,7 @@
 Currently, `Cosmopilot` supports the **HashiCorp Vault** provider for secure key storage and signing.
 
 ::: tip Important
-HashiCorp Vault support is not yet officially available on the main TmKMS repository (see [iqlusioninc/tmkms#840](https://github.com/iqlusioninc/tmkms/pull/840)). To address this, `Cosmopilot` relies on a custom fork of `TmKMS` (`v0.14.0`) with HashiCorp support. The docker image for this fork is available at `ghcr.io/nibiruchain/tmkms:0.14.0-vault`. This configuration has been successfully used in production environments for over a year, but please proceed with caution.
+HashiCorp Vault support is not yet officially available on the main TmKMS repository (see [iqlusioninc/tmkms#840](https://github.com/iqlusioninc/tmkms/pull/840)). To address this, `Cosmopilot` relies on a custom fork of `TmKMS` (`v0.14.0`) with HashiCorp support. The docker image for this fork is available at `ghcr.io/voluzi/tmkms:0.14.0-vault`. This configuration has been successfully used in production environments for over a year, but please proceed with caution.
 :::
 
 ## Prepare Vault and Token
@@ -75,10 +75,10 @@ $ kubectl create secret generic vault --from-literal=token=$VAULT_TOKEN
 
 #### 1. Install TmKMS
 
-Install TmKMS from [Nibiru](https://nibiru.fi) fork [github.com/NibiruChain/tmkms](https://github.com/NibiruChain/tmkms) (make sure you use tag `v0.14.0-vault`):
+Install TmKMS from [voluzi](https://voluzi.com) fork [github.com/voluzi/tmkms](https://github.com/voluzi/tmkms) (make sure you use tag `v0.14.0-vault`):
 
 ```bash
-$ git clone --branch v0.14.0-vault https://github.com/NibiruChain/tmkms
+$ git clone --branch v0.14.0-vault https://github.com/voluzi/tmkms
 $ cd tmkms
 $ cargo build --release --features hashicorp,softsign
 ```

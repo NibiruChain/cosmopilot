@@ -11,9 +11,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
-	"github.com/NibiruChain/cosmopilot/internal/chainutils"
-	"github.com/NibiruChain/cosmopilot/internal/controllers"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/chainutils"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
 )
 
 func (r *Reconciler) ensureValidator(ctx context.Context, nodeSet *appsv1.ChainNodeSet) error {
@@ -96,6 +96,8 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 				Init:             nodeSet.Spec.Validator.Init,
 				TmKMS:            nodeSet.Spec.Validator.TmKMS,
 				CreateValidator:  nodeSet.Spec.Validator.CreateValidator,
+				AccountPrefix:    nodeSet.Spec.Validator.AccountPrefix,
+				ValPrefix:        nodeSet.Spec.Validator.ValPrefix,
 			},
 			Resources:          nodeSet.Spec.Validator.Resources,
 			Affinity:           nodeSet.Spec.Validator.Affinity,

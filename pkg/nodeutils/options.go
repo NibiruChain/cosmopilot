@@ -43,6 +43,7 @@ type Options struct {
 	CreateFifo     bool
 	TmkmsProxy     bool
 	HaltHeight     int64
+	MockMode       bool
 }
 
 type Option func(*Options)
@@ -98,5 +99,11 @@ func WithTmkmsProxy(enable bool) Option {
 func WithHaltHeight(height int64) Option {
 	return func(opts *Options) {
 		opts.HaltHeight = height
+	}
+}
+
+func WithMockMode(enable bool) Option {
+	return func(opts *Options) {
+		opts.MockMode = enable
 	}
 }

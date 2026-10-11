@@ -13,7 +13,7 @@ While deploying a single [ChainNode](/03-reference/crds/crds#chainnode) is pract
 To deploy a single node, you need to define a [ChainNode](/03-reference/crds/crds#chainnode) resource. Below is a base manifest example for deploying a [Nibiru](https://nibiru.fi/) node:
 
 ```yaml
-apiVersion: apps.k8s.nibiru.org/v1
+apiVersion: cosmopilot.voluzi.com/v1
 kind: ChainNode
 metadata:
   name: nibiru-cataclysm-1-fullnode

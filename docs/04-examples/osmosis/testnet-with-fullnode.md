@@ -1,7 +1,7 @@
 # Osmosis Testnet With Fullnode
 
 ```yaml
-apiVersion: apps.k8s.nibiru.org/v1
+apiVersion: cosmopilot.voluzi.com/v1
 kind: ChainNodeSet
 metadata:
   name: osmosis-devnet
@@ -10,15 +10,19 @@ spec:
     image: osmolabs/osmosis
     version: 31.0.0
     app: osmosisd
-    sdkVersion: v0.45 # Old version of genesis commands
+    sdkVersion: v0.53
+    sdkOptions:
+      genesisSubcommand: false
 
   validator:
+    accountPrefix: osmo
+    valPrefix: osmovaloper
+
     info:
       moniker: cosmopilot
 
-    config:
-      runFlags: ["--reject-config-defaults=true"]
-      volumes:
+    persistence:
+      additionalVolumes:
         - name: wasm
           size: 1Gi
           path: /home/app/wasm
@@ -27,35 +31,33 @@ spec:
           size: 1Gi
           path: /home/app/ibc_08-wasm
           deleteWithNode: true
+
+    config:
+      runFlags: [ "--reject-config-defaults=true" ]
       override:
         app.toml:
           minimum-gas-prices: 0.025uosmo
 
     init:
       chainID: osmosis-testnet-0
-      accountPrefix: osmo
-      valPrefix: osmovaloper
       assets: [ "100000000000000000000uosmo" ]
       stakeAmount: 100000000uosmo
       unbondingTime: 60s
       votingPeriod: 60s
+      expeditedVotingPeriod: 30s
       additionalInitCommands:
         # Use uOSMO as default denom
         - image: busybox
           command: [ "sh", "-c" ]
           args:
-            - >
-              sed -i 's/stake/uosmo/g' /home/app/config/genesis.json;
-              sed -i 's/uosmors/stakers/g' /home/app/config/genesis.json;
-              sed -i 's/uosmod/staked/g' /home/app/config/genesis.json;
+            - sed -i 's/"stake"/"uosmo"/g' /home/app/config/genesis.json
 
   nodes:
     - name: fullnodes
       instances: 1
 
-      config:
-        runFlags: ["--reject-config-defaults=true"]
-        volumes:
+      persistence:
+        additionalVolumes:
           - name: wasm
             size: 1Gi
             path: /home/app/wasm
@@ -64,6 +66,9 @@ spec:
             size: 1Gi
             path: /home/app/ibc_08-wasm
             deleteWithNode: true
+
+      config:
+        runFlags: [ "--reject-config-defaults=true" ]
         override:
           app.toml:
             minimum-gas-prices: 0.025uosmo

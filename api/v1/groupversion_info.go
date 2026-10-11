@@ -1,6 +1,6 @@
 // Package v1 contains API Schema definitions for the apps v1 API group.
 // +kubebuilder:object:generate=true
-// +groupName=apps.k8s.nibiru.org
+// +groupName=cosmopilot.voluzi.com
 package v1
 
 import (
@@ -10,7 +10,7 @@ import (
 
 var (
 	// GroupVersion is the group version used to register these objects.
-	GroupVersion = schema.GroupVersion{Group: "apps.k8s.nibiru.org", Version: "v1"}
+	GroupVersion = schema.GroupVersion{Group: "cosmopilot.voluzi.com", Version: "v1"}
 
 	// SchemeBuilder is used to add Go types to the GroupVersionKind scheme.
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

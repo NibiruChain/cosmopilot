@@ -14,8 +14,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/NibiruChain/cosmopilot/pkg/statscollector"
-	"github.com/NibiruChain/cosmopilot/pkg/utils"
+	"github.com/voluzi/cosmopilot/v2/pkg/statscollector"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 func (s *NodeUtils) registerRoutes() {
@@ -31,6 +31,11 @@ func (s *NodeUtils) registerRoutes() {
 	s.router.HandleFunc("/stats/cpu", s.statsCPU).Methods(http.MethodGet)
 	s.router.HandleFunc("/stats/memory", s.statsMemory).Methods(http.MethodGet)
 	s.router.HandleFunc("/state_syncing", s.stateSyncing).Methods(http.MethodGet)
+
+	// Mock mode control endpoints
+	s.router.HandleFunc("/mock/cpu", s.mockSetCPU).Methods(http.MethodPost)
+	s.router.HandleFunc("/mock/memory", s.mockSetMemory).Methods(http.MethodPost)
+	s.router.HandleFunc("/mock/stats", s.mockGetStats).Methods(http.MethodGet)
 }
 
 func writeError(w http.ResponseWriter, format string, args ...interface{}) {
@@ -52,6 +57,13 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 }
 
 func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
+	// In mock mode, always return ready
+	if s.cfg.MockMode {
+		log.Info("mock mode: node is ready")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	isSyncing, err := s.client.IsNodeSyncing(r.Context())
 	if err != nil {
 		writeError(w, "error getting syncing status: %v", err)
@@ -91,6 +103,13 @@ func (s *NodeUtils) ready(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) health(w http.ResponseWriter, r *http.Request) {
+	// In mock mode, always return healthy
+	if s.cfg.MockMode {
+		log.Info("mock mode: node is healthy")
+		writeJSON(w, http.StatusOK, map[string]string{"status": "mock"})
+		return
+	}
+
 	// TODO: this only makes sure node is responding to rpc.
 	// We should check for possible issues with the node.
 
@@ -202,6 +221,14 @@ func (s *NodeUtils) selectCollector(duration time.Duration) *statscollector.Coll
 }
 
 func (s *NodeUtils) statsCPU(w http.ResponseWriter, r *http.Request) {
+	// In mock mode, return mock CPU value
+	if s.cfg.MockMode {
+		cpuCores := s.mockStats.GetCPU()
+		log.WithField("cpuCores", cpuCores).Debug("mock mode: returning CPU stats")
+		_, _ = w.Write([]byte(strconv.FormatFloat(cpuCores, 'E', -1, 64)))
+		return
+	}
+
 	query := r.URL.Query().Get("average")
 	if query == "" {
 		// Live stats
@@ -237,6 +264,14 @@ func (s *NodeUtils) statsCPU(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
+	// In mock mode, return mock memory value
+	if s.cfg.MockMode {
+		memoryBytes := s.mockStats.GetMemory()
+		log.WithField("memoryBytes", memoryBytes).Debug("mock mode: returning memory stats")
+		_, _ = w.Write([]byte(strconv.FormatUint(memoryBytes, 10)))
+		return
+	}
+
 	query := r.URL.Query().Get("average")
 	if query == "" {
 		p, err := s.getNodeProcess()
@@ -269,6 +304,15 @@ func (s *NodeUtils) statsMemory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) stateSyncing(w http.ResponseWriter, r *http.Request) {
+	// In mock mode, always return not state-syncing
+	if s.cfg.MockMode {
+		log.Info("mock mode: node is not state-syncing")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`false`))
+		return
+	}
+
 	ctx := r.Context()
 
 	abciInfo, err := s.client.GetAbciInfo(ctx)

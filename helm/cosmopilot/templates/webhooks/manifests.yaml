@@ -13,7 +13,7 @@ webhooks:
       service:
         name: {{ .Release.Name }}-webhook
         namespace: {{ .Release.Namespace }}
-        path: /validate-apps-k8s-nibiru-org-v1-chainnode
+        path: /validate-cosmopilot-voluzi-com-v1-chainnode
     failurePolicy: Fail
     matchPolicy: Exact
     sideEffects: None
@@ -30,7 +30,7 @@ webhooks:
     {{- end }}
     rules:
       - apiGroups:
-          - apps.k8s.nibiru.org
+          - cosmopilot.voluzi.com
         apiVersions:
           - v1
         operations:
@@ -42,7 +42,7 @@ webhooks:
       service:
         name: {{ .Release.Name }}-webhook
         namespace: {{ .Release.Namespace }}
-        path: /validate-apps-k8s-nibiru-org-v1-chainnodeset
+        path: /validate-cosmopilot-voluzi-com-v1-chainnodeset
     failurePolicy: Fail
     matchPolicy: Exact
     sideEffects: None
@@ -59,7 +59,7 @@ webhooks:
     {{- end }}
     rules:
       - apiGroups:
-          - apps.k8s.nibiru.org
+          - cosmopilot.voluzi.com
         apiVersions:
           - v1
         operations:

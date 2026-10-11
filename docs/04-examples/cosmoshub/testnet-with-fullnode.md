@@ -1,47 +1,47 @@
 # Cosmoshub Testnet With Fullnode
 
 ```yaml
-apiVersion: apps.k8s.nibiru.org/v1
+apiVersion: cosmopilot.voluzi.com/v1
 kind: ChainNodeSet
 metadata:
-  name: cosmos-testnet
+  name: cosmoshub-testnet
 spec:
   app:
     image: ghcr.io/cosmos/gaia
     version: v25.2.0
     app: gaiad
-    sdkVersion: v0.47
+    sdkVersion: v0.53
 
   validator:
     info:
       moniker: cosmopilot
 
-    config:
-      volumes:
+    persistence:
+      additionalVolumes:
         - name: wasm
           size: 1Gi
           path: /home/app/wasm
           deleteWithNode: true
+
+    config:
       override:
         app.toml:
           minimum-gas-prices: 0.025uatom
 
     init:
-      chainID: cosmos-hub-0
+      chainID: cosmoshub-testnet-0
       assets: ["1000000000000000000uatom"]
       stakeAmount: 100000000uatom
       minSelfDelegation: ""
-      accountPrefix: cosmos
-      valPrefix: cosmosvaloper
+      unbondingTime: 60s
+      votingPeriod: 60s
+      expeditedVotingPeriod: 30s
       additionalInitCommands:
         # Use uATOM as default denom
         - image: busybox
           command: [ "sh", "-c" ]
           args:
-            - >
-              sed -i 's/stake/uatom/g' /home/app/config/genesis.json;
-              sed -i 's/uatomrs/stakers/g' /home/app/config/genesis.json;
-              sed -i 's/uatomd/staked/g' /home/app/config/genesis.json;
+            - sed -i 's/"stake"/"uatom"/g' /home/app/config/genesis.json
 
   nodes:
     - name: fullnodes

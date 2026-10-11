@@ -6,7 +6,7 @@ import (
 
 	"github.com/c2h5oh/datasize"
 
-	"github.com/NibiruChain/cosmopilot/pkg/utils"
+	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 // GetDirSize calculates the total size of a directory and its contents.

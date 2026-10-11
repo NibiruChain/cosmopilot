@@ -1,6 +1,8 @@
 package chainutils
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	P2pPortName = "p2p"
@@ -20,8 +22,6 @@ const (
 
 	PrivValPortName = "privvalidator"
 	PrivValPort     = 26659
-
-	nonRootId = 1000
 
 	none               = "none"
 	defaultAccountName = "account"

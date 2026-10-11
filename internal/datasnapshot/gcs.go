@@ -17,7 +17,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	appsv1 "github.com/NibiruChain/cosmopilot/api/v1"
+	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
+	"github.com/voluzi/cosmopilot/v2/internal/k8s"
 )
 
 const (
@@ -91,8 +92,9 @@ func (gcs *GCS) CreateSnapshot(ctx context.Context, name string, vs *snapshotv1.
 					Containers: []corev1.Container{
 						{
 							Name:            "dataexporter",
-							Image:           "ghcr.io/nibiruchain/dataexporter:latest",
+							Image:           "ghcr.io/voluzi/dataexporter:latest",
 							ImagePullPolicy: corev1.PullAlways,
+							SecurityContext: k8s.RestrictedSecurityContext(),
 							Args:            []string{"gcs", "upload", "data", gcs.Config.Bucket, name},
 							WorkingDir:      "/home/app",
 							Env: []corev1.EnvVar{
@@ -242,8 +244,9 @@ func (gcs *GCS) DeleteSnapshot(ctx context.Context, name string) error {
 					Containers: []corev1.Container{
 						{
 							Name:            "dataexporter",
-							Image:           "ghcr.io/nibiruchain/dataexporter:latest",
+							Image:           "ghcr.io/voluzi/dataexporter:latest",
 							ImagePullPolicy: corev1.PullAlways,
+							SecurityContext: k8s.RestrictedSecurityContext(),
 							Args:            []string{"gcs", "delete", gcs.Config.Bucket, name},
 							WorkingDir:      "/home/app",
 							Env: []corev1.EnvVar{

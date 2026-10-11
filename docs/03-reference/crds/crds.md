@@ -41,6 +41,7 @@ This page provides a detailed reference for the available Custom Resource Defini
 * [Peer](#peer)
 * [Persistence](#persistence)
 * [PvcSnapshot](#pvcsnapshot)
+* [SdkOptions](#sdkoptions)
 * [SidecarSpec](#sidecarspec)
 * [StateSyncConfig](#statesyncconfig)
 * [TmKMS](#tmkms)
@@ -143,6 +144,9 @@ ValidatorConfig contains the configuration for running a node as validator.
 | init | Specifies configs and initialization commands for creating a new genesis. | *[GenesisInitConfig](#genesisinitconfig) | false |
 | tmKMS | TmKMS configuration for signing commits for this validator. When configured, .spec.validator.privateKeySecret will not be mounted on the validator node. | *[TmKMS](#tmkms) | false |
 | createValidator | Indicates that cosmopilot should run create-validator tx to make this node a validator. | *[CreateValidatorConfig](#createvalidatorconfig) | false |
+| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
+| accountPrefix | Prefix for accounts. Defaults to `cosmos`. | *string | false |
+| valPrefix | Prefix for validator operator accounts. Defaults to `cosmosvaloper`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -363,6 +367,9 @@ NodeSetValidatorConfig contains validator configurations.
 | pdb | Pod Disruption Budget configuration for the validator pod. This is mainly useful in testnets where multiple validators might run in the same namespace. In production mainnet environments, where typically only one validator runs per namespace, this is rarely needed. | *[PdbConfig](#pdbconfig) | false |
 | overrideVersion | OverrideVersion will force validator to use the specified version. NOTE: when this is set, cosmopilot will not upgrade the node, nor will set the version based on upgrade history. For unsetting this, you will have to do it here and on the ChainNode itself. | *string | false |
 | ingress | Indicates if an ingress should be created to access API endpoints of validator node and configures it. | *[IngressConfig](#ingressconfig) | false |
+| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
+| accountPrefix | Prefix for accounts. Defaults to `cosmos`. | *string | false |
+| valPrefix | Prefix for validator operator accounts. Defaults to `cosmosvaloper`. | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -410,9 +417,10 @@ AppSpec specifies the source image, version and binary name of the app to run. A
 | version | Image tag to be used. Once there are completed or skipped upgrades this will be ignored. For a new node that will be state-synced, this will be the version used during state-sync. Only after that, the cosmopilot will switch to the version of last upgrade. Defaults to `latest`. | *string | false |
 | imagePullPolicy | Indicates the desired pull policy when creating nodes. Defaults to `Always` if `version` is `latest` and `IfNotPresent` otherwise. | corev1.PullPolicy | false |
 | app | Binary name of the application to be run. | string | true |
-| sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Valid options are: - \"v0.47\" (default) - \"v0.45\" | *SdkVersion | false |
+| sdkVersion | SdkVersion specifies the version of cosmos-sdk used by this app. Valid options are: - \"v0.53\" (default) - \"v0.50\" - \"v0.47\" - \"v0.45\" | *SdkVersion | false |
 | checkGovUpgrades | Whether cosmopilot should query gov proposals to find and schedule upgrades. Defaults to `true`. | *bool | false |
 | upgrades | List of upgrades to schedule for this node. | [][UpgradeSpec](#upgradespec) | false |
+| sdkOptions | SdkOptions allows customizing SDK command behavior for chains that diverge from standard SDK CLI. | *[SdkOptions](#sdkoptions) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -436,7 +444,7 @@ Config allows setting specific configurations for a node, including overriding c
 | override | Allows overriding configs on `.toml` configuration files. | *map[string]runtime.RawExtension | false |
 | sidecars | Allows configuring additional containers to run alongside the node. | [][SidecarSpec](#sidecarspec) | false |
 | imagePullSecrets | Optional list of references to secrets in the same namespace to use for pulling any of the images used by this node. | []corev1.LocalObjectReference | false |
-| blockThreshold | The time to wait for a block before considering node unhealthy. Defaults to `15s`. | *string | false |
+| blockThreshold | The time to wait for a block before considering node unhealthy. Defaults to `0s`. | *string | false |
 | reconcilePeriod | Period at which a reconcile loop will happen for this ChainNode. Defaults to `15s`. | *string | false |
 | stateSync | Allows configuring this node to perform state-sync snapshots. | *[StateSyncConfig](#statesyncconfig) | false |
 | seedMode | Configures this node to run on seed mode. Defaults to `false`. | *bool | false |
@@ -448,13 +456,16 @@ Config allows setting specific configurations for a node, including overriding c
 | startupTime | The time after which a node will be restarted if it does not start properly. Defaults to `1h`. | *string | false |
 | ignoreSyncing | Marks the node as ready even when it is catching up. This is useful when a chain is halted, but you still need the node to be ready for querying existing data. Defaults to `false`. | *bool | false |
 | nodeUtilsResources | Compute Resources for node-utils container. | *corev1.ResourceRequirements | false |
-| persistAddressBook | Whether to persist address book file in data directory. Defaults to `false`. | *bool | false |
+| nodeUtilsEnv | Additional environment variables for the node-utils container. | []corev1.EnvVar | false |
+| persistAddressBook | Whether to persist address book file in data directory. Defaults to `true`. | *bool | false |
 | terminationGracePeriodSeconds | Optional duration in seconds the pod needs to terminate gracefully. | *int64 | false |
 | evmEnabled | Whether EVM is enabled on this node. Will add evm-rpc port to services. Defaults to `false`. | *bool | false |
 | runFlags | List of flags to be appended to app container when starting the node. | []string | false |
-| volumes | Additional volumes to be created and mounted on this node. | [][VolumeSpec](#volumespec) | false |
 | dashedConfigToml | Whether field naming in config.toml should use dashes instead of underscores. Defaults to `false`. | *bool | false |
 | haltHeight | The block height at which the node should stop. Cosmopilot will not attempt to restart the node beyond this height. | *int64 | false |
+| securityContext | SecurityContext allows overriding the default restricted security context for the main app container. When not specified, a restricted security context is applied (runAsNonRoot, runAsUser=1000, drop all capabilities). Use this only if your app image requires running as root or with different security settings. | *corev1.SecurityContext | false |
+| podSecurityContext | PodSecurityContext allows overriding the default restricted pod security context. When not specified, a restricted pod security context is applied (runAsNonRoot, runAsUser=1000, fsGroup=1000). Use this only if your app or sidecars require running as root or with different security settings. | *corev1.PodSecurityContext | false |
+| serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use for the node's pod. If not specified, the default service account in the namespace is used. This is useful when sidecars need specific permissions (e.g., for leader election using leases). | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -478,9 +489,9 @@ CreateValidatorConfig holds configuration for cosmopilot to submit a create-vali
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | accountMnemonicSecret | Name of the secret containing the mnemonic of the account to be used by this validator. Defaults to `<chainnode>-account`. Will be created if it does not exist. | *string | false |
-| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
-| accountPrefix | Prefix for accounts. Defaults to `nibi`. | *string | false |
-| valPrefix | Prefix for validator operator accounts. Defaults to `nibivaloper`. | *string | false |
+| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. Deprecated: Use `.validator.accountHDPath` instead. | *string | false |
+| accountPrefix | Prefix for accounts. Defaults to `cosmos`. Deprecated: Use `.validator.accountPrefix` instead. | *string | false |
+| valPrefix | Prefix for validator operator accounts. Defaults to `cosmosvaloper`. Deprecated: Use `.validator.valPrefix` instead. | *string | false |
 | commissionMaxChangeRate | Maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
 | commissionMaxRate | Maximum commission rate percentage. Defaults to `0.1`. | *string | false |
 | commissionRate | Initial commission rate percentage. Defaults to `0.1`. | *string | false |
@@ -565,9 +576,9 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | ----- | ----------- | ------ | -------- |
 | chainID | ChainID of the chain to initialize. | string | true |
 | accountMnemonicSecret | Name of the secret containing the mnemonic of the account to be used by this validator. Defaults to `<chainnode>-account`. Will be created if it does not exist. | *string | false |
-| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. | *string | false |
-| accountPrefix | Prefix for accounts. Defaults to `nibi`. | *string | false |
-| valPrefix | Prefix for validator operator accounts. Defaults to `nibivaloper`. | *string | false |
+| accountHDPath | HD path of accounts. Defaults to `m/44'/118'/0'/0/0`. Deprecated: Use `.validator.accountHDPath` instead. | *string | false |
+| accountPrefix | Prefix for accounts. Defaults to `cosmos`. Deprecated: Use `.validator.accountPrefix` instead. | *string | false |
+| valPrefix | Prefix for validator operator accounts. Defaults to `cosmosvaloper`. Deprecated: Use `.validator.valPrefix` instead. | *string | false |
 | commissionMaxChangeRate | Maximum commission change rate percentage (per day). Defaults to `0.1`. | *string | false |
 | commissionMaxRate | Maximum commission rate percentage. Defaults to `0.1`. | *string | false |
 | commissionRate | Initial commission rate percentage. Defaults to `0.1`. | *string | false |
@@ -576,8 +587,9 @@ GenesisInitConfig specifies configs and initialization commands for creating a n
 | stakeAmount | Amount to be staked by this validator. | string | true |
 | accounts | Accounts specify additional accounts and respective assets to be added to this chain. | [][AccountAssets](#accountassets) | false |
 | chainNodeAccounts | List of ChainNodes whose accounts should be included in genesis. NOTE: Cosmopilot will wait for the ChainNodes to exist and have accounts before proceeding. | [][ChainNodeAssets](#chainnodeassets) | false |
-| unbondingTime | Time required to totally unbond delegations. Defaults to `1814400s` (21 days). | *string | false |
-| votingPeriod | Voting period for this chain. Defaults to `120h`. | *string | false |
+| unbondingTime | Time required to totally unbond delegations. If not set, the chain's default is used. | *string | false |
+| votingPeriod | Voting period for governance proposals. If not set, the chain's default is used. | *string | false |
+| expeditedVotingPeriod | Expedited voting period for governance proposals. If not set, the chain's default is used. Only supported in SDK >= v0.50. | *string | false |
 | additionalInitCommands | Additional commands to run on genesis initialization. Note: App home is at `/home/app` and `/temp` is a temporary volume shared by all init containers. | [][InitCommand](#initcommand) | false |
 
 [Back to Custom Resources](#custom-resources)
@@ -591,6 +603,8 @@ InitCommand represents an initialization command. It may be used for running add
 | image | Image to be used to run this command. Defaults to app image. | *string | false |
 | command | Command to be used. Defaults to image entrypoint. | []string | false |
 | args | Args to be passed to this command. | []string | true |
+| resources | Resources specifies the resource requirements for this init command container. | corev1.ResourceRequirements | false |
+| env | Env specifies additional environment variables for this init command container. | []corev1.EnvVar | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -625,6 +639,7 @@ Persistence configuration for a node.
 | snapshots | Whether cosmopilot should create volume snapshots according to this config. | *[VolumeSnapshotsConfig](#volumesnapshotsconfig) | false |
 | restoreFromSnapshot | Restore from the specified snapshot when creating the PVC for this node. | *[PvcSnapshot](#pvcsnapshot) | false |
 | initTimeout | Time to wait for data initialization pod to be successful. Defaults to `5m`. | *string | false |
+| additionalVolumes | Additional volumes to be created and mounted on this node. These volumes are also mounted during data initialization, so they can be used with `additionalInitCommands` to extract snapshots or initialize data. | [][VolumeSpec](#volumespec) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -635,6 +650,16 @@ PvcSnapshot represents a snapshot to be used to restore a PVC.
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | name | Name of the volume snapshot being referenced. | string | true |
+
+[Back to Custom Resources](#custom-resources)
+
+#### SdkOptions
+
+SdkOptions allows customizing SDK command behavior for chains that diverge from standard SDK CLI structure.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| genesisSubcommand | GenesisSubcommand controls whether genesis commands use the \"genesis\" subcommand (e.g., \"genesis gentx\" vs \"gentx\"). Some chains like Osmosis don't use this subcommand. Defaults to true for sdkVersion >= v0.47, false otherwise. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -678,7 +703,7 @@ TmKMS allows configuring tmkms for signing for this validator node instead of us
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | provider | Signing provider to be used by tmkms. Currently only `vault` is supported. | [TmKmsProvider](#tmkmsprovider) | true |
-| keyFormat | Format and type of key for chain. Defaults to `{\"type\": \"bech32\", \"account_key_prefix\": \"nibipub\", \"consensus_key_prefix\": \"nibivalconspub\"}`. | *[TmKmsKeyFormat](#tmkmskeyformat) | false |
+| keyFormat | Format and type of key for chain. Defaults to `{\"type\": \"bech32\", \"account_key_prefix\": \"cosmospub\", \"consensus_key_prefix\": \"cosmosvalconspub\"}`. | *[TmKmsKeyFormat](#tmkmskeyformat) | false |
 | validatorProtocol | Tendermint's protocol version to be used. Valid options are: - `v0.34` (default) - `v0.33` - `legacy` | *tmkms.ProtocolVersion | false |
 | persistState | Whether to persist \"priv_validator_state.json\" file on a PVC. Defaults to `true`. | *bool | false |
 | resources | Compute Resources for tmkms container. | *corev1.ResourceRequirements | false |
@@ -780,13 +805,17 @@ VerticalAutoscalingMetricConfig defines autoscaling behavior for a specific reso
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| source | Source determines whether to base autoscaling decisions on requests, limits, or effective limit. Valid values are: `effective-limit` (default) (use limits if set; otherwise fallback to requests) `requests` (use the pod’s requested resource value) `limits` (use the pod’s resource limit value) | *LimitSource | false |
 | min | Minimum resource value allowed during scaling (e.g. \"100m\" or \"128Mi\"). | resource.Quantity | true |
 | max | Maximum resource value allowed during scaling (e.g. \"8000m\" or \"2Gi\"). | resource.Quantity | true |
 | rules | Rules define when and how scaling should occur based on sustained usage levels. | []*[VerticalAutoscalingRule](#verticalautoscalingrule) | true |
 | cooldown | Cooldown is the minimum duration to wait between consecutive scaling actions. Defaults to \"5m\". | *string | false |
 | limitStrategy | LimitStrategy controls how resource limits should be updated after autoscaling. Valid values are: `retain` (default) (keep original limits) `equal` (match request value) `max` (use configured VPA Max) `percentage` (request × percentage) `unset` (remove the limits field entirely) | *LimitUpdateStrategy | false |
 | limitPercentage | LimitPercentage defines the percentage multiplier to apply when using \"percentage\" LimitStrategy. For example, 150 means limit = request * 1.5. Only used when LimitStrategy = \"percentage\". Defaults to `150` when not set. | *int | false |
+| safetyMarginPercent | SafetyMarginPercent prevents scaling down below (current_usage * (1 + margin/100)). Provides headroom to prevent OOM from usage spikes. Defaults to 15. | *int | false |
+| hysteresisPercent | HysteresisPercent creates a deadband between scale-up and scale-down zones. For scale-down rules, effective threshold = configured threshold - hysteresis. This prevents oscillation when usage hovers near a threshold. Defaults to 5. | *int | false |
+| emergencyScaleUpPercent | EmergencyScaleUpPercent defines how much to scale up on OOM detection. Only applicable to memory. Defaults to 25. | *int | false |
+| maxOOMRecoveries | MaxOOMRecoveries limits how many OOM emergency scale-ups can happen within OOMRecoveryWindow. Prevents runaway scaling on apps with memory leaks. Defaults to 3. | *int | false |
+| oomRecoveryWindow | OOMRecoveryWindow is the time window for counting OOM recoveries. Defaults to \"1h\". | *string | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -835,7 +864,7 @@ VolumeSpec describes an additional volume to mount on a node.
 | name | The name of the volume. | string | true |
 | size | Size of the volume. | string | true |
 | path | Path specifies where this volume should be mounted. | string | true |
-| storageClass | Name of the storage class to use for this volume. Uses the default class if not specified. | *string | false |
+| storageClass | Name of the storage class to use for this volume. If not specified, defaults to .persistence.storageClass. If that is also not specified, the cluster default storage class will be used. | *string | false |
 | deleteWithNode | Whether this volume should be deleted when node is deleted. Defaults to `false`. | *bool | false |
 
 [Back to Custom Resources](#custom-resources)
