@@ -43,6 +43,10 @@ func (chainNode *ChainNode) ValidateDelete() (warnings admission.Warnings, err e
 }
 
 func (chainNode *ChainNode) Validate(old *ChainNode) (admission.Warnings, error) {
+	if err := validateCompatiblePatch(chainNode.Spec.CompatiblePatch, ".spec.compatiblePatch"); err != nil {
+		return nil, err
+	}
+
 	// Validate persistence size
 	_, err := resource.ParseQuantity(chainNode.GetPersistenceSize())
 	if err != nil {
@@ -72,6 +76,19 @@ func (chainNode *ChainNode) Validate(old *ChainNode) (admission.Warnings, error)
 func validateSnapshotsConfig(config *VolumeSnapshotsConfig, path string) error {
 	if config.Retention != nil && config.Retain != nil {
 		return fmt.Errorf("%s.retention and %s.retain are mutually exclusive", path, path)
+	}
+	return nil
+}
+
+func validateCompatiblePatch(patch *CompatiblePatchSpec, path string) error {
+	if patch == nil {
+		return nil
+	}
+	if patch.Version == "" {
+		return fmt.Errorf("%s.version must not be empty", path)
+	}
+	if patch.UpgradeHeight < 0 {
+		return fmt.Errorf("%s.upgradeHeight must not be negative", path)
 	}
 	return nil
 }

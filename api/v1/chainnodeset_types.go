@@ -228,6 +228,11 @@ type NodeSetValidatorConfig struct {
 	// +optional
 	OverrideVersion *string `json:"overrideVersion,omitempty"`
 
+	// CompatiblePatch selects a compatible version only for its upgrade period.
+	// OverrideVersion, when present, takes precedence.
+	// +optional
+	CompatiblePatch *CompatiblePatchSpec `json:"compatiblePatch,omitempty"`
+
 	// Indicates if an ingress should be created to access API endpoints of validator node
 	// and configures it.
 	// +optional
@@ -353,6 +358,11 @@ type NodeGroupSpec struct {
 	// per ChainNode
 	// +optional
 	OverrideVersion *string `json:"overrideVersion,omitempty"`
+
+	// CompatiblePatch selects a compatible version only for its upgrade period.
+	// OverrideVersion, when present, takes precedence.
+	// +optional
+	CompatiblePatch *CompatiblePatchSpec `json:"compatiblePatch,omitempty"`
 }
 
 // IngressConfig specifies configurations for ingress to expose API endpoints.

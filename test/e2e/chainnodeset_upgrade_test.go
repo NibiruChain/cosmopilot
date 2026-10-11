@@ -43,6 +43,12 @@ var _ = Describe("ChainNodeSet Governance Upgrade", func() {
 					// Create a ChainNodeSet with the older version: 1 validator + 1 fullnode
 					chainNodeSet := app.BuildChainNodeSet(ns.Name, 1)
 					chainNodeSet.Spec.App.Version = ptr.To(upgradeTest.FromVersion)
+					// Keep an old patch setting through governance and a subsequent restart.
+					// Using the source version avoids requiring an extra compatible image.
+					chainNodeSet.Spec.Nodes[0].CompatiblePatch = &appsv1.CompatiblePatchSpec{
+						Version:       upgradeTest.FromVersion,
+						UpgradeHeight: 0,
+					}
 
 					err := Framework().Client().Create(Framework().Context(), chainNodeSet)
 					Expect(err).NotTo(HaveOccurred())
@@ -118,6 +124,25 @@ var _ = Describe("ChainNodeSet Governance Upgrade", func() {
 					// Verify all pods are running with the new image
 					By("Verifying all pods have the new image")
 					VerifyPodsHaveImage(ns.Name, chainNodeSet.Name, app.AppSpec.App, targetImage)
+
+					By("Recreating the observer while retaining the old compatible patch")
+					observerName := fmt.Sprintf("%s-%s-0", chainNodeSet.Name, chainNodeSet.Spec.Nodes[0].Name)
+					observer := &appsv1.ChainNode{}
+					Expect(Framework().Client().Get(Framework().Context(), client.ObjectKey{Namespace: ns.Name, Name: observerName}, observer)).To(Succeed())
+					Expect(observer.Spec.CompatiblePatch).To(Equal(chainNodeSet.Spec.Nodes[0].CompatiblePatch))
+					oldPod := &corev1.Pod{}
+					Expect(Framework().Client().Get(Framework().Context(), client.ObjectKey{Namespace: ns.Name, Name: observerName}, oldPod)).To(Succeed())
+					Expect(Framework().Client().Delete(Framework().Context(), oldPod)).To(Succeed())
+					Eventually(func() bool {
+						pod := &corev1.Pod{}
+						if err := Framework().Client().Get(Framework().Context(), client.ObjectKeyFromObject(oldPod), pod); err != nil {
+							return false
+						}
+						return pod.UID != oldPod.UID
+					}).Should(BeTrue())
+					WaitForPodReady(ns.Name, observerName)
+					VerifyPodsHaveImage(ns.Name, chainNodeSet.Name, app.AppSpec.App, targetImage)
+					WaitForChainNodesHeight(chainNodeSet, upgradeHeight+10)
 				}))
 			}
 		}

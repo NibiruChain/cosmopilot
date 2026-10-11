@@ -106,6 +106,7 @@ func (r *Reconciler) getValidatorSpec(nodeSet *appsv1.ChainNodeSet) (*appsv1.Cha
 			StateSyncResources: nodeSet.Spec.Validator.StateSyncResources,
 			VPA:                nodeSet.Spec.Validator.VPA,
 			OverrideVersion:    nodeSet.Spec.Validator.OverrideVersion,
+			CompatiblePatch:    nodeSet.Spec.Validator.CompatiblePatch.DeepCopy(),
 			Ingress:            nodeSet.Spec.Validator.Ingress,
 		},
 	}

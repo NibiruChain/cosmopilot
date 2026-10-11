@@ -263,6 +263,7 @@ func (r *Reconciler) getNodeSpec(nodeSet *appsv1.ChainNodeSet, group appsv1.Node
 			IgnoreGroupOnDisruptionChecks: group.IgnoreGroupOnDisruptionChecks,
 			VPA:                           group.VPA,
 			OverrideVersion:               group.OverrideVersion,
+			CompatiblePatch:               group.CompatiblePatch.DeepCopy(),
 		},
 	}
 

@@ -1344,6 +1344,28 @@ spec:
                               type: array
                           type: object
                       type: object
+                    compatiblePatch:
+                      description: |-
+                        CompatiblePatch selects a compatible version only for its upgrade period.
+                        OverrideVersion, when present, takes precedence.
+                      properties:
+                        upgradeHeight:
+                          description: |-
+                            UpgradeHeight identifies the upgrade period this patch belongs to.
+                            Zero identifies the initial genesis version. A later active upgrade
+                            automatically supersedes the patch, even if this setting remains present.
+                          format: int64
+                          minimum: 0
+                          type: integer
+                        version:
+                          description: Version is an image tag in the application's
+                            existing image repository.
+                          minLength: 1
+                          type: string
+                      required:
+                      - upgradeHeight
+                      - version
+                      type: object
                     config:
                       description: Specific configurations for these nodes.
                       properties:
@@ -5512,6 +5534,28 @@ spec:
                               type: object
                             type: array
                         type: object
+                    type: object
+                  compatiblePatch:
+                    description: |-
+                      CompatiblePatch selects a compatible version only for its upgrade period.
+                      OverrideVersion, when present, takes precedence.
+                    properties:
+                      upgradeHeight:
+                        description: |-
+                          UpgradeHeight identifies the upgrade period this patch belongs to.
+                          Zero identifies the initial genesis version. A later active upgrade
+                          automatically supersedes the patch, even if this setting remains present.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      version:
+                        description: Version is an image tag in the application's
+                          existing image repository.
+                        minLength: 1
+                        type: string
+                    required:
+                    - upgradeHeight
+                    - version
                     type: object
                   config:
                     description: Allows setting specific configurations for the validator.

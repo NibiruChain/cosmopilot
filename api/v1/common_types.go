@@ -1163,3 +1163,17 @@ type VerticalAutoscalingRule struct {
 	// +kubebuilder:validation:Format=duration
 	Cooldown *string `json:"cooldown,omitempty"`
 }
+
+// CompatiblePatchSpec selects a compatible binary within one upgrade period.
+// Compatibility must be verified by the operator; Cosmopilot does not check it.
+type CompatiblePatchSpec struct {
+	// Version is an image tag in the application's existing image repository.
+	// +kubebuilder:validation:MinLength=1
+	Version string `json:"version"`
+
+	// UpgradeHeight identifies the upgrade period this patch belongs to.
+	// Zero identifies the initial genesis version. A later active upgrade
+	// automatically supersedes the patch, even if this setting remains present.
+	// +kubebuilder:validation:Minimum=0
+	UpgradeHeight int64 `json:"upgradeHeight"`
+}
