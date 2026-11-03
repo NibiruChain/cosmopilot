@@ -33,6 +33,10 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 		if err != nil {
 			logger.Error(err, "could not retrieve upgrade plans")
 		} else {
+			// CurrentPlan is authoritative for future governance upgrades. A
+			// successful empty response retracts a cancelled plan; a replacement
+			// retracts the previous height before publishing the new one.
+			chainNode.Status.Upgrades = retainCurrentGovUpgrades(chainNode.Status.Upgrades, govUpgrades)
 			for _, upgrade := range govUpgrades {
 				chainNode.Status.Upgrades = AddOrUpdateUpgrade(chainNode.Status.Upgrades, upgrade, chainNode.Status.LatestHeight)
 			}
@@ -73,6 +77,25 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 		return r.Status().Update(ctx, chainNode)
 	}
 	return nil
+}
+
+func retainCurrentGovUpgrades(cached, current []appsv1.Upgrade) []appsv1.Upgrade {
+	heights := make(map[int64]bool, len(current))
+	for _, upgrade := range current {
+		heights[upgrade.Height] = true
+	}
+	retained := make([]appsv1.Upgrade, 0, len(cached))
+	for _, upgrade := range cached {
+		pending := upgrade.Status == appsv1.UpgradeScheduled || upgrade.Status == appsv1.UpgradeImageMissing
+		// The controller marks an upgrade ongoing before switching its pod.
+		// Merely reaching a scheduled height does not prove it was executed;
+		// cancellation may have happened between discovery polls.
+		if upgrade.Source == appsv1.OnChainUpgrade && pending && !heights[upgrade.Height] {
+			continue
+		}
+		retained = append(retained, upgrade)
+	}
+	return retained
 }
 
 func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1.ChainNode) error {
@@ -164,6 +187,9 @@ func (r *Reconciler) getGovUpgrades(ctx context.Context, chainNode *appsv1.Chain
 
 	upgrades := make([]appsv1.Upgrade, 0)
 	if plannedUpgrade != nil {
+		if plannedUpgrade.Height <= 0 {
+			return nil, fmt.Errorf("upgrade plan has invalid height %d", plannedUpgrade.Height)
+		}
 		upgrade := appsv1.Upgrade{
 			Height: plannedUpgrade.Height,
 			Status: appsv1.UpgradeScheduled,
@@ -188,6 +214,13 @@ func (r *Reconciler) getGovUpgrades(ctx context.Context, chainNode *appsv1.Chain
 func AddOrUpdateUpgrade(upgrades []appsv1.Upgrade, upgrade appsv1.Upgrade, currentHeight int64) []appsv1.Upgrade {
 	for i, u := range upgrades {
 		if u.Height == upgrade.Height {
+			if u.Source == appsv1.OnChainUpgrade && upgrade.Source == appsv1.OnChainUpgrade &&
+				(u.Status == appsv1.UpgradeScheduled || u.Status == appsv1.UpgradeImageMissing) {
+				// Governance may replace a plan without changing its height.
+				// Use the newly discovered image and readiness, not the old plan's.
+				upgrades[i].Image = upgrade.Image
+				upgrades[i].Status = upgrade.Status
+			}
 			// Update if we are adding a missing image
 			if u.Status == appsv1.UpgradeImageMissing && upgrade.Image != "" {
 				upgrades[i].Image = upgrade.Image

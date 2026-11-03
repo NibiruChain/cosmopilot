@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
@@ -15,6 +16,7 @@ type UpgradeSource string
 
 const (
 	UpgradeScheduled = "scheduled"
+	UpgradeOnGoing   = "ongoing"
 
 	ManualUpgrade  UpgradeSource = "manual"
 	OnChainUpgrade UpgradeSource = "on-chain"
@@ -22,6 +24,7 @@ const (
 
 type UpgradeChecker struct {
 	configFile string
+	mu         sync.RWMutex
 	config     UpgradesConfig
 }
 
@@ -86,7 +89,14 @@ func (u *UpgradeChecker) loadConfig() error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(body, &u.config)
+	var config UpgradesConfig
+	if err := json.Unmarshal(body, &config); err != nil {
+		return err
+	}
+	u.mu.Lock()
+	u.config = config
+	u.mu.Unlock()
+	return nil
 }
 
 func (u *UpgradeChecker) ShouldUpgrade(height int64) bool {
@@ -95,8 +105,19 @@ func (u *UpgradeChecker) ShouldUpgrade(height int64) bool {
 }
 
 func (u *UpgradeChecker) GetUpgrade(height int64) (*Upgrade, error) {
+	return u.getUpgrade(height, false)
+}
+
+func (u *UpgradeChecker) hasActiveUpgrade(height int64) bool {
+	_, err := u.getUpgrade(height, true)
+	return err == nil
+}
+
+func (u *UpgradeChecker) getUpgrade(height int64, includeOngoing bool) (*Upgrade, error) {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
 	for _, upgrade := range u.config.Upgrades {
-		if height >= upgrade.Height && upgrade.Status == UpgradeScheduled {
+		if height >= upgrade.Height && (upgrade.Status == UpgradeScheduled || (includeOngoing && upgrade.Status == UpgradeOnGoing)) {
 			return &upgrade, nil
 		}
 	}

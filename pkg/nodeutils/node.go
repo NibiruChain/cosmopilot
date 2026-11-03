@@ -41,6 +41,18 @@ type NodeUtils struct {
 	mockStats         *MockStats
 }
 
+// upgradeRequired revalidates the observed halt against the latest ConfigMap.
+// A cancelled/replaced plan must not leave a sticky upgrade-required response.
+// Keep an ongoing transition active while the controller replaces its pod.
+func (s *NodeUtils) upgradeRequired() bool {
+	if !s.requiresUpgrade.Load() {
+		return false
+	}
+	// Derive the answer rather than clearing the observed flag here: A
+	// concurrent trace may be observing a newly scheduled upgrade.
+	return s.upgradeChecker == nil || s.upgradeChecker.hasActiveUpgrade(s.latestBlockHeight.Load())
+}
+
 func New(nodeBinaryName string, opts ...Option) (*NodeUtils, error) {
 	options := defaultOptions()
 	for _, opt := range opts {
@@ -112,7 +124,7 @@ func (s *NodeUtils) Start() error {
 				s.tmkmsActive.Store(false)
 
 				// If an upgrade is required lets not restart proxy
-				if s.requiresUpgrade.Load() {
+				if s.upgradeRequired() {
 					return
 				}
 
@@ -208,7 +220,7 @@ func (s *NodeUtils) Stop(force bool) error {
 	// more so that cosmopilot can retrieve latest height before total shutdown.
 	// Note: Only check halt-height if it's actually configured (> 0), otherwise
 	// halt-height=0 would match latestBlockHeight=0 and prevent shutdown.
-	if !force && (s.requiresUpgrade.Load() || (s.cfg.HaltHeight > 0 && s.cfg.HaltHeight == s.latestBlockHeight.Load())) {
+	if !force && (s.upgradeRequired() || (s.cfg.HaltHeight > 0 && s.cfg.HaltHeight == s.latestBlockHeight.Load())) {
 		log.Warn("node requires upgrade or is set to halt on specific height. ignoring stop call")
 		return nil
 	}
