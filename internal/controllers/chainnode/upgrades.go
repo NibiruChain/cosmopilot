@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/voluzi/cosmopilot/v2/api/v1"
-	"github.com/voluzi/cosmopilot/v2/pkg/nodeutils"
+	"github.com/voluzi/cosmopilot/v2/internal/controllers"
 )
 
 func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.ChainNode, nodePodRunning bool) error {
@@ -74,9 +75,11 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 
 	if !reflect.DeepEqual(chainNode.Status.Upgrades, statusCopy.Upgrades) {
 		logger.Info("updating .status.upgrades")
-		return r.Status().Update(ctx, chainNode)
+		if err := r.Status().Update(ctx, chainNode); err != nil {
+			return err
+		}
 	}
-	return nil
+	return r.finishUpgradeCleanup(ctx, chainNode)
 }
 
 func retainCurrentGovUpgrades(cached, current []appsv1.Upgrade) []appsv1.Upgrade {
@@ -142,12 +145,12 @@ func (r *Reconciler) ensureUpgradesConfig(ctx context.Context, chainNode *appsv1
 }
 
 func (r *Reconciler) requiresUpgrade(ctx context.Context, chainNode *appsv1.ChainNode) (bool, error) {
-	return nodeutils.NewClient(chainNode.GetNodeFQDN()).RequiresUpgrade(ctx)
+	return r.getNodeStatusClient(chainNode).RequiresUpgrade(ctx)
 }
 
 func (r *Reconciler) getUpgrade(chainNode *appsv1.ChainNode, height int64) *appsv1.Upgrade {
 	for _, upgrade := range chainNode.Status.Upgrades {
-		if upgrade.Height == height && upgrade.Status == appsv1.UpgradeScheduled {
+		if upgrade.Height == height && (upgrade.Status == appsv1.UpgradeScheduled || upgrade.Status == appsv1.UpgradeOnGoing) {
 			return &upgrade
 		}
 	}
@@ -172,6 +175,92 @@ func (r *Reconciler) setUpgradeStatus(ctx context.Context, chainNode *appsv1.Cha
 		}
 	}
 	return fmt.Errorf("cant update upgrade phase: upgrade not found")
+}
+
+func (r *Reconciler) completeUpgrade(ctx context.Context, chainNode *appsv1.ChainNode, upgrade *appsv1.Upgrade) error {
+	if err := r.ensureUpgradeCleanupMarker(ctx, chainNode, upgrade); err != nil {
+		return err
+	}
+	return r.finishUpgradeCleanup(ctx, chainNode)
+}
+
+type upgradeCleanupMarker struct {
+	Height     int64     `json:"height"`
+	Version    string    `json:"version"`
+	CooldownAt time.Time `json:"cooldownAt"`
+}
+
+func (r *Reconciler) ensureUpgradeCleanupMarker(ctx context.Context, chainNode *appsv1.ChainNode, upgrade *appsv1.Upgrade) error {
+	marker := upgradeCleanupMarker{Height: upgrade.Height, Version: upgrade.GetVersion(), CooldownAt: time.Now().UTC()}
+	if raw := chainNode.GetAnnotations()[controllers.AnnotationUpgradeCleanup]; raw != "" {
+		var existing upgradeCleanupMarker
+		if err := json.Unmarshal([]byte(raw), &existing); err != nil {
+			return fmt.Errorf("decode upgrade cleanup marker: %w", err)
+		}
+		if existing.Height != marker.Height || existing.Version != marker.Version || existing.CooldownAt.IsZero() {
+			return fmt.Errorf("upgrade cleanup marker does not match target %s at height %d", marker.Version, marker.Height)
+		}
+		return nil
+	}
+	body, err := json.Marshal(marker)
+	if err != nil {
+		return err
+	}
+	if chainNode.Annotations == nil {
+		chainNode.Annotations = map[string]string{}
+	}
+	chainNode.Annotations[controllers.AnnotationUpgradeCleanup] = string(body)
+	if err := r.Update(ctx, chainNode); err != nil {
+		delete(chainNode.Annotations, controllers.AnnotationUpgradeCleanup)
+		return fmt.Errorf("persist upgrade cleanup marker: %w", err)
+	}
+	return nil
+}
+
+func (r *Reconciler) finishUpgradeCleanup(ctx context.Context, chainNode *appsv1.ChainNode) error {
+	raw := chainNode.GetAnnotations()[controllers.AnnotationUpgradeCleanup]
+	if raw == "" {
+		return nil
+	}
+	var marker upgradeCleanupMarker
+	if err := json.Unmarshal([]byte(raw), &marker); err != nil {
+		return fmt.Errorf("decode upgrade cleanup marker: %w", err)
+	}
+	var upgrade *appsv1.Upgrade
+	for i := range chainNode.Status.Upgrades {
+		candidate := &chainNode.Status.Upgrades[i]
+		if candidate.Height == marker.Height && candidate.GetVersion() == marker.Version &&
+			(candidate.Status == appsv1.UpgradeOnGoing || candidate.Status == appsv1.UpgradeCompleted || candidate.Status == appsv1.UpgradeSkipped) {
+			upgrade = candidate
+			break
+		}
+	}
+	if upgrade == nil || marker.Version == "" || marker.CooldownAt.IsZero() {
+		return fmt.Errorf("upgrade cleanup marker has no matching pending or completed upgrade")
+	}
+	if upgrade.Status != appsv1.UpgradeCompleted {
+		chainNode.Status.AppVersion = marker.Version
+		if err := r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeCompleted); err != nil {
+			return err
+		}
+	} else if chainNode.Status.AppVersion != marker.Version {
+		chainNode.Status.AppVersion = marker.Version
+		if err := r.Status().Update(ctx, chainNode); err != nil {
+			return err
+		}
+		if err := r.ensureUpgradesConfig(ctx, chainNode); err != nil {
+			return err
+		}
+	}
+	if err := r.resetVpaAfterUpgradeAt(ctx, chainNode, marker.CooldownAt); err != nil {
+		return fmt.Errorf("failed to reset VPA after upgrade for %s: %w", chainNode.GetName(), err)
+	}
+	delete(chainNode.Annotations, controllers.AnnotationUpgradeCleanup)
+	if err := r.Update(ctx, chainNode); err != nil {
+		chainNode.Annotations[controllers.AnnotationUpgradeCleanup] = raw
+		return fmt.Errorf("clear upgrade cleanup marker: %w", err)
+	}
+	return nil
 }
 
 func (r *Reconciler) getGovUpgrades(ctx context.Context, chainNode *appsv1.ChainNode) ([]appsv1.Upgrade, error) {

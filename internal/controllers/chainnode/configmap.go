@@ -33,6 +33,8 @@ const (
 	maxConfigLocks = 100
 )
 
+var errConfigImageChanged = fmt.Errorf("app image changed while preparing state-sync configuration")
+
 // configLockManager manages locks for config generation to prevent concurrent regeneration.
 // It implements a capacity-limited lock cache to prevent memory leaks.
 type configLockManager struct {
@@ -75,6 +77,7 @@ func (clm *configLockManager) getLockForVersion(version string) *sync.Mutex {
 
 func (r *Reconciler) ensureConfigs(ctx context.Context, app *chainutils.App, chainNode *appsv1.ChainNode, nodePodRunning bool) (string, error) {
 	logger := log.FromContext(ctx)
+	configImage := chainNode.GetAppImage()
 
 	configs, err := r.getGeneratedConfigs(ctx, app, chainNode)
 	if err != nil {
@@ -250,8 +253,14 @@ func (r *Reconciler) ensureConfigs(ctx context.Context, app *chainutils.App, cha
 					return "", err
 				}
 
-				// Set latest height to trust height so that old upgrades are marked as skipped
-				chainNode.Status.LatestHeight = trustHeight
+				// Reset the data identity to the trust height so version selection is
+				// recomputed for the state-sync replacement rather than anchored to old data.
+				if err := r.persistDataHeightReset(ctx, chainNode, trustHeight); err != nil {
+					return "", err
+				}
+				if chainNode.GetAppImage() != configImage {
+					return "", errConfigImageChanged
+				}
 			}
 		}
 	}

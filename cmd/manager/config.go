@@ -30,7 +30,7 @@ func init() {
 	)
 
 	flag.StringVar(&runOpts.NodeUtilsImage, "nodeutils-image",
-		environ.GetString("NODE_UTILS_IMAGE", "ghcr.io/voluzi/node-utils"),
+		environ.GetString("NODE_UTILS_IMAGE", "ghcr.io/voluzi/node-utils:2.9.3"),
 		"nodeutils image to be deployed with nodes.",
 	)
 

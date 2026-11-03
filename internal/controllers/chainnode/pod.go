@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -89,7 +90,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 	err = r.Get(ctx, client.ObjectKeyFromObject(chainNode), currentPod)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return r.createPod(ctx, chainNode, pod)
+			return r.ensureMissingPod(ctx, chainNode, pod)
 		}
 		return fmt.Errorf("failed to get pod for %s: %w", chainNode.GetName(), err)
 	}
@@ -99,48 +100,109 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 		if err = r.waitForPodTermination(ctx, currentPod); err != nil {
 			return fmt.Errorf("failed waiting for pod %s termination: %w", currentPod.GetName(), err)
 		}
-		return r.createPod(ctx, chainNode, pod)
-	}
-
-	// Patch pod without restart when labels change
-	logger.V(1).Info("checking for labels changes", "current", currentPod.Labels, "new", pod.Labels)
-	if !reflect.DeepEqual(currentPod.Labels, pod.Labels) {
-		logger.Info("updating pod labels", "pod", pod.GetName())
-		modifiedPod := currentPod.DeepCopy()
-		modifiedPod.Labels = pod.Labels
-		currentPod, err = r.PatchPod(ctx, currentPod, modifiedPod)
-		if err != nil {
-			return fmt.Errorf("failed to patch pod labels for %s: %w", pod.GetName(), err)
+		absent, absenceErr := r.podIsAuthoritativelyAbsent(ctx, currentPod)
+		if absenceErr != nil {
+			return fmt.Errorf("failed to verify pod %s absence: %w", currentPod.GetName(), absenceErr)
 		}
+		if !absent {
+			logger.V(1).Info("pod name is still occupied after observed pod termination", "pod", currentPod.GetName())
+			return nil
+		}
+		return r.ensureMissingPod(ctx, chainNode, pod)
 	}
 
-	if nodeUtilsIsInFailedState(currentPod) {
-		logger.Info("node-utils is in failed state", "pod", pod.GetName())
-		ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, currentPod)
-		logs, err := ph.GetLogs(ctx, nodeUtilsContainerName)
+	recoveryAction := terminalPodRecoveryFor(chainNode, currentPod)
+	if mustStop, _ := chainNode.MustStop(); mustStop && recoveryAction != terminalPodHold {
+		logger.Info("enforcing existing halt-height hold", "halt-height", chainNode.Spec.Config.GetHaltHeight())
+		return r.recreatePod(ctx, chainNode, currentPod, pod, false)
+	}
+	if err = r.reconcileHaltHeightHoldForAction(ctx, chainNode, recoveryAction); err != nil {
+		return fmt.Errorf("failed to reconcile halt-height hold for %s: %w", chainNode.GetName(), err)
+	}
+
+	var requiresUpgrade bool
+	switch recoveryAction {
+	case terminalPodHold:
+		if err = r.persistTerminalHaltLatestHeight(ctx, chainNode, currentPod); err != nil {
+			return fmt.Errorf("failed to persist terminal halt height for %s: %w", chainNode.GetName(), err)
+		}
+		logger.Info("holding node at configured halt height", "halt-height", chainNode.Spec.Config.GetHaltHeight())
+		return r.recreatePod(ctx, chainNode, currentPod, pod, false)
+	case terminalPodRestart:
+		logger.Info("recreating terminal pod without valid halt or upgrade evidence", "pod", pod.GetName())
+		return r.recreatePod(ctx, chainNode, currentPod, pod, false)
+	case terminalPodWaitForEvidence:
+		logger.V(1).Info("checking running node-utils before waiting for termination evidence", "pod", pod.GetName())
+		requiresUpgrade, err = r.requiresUpgradeFresh(ctx, chainNode)
 		if err != nil {
-			logger.Info("could not retrieve logs: " + err.Error())
-		} else {
-			logLines := strings.Split(logs, "\n")
-			if len(logLines) > defaultLogsLineCount {
-				logger.Info("app error: " + strings.Join(logLines[len(logLines)-defaultLogsLineCount:], "\n"))
-			} else {
-				logger.Info("app error: " + strings.Join(logLines, "\n"))
+			return fmt.Errorf("failed to check if terminal pod %s requires upgrade: %w", chainNode.GetName(), err)
+		}
+		latestHeight, latestHeightAvailable, heightErr := r.refreshLatestHeight(ctx, chainNode)
+		if heightErr != nil {
+			return fmt.Errorf("failed to update latest height for terminal pod %s: %w", chainNode.GetName(), heightErr)
+		}
+		current, currentErr := r.terminalEvidencePodIsCurrent(ctx, currentPod)
+		if currentErr != nil {
+			return fmt.Errorf("failed to verify terminal pod %s identity: %w", chainNode.GetName(), currentErr)
+		}
+		if !current {
+			return nil
+		}
+		if !requiresUpgrade {
+			recoveryAction = terminalPodRecoveryWithoutNodeUtilsEvidence(
+				chainNode, currentPod, latestHeight, latestHeightAvailable,
+			)
+			if err = r.reconcileHaltHeightHoldForAction(ctx, chainNode, recoveryAction); err != nil {
+				return fmt.Errorf("failed to reconcile halt-height hold for %s: %w", chainNode.GetName(), err)
+			}
+			switch recoveryAction {
+			case terminalPodHold:
+				logger.Info("holding node at configured halt height", "halt-height", chainNode.Spec.Config.GetHaltHeight())
+				return r.recreatePod(ctx, chainNode, currentPod, pod, false)
+			case terminalPodRestart:
+				logger.Info("recreating terminal pod without valid halt or upgrade evidence", "pod", pod.GetName())
+				return r.recreatePod(ctx, chainNode, currentPod, pod, false)
+			case terminalPodNotTerminated:
+				return nil
+			default:
+				return fmt.Errorf("unexpected terminal recovery action %d for %s", recoveryAction, currentPod.GetName())
 			}
 		}
-		return r.recreatePod(ctx, chainNode, pod, false)
-	}
+	case terminalPodUpgrade:
+		evidence, ok := nodeUtilsTerminationEvidence(currentPod)
+		if !ok || evidence.RequiredUpgrade == nil {
+			return fmt.Errorf("terminal pod %s lost required upgrade evidence", currentPod.GetName())
+		}
+		requiresUpgrade = true
+		if chainNode.Status.LatestHeight != evidence.RequiredUpgrade.Height {
+			chainNode.Status.LatestHeight = evidence.RequiredUpgrade.Height
+			if err = r.Status().Update(ctx, chainNode); err != nil {
+				return fmt.Errorf("failed to project upgrade height for %s: %w", chainNode.GetName(), err)
+			}
+		}
+	case terminalPodNotTerminated:
+		// A terminal action must retain the exact Pod identity used to validate its evidence.
+		logger.V(1).Info("checking for labels changes", "current", currentPod.Labels, "new", pod.Labels)
+		if !reflect.DeepEqual(currentPod.Labels, pod.Labels) {
+			logger.Info("updating pod labels", "pod", pod.GetName())
+			modifiedPod := currentPod.DeepCopy()
+			modifiedPod.Labels = pod.Labels
+			currentPod, err = r.PatchPod(ctx, currentPod, modifiedPod)
+			if err != nil {
+				return fmt.Errorf("failed to patch pod labels for %s: %w", pod.GetName(), err)
+			}
+		}
 
-	logger.V(1).Info("updating latest height")
-	if err = r.updateLatestHeight(ctx, chainNode); err != nil {
-		return fmt.Errorf("failed to update latest height for %s: %w", chainNode.GetName(), err)
-	}
+		logger.V(1).Info("updating latest height")
+		if err = r.updateLatestHeight(ctx, chainNode); err != nil {
+			return fmt.Errorf("failed to update latest height for %s: %w", chainNode.GetName(), err)
+		}
 
-	// Check if the node is waiting for an upgrade
-	logger.V(1).Info("checking if an upgrade is required")
-	requiresUpgrade, err := r.requiresUpgrade(ctx, chainNode)
-	if err != nil {
-		return fmt.Errorf("failed to check if upgrade is required for %s: %w", chainNode.GetName(), err)
+		logger.V(1).Info("checking if an upgrade is required")
+		requiresUpgrade, err = r.requiresUpgrade(ctx, chainNode)
+		if err != nil {
+			return fmt.Errorf("failed to check if upgrade is required for %s: %w", chainNode.GetName(), err)
+		}
 	}
 
 	if requiresUpgrade {
@@ -165,14 +227,17 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 			return fmt.Errorf("failed to set upgrade status for %s: %w", chainNode.GetName(), err)
 		}
 
-		// Set upgrading label to true
-		modifiedPod := currentPod.DeepCopy()
-		if modifiedPod.Labels == nil {
-			modifiedPod.Labels = make(map[string]string)
-		}
-		modifiedPod.Labels[controllers.LabelUpgrading] = controllers.StringValueTrue
-		if _, err = r.PatchPod(ctx, currentPod, modifiedPod); err != nil {
-			return fmt.Errorf("failed to patch pod upgrading label for %s: %w", pod.GetName(), err)
+		if recoveryAction == terminalPodNotTerminated {
+			// Only a live Pod needs the transitional label. Terminal recovery must retain
+			// the evidence-bound UID until the preconditioned delete is accepted.
+			modifiedPod := currentPod.DeepCopy()
+			if modifiedPod.Labels == nil {
+				modifiedPod.Labels = make(map[string]string)
+			}
+			modifiedPod.Labels[controllers.LabelUpgrading] = controllers.StringValueTrue
+			if _, err = r.PatchPod(ctx, currentPod, modifiedPod); err != nil {
+				return fmt.Errorf("failed to patch pod upgrading label for %s: %w", pod.GetName(), err)
+			}
 		}
 
 		// Force update config files, to prevent restarting again because of config changes
@@ -200,7 +265,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 			return fmt.Errorf("failed to get pod spec after config update for %s: %w", chainNode.GetName(), err)
 		}
 
-		if upgraded, err := r.upgradePod(ctx, chainNode, pod, upgrade.Image); err != nil {
+		if targetCommitted, err := r.upgradePod(ctx, chainNode, currentPod, pod, upgrade.Image); err != nil {
 			r.recorder.Eventf(chainNode,
 				corev1.EventTypeWarning,
 				appsv1.ReasonUpgradeFailed,
@@ -208,14 +273,11 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 				err,
 			)
 			var upgradeStatus appsv1.UpgradePhase
-			if upgraded {
-				// If there was an error on pod creation or watching but the image was already swapped, we mark the upgrade
-				// completed anyway to avoid downgrading and corrupt data.
-				chainNode.Status.AppVersion = upgrade.GetVersion()
-				upgradeStatus = appsv1.UpgradeCompleted
-				if err := r.resetVpaAfterUpgrade(ctx, chainNode); err != nil {
-					return fmt.Errorf("failed to reset VPA after upgrade for %s: %w", chainNode.GetName(), err)
-				}
+			if targetCommitted {
+				// Once deletion of the old Pod is accepted, preserve the target version even
+				// if deletion, creation, or startup later fails. Retrying the old image after
+				// an on-disk migration could corrupt the node.
+				return r.completeUpgrade(ctx, chainNode, upgrade)
 			} else {
 				upgradeStatus = appsv1.UpgradeScheduled
 			}
@@ -227,11 +289,7 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 			"Upgraded node to %s on height %d",
 			upgrade.Image, upgrade.Height,
 		)
-		chainNode.Status.AppVersion = upgrade.GetVersion()
-		if err := r.resetVpaAfterUpgrade(ctx, chainNode); err != nil {
-			return fmt.Errorf("failed to reset VPA after upgrade for %s: %w", chainNode.GetName(), err)
-		}
-		return r.setUpgradeStatus(ctx, chainNode, upgrade, appsv1.UpgradeCompleted)
+		return r.completeUpgrade(ctx, chainNode, upgrade)
 	}
 
 	// Recreate pod if it is in failed state
@@ -249,19 +307,19 @@ func (r *Reconciler) ensurePod(ctx context.Context, _ *chainutils.App, chainNode
 				logger.Info("app error: " + strings.Join(logLines, "\n"))
 			}
 		}
-		return r.recreatePod(ctx, chainNode, pod, false)
+		return r.recreatePod(ctx, chainNode, currentPod, pod, false)
 	}
 
 	// Re-create pod if spec changes
 	if podSpecChanged(ctx, currentPod, pod) {
 		logger.Info("pod spec changed", "pod", pod.GetName())
-		return r.recreatePod(ctx, chainNode, pod, r.opts.DisruptionCheckEnabled)
+		return r.recreatePod(ctx, chainNode, currentPod, pod, r.opts.DisruptionCheckEnabled)
 	}
 
 	// Re-create pod if config changed
 	if currentPod.Annotations[controllers.AnnotationConfigHash] != configHash {
 		logger.Info("config changed", "pod", pod.GetName())
-		return r.recreatePod(ctx, chainNode, pod, r.opts.DisruptionCheckEnabled)
+		return r.recreatePod(ctx, chainNode, currentPod, pod, r.opts.DisruptionCheckEnabled)
 	}
 
 	return r.setNodePhase(ctx, chainNode)
@@ -297,6 +355,40 @@ func (r *Reconciler) createPod(ctx context.Context, chainNode *appsv1.ChainNode,
 		"Node successfully started",
 	)
 	return r.setNodePhase(ctx, chainNode)
+}
+
+func (r *Reconciler) ensureMissingPod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
+	if shouldMigrateLegacyHaltHeightHold(chainNode) {
+		if err := r.reconcileHaltHeightHoldForAction(ctx, chainNode, terminalPodHold); err != nil {
+			return fmt.Errorf("failed to migrate legacy halt-height hold for %s: %w", chainNode.GetName(), err)
+		}
+	}
+	if err := r.reconcileHaltHeightHoldForAction(ctx, chainNode, terminalPodNotTerminated); err != nil {
+		return fmt.Errorf("failed to reconcile halt-height hold for %s: %w", chainNode.GetName(), err)
+	}
+	return r.createPod(ctx, chainNode, pod)
+}
+
+func (r *Reconciler) podIsAuthoritativelyAbsent(ctx context.Context, observedPod *corev1.Pod) (bool, error) {
+	_, err := r.ClientSet.CoreV1().Pods(observedPod.Namespace).Get(ctx, observedPod.Name, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return true, nil
+	}
+	return false, err
+}
+
+func (r *Reconciler) terminalEvidencePodIsCurrent(ctx context.Context, observedPod *corev1.Pod) (bool, error) {
+	if observedPod.UID == "" {
+		return false, nil
+	}
+	currentPod, err := r.ClientSet.CoreV1().Pods(observedPod.Namespace).Get(ctx, observedPod.Name, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return currentPod.UID != "" && currentPod.UID == observedPod.UID && !isPodTerminating(currentPod), nil
 }
 
 // getConfigFilesMounts loads the ConfigMap and returns individual volume mounts for each config file.
@@ -361,12 +453,6 @@ func (r *Reconciler) buildBaseVolumes(chainNode *appsv1.ChainNode) []corev1.Volu
 			},
 		},
 		{
-			Name: "trace",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
 			Name: "upgrades-config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -380,15 +466,19 @@ func (r *Reconciler) buildBaseVolumes(chainNode *appsv1.ChainNode) []corev1.Volu
 }
 
 // buildNodeUtilsInitContainer creates the node-utils sidecar init container.
-func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) corev1.Container {
+func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode, runAsUser int64, runAsGroup *int64) corev1.Container {
 	var sidecarRestartAlways = corev1.ContainerRestartPolicyAlways
+	securityContext := k8s.RestrictedSecurityContext()
+	securityContext.RunAsUser = ptr.To(runAsUser)
+	securityContext.RunAsGroup = runAsGroup
+	securityContext.RunAsNonRoot = ptr.To(runAsUser != 0)
 
 	return corev1.Container{
 		Name:            nodeUtilsContainerName,
 		Image:           r.opts.NodeUtilsImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		RestartPolicy:   &sidecarRestartAlways,
-		SecurityContext: k8s.RestrictedSecurityContext(),
+		SecurityContext: securityContext,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          nodeUtilsPortName,
@@ -401,10 +491,6 @@ func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) co
 				Name:      "data",
 				MountPath: "/home/app/data",
 				ReadOnly:  true,
-			},
-			{
-				Name:      "trace",
-				MountPath: "/trace",
 			},
 			{
 				Name:      "upgrades-config",
@@ -423,14 +509,6 @@ func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) co
 			{
 				Name:  "TMKMS_PROXY",
 				Value: strconv.FormatBool(chainNode.IsValidator() && chainNode.UsesTmKms()),
-			},
-			{
-				Name:  "CREATE_FIFO",
-				Value: controllers.StringValueTrue,
-			},
-			{
-				Name:  "TRACE_STORE",
-				Value: "/trace/trace.fifo",
 			},
 			{
 				Name:  "NODE_BINARY_NAME",
@@ -459,6 +537,29 @@ func (r *Reconciler) buildNodeUtilsInitContainer(chainNode *appsv1.ChainNode) co
 	}
 }
 
+func effectiveRunIdentity(app *corev1.SecurityContext, pod *corev1.PodSecurityContext) (int64, *int64, error) {
+	var runAsUser *int64
+	if app != nil && app.RunAsUser != nil {
+		runAsUser = app.RunAsUser
+	} else if pod != nil && pod.RunAsUser != nil {
+		runAsUser = pod.RunAsUser
+	}
+	if runAsUser == nil || *runAsUser < 0 {
+		return 0, nil, fmt.Errorf("node-utils requires a resolved numeric runAsUser matching the app container")
+	}
+
+	var runAsGroup *int64
+	if app != nil && app.RunAsGroup != nil {
+		runAsGroup = app.RunAsGroup
+	} else if pod != nil && pod.RunAsGroup != nil {
+		runAsGroup = pod.RunAsGroup
+	}
+	if runAsGroup != nil && *runAsGroup < 0 {
+		return 0, nil, fmt.Errorf("node-utils requires a non-negative runAsGroup matching the app container")
+	}
+	return *runAsUser, runAsGroup, nil
+}
+
 // buildAppContainer creates the main application container with its configuration.
 func (r *Reconciler) buildAppContainer(chainNode *appsv1.ChainNode, configFilesMounts []corev1.VolumeMount, readinessPath string, appResources corev1.ResourceRequirements, securityContext *corev1.SecurityContext) corev1.Container {
 	return corev1.Container{
@@ -467,11 +568,8 @@ func (r *Reconciler) buildAppContainer(chainNode *appsv1.ChainNode, configFilesM
 		ImagePullPolicy: chainNode.Spec.App.GetImagePullPolicy(),
 		SecurityContext: securityContext,
 		Command:         []string{chainNode.Spec.App.App},
-		Args: append([]string{"start",
-			"--home", "/home/app",
-			"--trace-store", "/trace/trace.fifo",
-		}, chainNode.GetAdditionalRunFlags()...),
-		Env: chainNode.Spec.Config.GetEnv(),
+		Args:            append([]string{"start", "--home", "/home/app"}, chainNode.GetAdditionalRunFlags()...),
+		Env:             chainNode.Spec.Config.GetEnv(),
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          chainutils.P2pPortName,
@@ -521,10 +619,6 @@ func (r *Reconciler) buildAppContainer(chainNode *appsv1.ChainNode, configFilesM
 				Name:      "node-key",
 				MountPath: "/home/app/config/" + nodeKeyFilename,
 				SubPath:   nodeKeyFilename,
-			},
-			{
-				Name:      "trace",
-				MountPath: "/trace",
 			},
 		}, configFilesMounts...),
 		StartupProbe: &corev1.Probe{
@@ -626,6 +720,10 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	if appSecurityContext == nil {
 		appSecurityContext = k8s.RestrictedSecurityContext()
 	}
+	runAsUser, runAsGroup, err := effectiveRunIdentity(appSecurityContext, podSecurityContext)
+	if err != nil {
+		return nil, err
+	}
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -649,7 +747,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 			SecurityContext:               podSecurityContext,
 			TerminationGracePeriodSeconds: chainNode.Spec.Config.GetTerminationGracePeriodSeconds(),
 			Volumes:                       r.buildBaseVolumes(chainNode),
-			InitContainers:                []corev1.Container{r.buildNodeUtilsInitContainer(chainNode)},
+			InitContainers:                []corev1.Container{r.buildNodeUtilsInitContainer(chainNode, runAsUser, runAsGroup)},
 			Containers:                    []corev1.Container{r.buildAppContainer(chainNode, configFilesMounts, readinessPath, appResources, appSecurityContext)},
 		},
 	}
@@ -918,7 +1016,7 @@ func (r *Reconciler) getPodSpec(ctx context.Context, chainNode *appsv1.ChainNode
 	return pod, controllerutil.SetControllerReference(chainNode, pod, r.Scheme)
 }
 
-func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod, preventDisruption bool) error {
+func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNode, currentPod, desiredPod *corev1.Pod, preventDisruption bool) error {
 	logger := log.FromContext(ctx)
 
 	if preventDisruption {
@@ -939,57 +1037,57 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 			}
 		}
 
-		logger.Info("attempting to acquire lock for recreating pod", "pod", pod.GetName(), "labels", disruptionLabels)
+		logger.Info("attempting to acquire lock for recreating pod", "pod", desiredPod.GetName(), "labels", disruptionLabels)
 		lock := r.disruptionLocks.getLockForLabels(disruptionLabels)
 		lock.Lock()
 		defer lock.Unlock()
-		logger.Info("acquired lock for recreating pod", "pod", pod.GetName(), "labels", disruptionLabels)
+		logger.Info("acquired lock for recreating pod", "pod", desiredPod.GetName(), "labels", disruptionLabels)
 
 		// If the pod is already unavailable, recreating it won't increase disruption
-		if isPodRunningAndReady(pod) {
-			logger.Info("checking pod disruption", "pod", pod.GetName(), "labels", disruptionLabels)
+		if isPodRunningAndReady(currentPod) {
+			logger.Info("checking pod disruption", "pod", desiredPod.GetName(), "labels", disruptionLabels)
 			err := r.checkDisruptionAllowance(ctx, disruptionLabels)
 			if err != nil {
-				logger.Info("delaying pod recreation due to disruption limits", "pod", pod.GetName(), "reason", err.Error())
+				logger.Info("delaying pod recreation due to disruption limits", "pod", desiredPod.GetName(), "reason", err.Error())
 				return nil
 			}
 		} else {
-			logger.Info("pod is already unavailable, skipping disruption check", "pod", pod.GetName())
+			logger.Info("pod is already unavailable, skipping disruption check", "pod", desiredPod.GetName())
 		}
 	}
 
-	logger.Info("recreating pod", "pod", pod.GetName())
+	logger.Info("recreating pod", "pod", desiredPod.GetName())
 	if err := r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeRestarting); err != nil {
 		return fmt.Errorf("failed to update phase to Restarting for %s: %w", chainNode.GetName(), err)
 	}
 
-	logger.V(1).Info("deleting pod", "pod", pod.GetName())
-	deletePod := pod.DeepCopy()
+	logger.V(1).Info("deleting pod", "pod", currentPod.GetName(), "uid", currentPod.GetUID())
+	deletePod := currentPod.DeepCopy()
 	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, deletePod)
 	if err := ph.Delete(ctx); err != nil {
-		return fmt.Errorf("failed to delete pod %s for recreation: %w", pod.GetName(), err)
+		return fmt.Errorf("failed to delete pod %s for recreation: %w", currentPod.GetName(), err)
 	}
 
 	// There is no need to wait for pod to be deleted if we are keeping it stopped
 	if mustStop, stopReason := chainNode.MustStop(); mustStop {
-		logger.Info("node must be stopped. not recreating pod", "pod", pod.GetName(), "reason", stopReason)
+		logger.Info("node must be stopped. not recreating pod", "pod", desiredPod.GetName(), "reason", stopReason)
 
 		// Attempt to terminate node-utils container without waiting for grace-period. If there is an error
 		// we will just wait for the grace-period
 		if err := r.stopNodeUtilsContainer(ctx, chainNode); err != nil {
-			logger.Info("failed to stop node utils container", "pod", pod.GetName(), "error", err.Error())
+			logger.Info("failed to stop node utils container", "pod", desiredPod.GetName(), "error", err.Error())
 		}
 		return r.setNodePhase(ctx, chainNode)
 	}
 
 	if err := ph.WaitForPodDeleted(ctx, timeoutPodDeleted); err != nil {
-		return fmt.Errorf("timeout waiting for pod %s to be deleted: %w", pod.GetName(), err)
+		return fmt.Errorf("timeout waiting for pod %s to be deleted: %w", currentPod.GetName(), err)
 	}
-	logger.V(1).Info("pod deleted", "pod", pod.GetName())
+	logger.V(1).Info("pod deleted", "pod", currentPod.GetName(), "uid", currentPod.GetUID())
 
-	ph = k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
+	ph = k8s.NewPodHelper(r.ClientSet, r.RestConfig, desiredPod)
 	if err := ph.Create(ctx); err != nil {
-		return fmt.Errorf("failed to recreate pod %s: %w", pod.GetName(), err)
+		return fmt.Errorf("failed to recreate pod %s: %w", desiredPod.GetName(), err)
 	}
 
 	if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, chainNode.Spec.App.App); err != nil {
@@ -999,7 +1097,7 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 			controllers.FormatErrorEvent("Pod failed to start", err),
 		)
 		_ = r.updatePhase(ctx, chainNode, appsv1.PhaseChainNodeError)
-		return fmt.Errorf("timeout waiting for recreated container %s to start in pod %s: %w", chainNode.Spec.App.App, pod.GetName(), err)
+		return fmt.Errorf("timeout waiting for recreated container %s to start in pod %s: %w", chainNode.Spec.App.App, desiredPod.GetName(), err)
 	}
 	r.recorder.Eventf(chainNode,
 		corev1.EventTypeNormal,
@@ -1009,34 +1107,28 @@ func (r *Reconciler) recreatePod(ctx context.Context, chainNode *appsv1.ChainNod
 	return r.setNodePhase(ctx, chainNode)
 }
 
-func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod, image string) (bool, error) {
+func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode, currentPod, desiredPod *corev1.Pod, image string) (bool, error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("upgrading pod", "pod", pod.GetName())
+	logger.Info("upgrading pod", "pod", desiredPod.GetName())
 	phase := appsv1.PhaseChainNodeUpgrading
 	if err := r.updatePhase(ctx, chainNode, phase); err != nil {
 		return false, err
 	}
 
-	// Attempt to terminate node-utils container without waiting for grace-period. If there is an error
-	// we will just wait for the grace-period
-	if err := r.stopNodeUtilsContainer(ctx, chainNode); err != nil {
-		logger.Info("failed to stop node utils container", "pod", pod.GetName(), "error", err.Error())
-	}
-
-	deletePod := pod.DeepCopy()
+	deletePod := currentPod.DeepCopy()
 	ph := k8s.NewPodHelper(r.ClientSet, r.RestConfig, deletePod)
-	if err := ph.Delete(ctx); err != nil {
+	desiredPod.Spec.Containers[0].Image = image
+	if err := ph.DeleteWithGracePeriod(ctx, upgradeDeletionGracePeriodSeconds(currentPod)); err != nil {
 		return false, err
 	}
 	if err := ph.WaitForPodDeleted(ctx, timeoutPodDeleted); err != nil {
-		return false, err
+		return true, err
 	}
 
-	ph = k8s.NewPodHelper(r.ClientSet, r.RestConfig, pod)
-	pod.Spec.Containers[0].Image = image
+	ph = k8s.NewPodHelper(r.ClientSet, r.RestConfig, desiredPod)
 	if err := ph.Create(ctx); err != nil {
-		return false, err
+		return true, err
 	}
 
 	if err := ph.WaitForContainerStarted(ctx, timeoutPodRunning, chainNode.Spec.App.App); err != nil {
@@ -1054,6 +1146,17 @@ func (r *Reconciler) upgradePod(ctx context.Context, chainNode *appsv1.ChainNode
 		"Node upgraded to %s", image,
 	)
 	return true, r.setNodePhase(ctx, chainNode)
+}
+
+func upgradeDeletionGracePeriodSeconds(pod *corev1.Pod) int64 {
+	bounded := int64((timeoutPodDeleted / 2).Seconds())
+	if configured := pod.Spec.TerminationGracePeriodSeconds; configured != nil && *configured < bounded {
+		if *configured < 0 {
+			return 0
+		}
+		return *configured
+	}
+	return bounded
 }
 
 func (r *Reconciler) waitForPodTermination(ctx context.Context, pod *corev1.Pod) error {
@@ -1251,17 +1354,234 @@ func isImagePullFailure(state *corev1.ContainerStateWaiting) bool {
 }
 
 func nodeUtilsIsInFailedState(pod *corev1.Pod) bool {
-	if pod.Status.Phase == corev1.PodFailed {
-		return true
+	return pod.Status.Phase == corev1.PodFailed
+}
+
+type terminalPodRecoveryAction uint8
+
+const (
+	terminalPodNotTerminated terminalPodRecoveryAction = iota
+	terminalPodWaitForEvidence
+	terminalPodRestart
+	terminalPodUpgrade
+	terminalPodHold
+)
+
+func terminalPodRecoveryFor(chainNode *appsv1.ChainNode, pod *corev1.Pod) terminalPodRecoveryAction {
+	if pod == nil || isPodTerminating(pod) {
+		return terminalPodNotTerminated
+	}
+	terminated, found := appTermination(pod, chainNode.Spec.App.App)
+	if !found {
+		if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
+			return terminalPodRestart
+		}
+		return terminalPodNotTerminated
+	}
+	evidence, ok := nodeUtilsTerminationEvidence(pod)
+	if ok && !evidence.ForcedShutdown && matchingPendingUpgrade(chainNode, evidence.RequiredUpgrade) {
+		return terminalPodUpgrade
+	}
+	if !nodeUtilsHasTerminated(pod) {
+		return terminalPodWaitForEvidence
+	}
+	if !validHaltTermination(terminated) {
+		return terminalPodRestart
+	}
+	if ok && validHaltEvidence(chainNode, pod, evidence) {
+		return terminalPodHold
+	}
+	return terminalPodRestart
+}
+
+func terminalPodRecoveryWithoutNodeUtilsEvidence(
+	chainNode *appsv1.ChainNode,
+	pod *corev1.Pod,
+	latestHeight int64,
+	latestHeightAvailable bool,
+) terminalPodRecoveryAction {
+	if pod == nil || isPodTerminating(pod) {
+		return terminalPodNotTerminated
+	}
+	terminated, ok := appTermination(pod, chainNode.Spec.App.App)
+	if !ok || !validHaltTermination(terminated) {
+		return terminalPodRestart
+	}
+	haltHeight, ok := configuredPodHaltHeight(chainNode, pod)
+	if !ok {
+		return terminalPodRestart
+	}
+	if latestHeightAvailable && atHaltBoundary(latestHeight, haltHeight) {
+		return terminalPodHold
+	}
+	return terminalPodRestart
+}
+
+func appTermination(pod *corev1.Pod, name string) (*corev1.ContainerStateTerminated, bool) {
+	for i := range pod.Status.ContainerStatuses {
+		status := &pod.Status.ContainerStatuses[i]
+		if status.Name == name && status.State.Terminated != nil {
+			return status.State.Terminated, true
+		}
+	}
+	return nil, false
+}
+
+func cleanTermination(terminated *corev1.ContainerStateTerminated) bool {
+	return terminated.ExitCode == 0 && terminated.Reason != "OOMKilled" && terminated.Reason != "Error"
+}
+
+func validHaltTermination(terminated *corev1.ContainerStateTerminated) bool {
+	return cleanTermination(terminated) ||
+		terminated.ExitCode != 0 && terminated.ExitCode != 137 && terminated.Signal != 9 && terminated.Reason == "Error"
+}
+
+func nodeUtilsHasTerminated(pod *corev1.Pod) bool {
+	for _, status := range pod.Status.InitContainerStatuses {
+		if status.Name == nodeUtilsContainerName {
+			return status.State.Terminated != nil
+		}
+	}
+	return pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded
+}
+
+func nodeUtilsTerminationEvidence(pod *corev1.Pod) (nodeutils.TerminationEvidence, bool) {
+	if pod == nil {
+		return nodeutils.TerminationEvidence{}, false
+	}
+	for _, status := range pod.Status.InitContainerStatuses {
+		if status.Name != nodeUtilsContainerName || status.State.Terminated == nil || status.State.Terminated.Message == "" {
+			continue
+		}
+		var evidence nodeutils.TerminationEvidence
+		if err := json.Unmarshal([]byte(status.State.Terminated.Message), &evidence); err != nil {
+			return nodeutils.TerminationEvidence{}, false
+		}
+		return evidence, true
+	}
+	return nodeutils.TerminationEvidence{}, false
+}
+
+func validHaltEvidence(chainNode *appsv1.ChainNode, pod *corev1.Pod, evidence nodeutils.TerminationEvidence) bool {
+	if evidence.ForcedShutdown {
+		return false
+	}
+	haltHeight, ok := configuredPodHaltHeight(chainNode, pod)
+	if !ok || evidence.HaltHeight != haltHeight {
+		return false
+	}
+	if evidence.LatestHeight == nil || !atHaltBoundary(*evidence.LatestHeight, haltHeight) {
+		return false
+	}
+	terminated, ok := appTermination(pod, chainNode.Spec.App.App)
+	return ok && validHaltTermination(terminated) && !isPodTerminating(pod)
+}
+
+func atHaltBoundary(latestHeight, haltHeight int64) bool {
+	return latestHeight == haltHeight || latestHeight == haltHeight-1
+}
+
+func (r *Reconciler) persistTerminalHaltLatestHeight(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
+	evidence, ok := nodeUtilsTerminationEvidence(pod)
+	if !ok || evidence.LatestHeight == nil || *evidence.LatestHeight <= chainNode.Status.LatestHeight {
+		return nil
 	}
 
-	for _, c := range pod.Status.InitContainerStatuses {
-		if c.Name == nodeUtilsContainerName && (!c.Ready && c.State.Terminated != nil) {
+	previousHeight := chainNode.Status.LatestHeight
+	chainNode.Status.LatestHeight = *evidence.LatestHeight
+	if err := r.Status().Update(ctx, chainNode); err != nil {
+		chainNode.Status.LatestHeight = previousHeight
+		return err
+	}
+	return nil
+}
+
+func configuredPodHaltHeight(chainNode *appsv1.ChainNode, pod *corev1.Pod) (int64, bool) {
+	if chainNode == nil || chainNode.Spec.Config == nil || chainNode.Spec.Config.HaltHeight == nil {
+		return 0, false
+	}
+	haltHeight := *chainNode.Spec.Config.HaltHeight
+	podHaltHeight, ok := nodeUtilsHaltHeight(pod)
+	return haltHeight, ok && haltHeight > 0 && podHaltHeight == haltHeight
+}
+
+func nodeUtilsHaltHeight(pod *corev1.Pod) (int64, bool) {
+	if pod == nil {
+		return 0, false
+	}
+	for _, container := range pod.Spec.InitContainers {
+		if container.Name != nodeUtilsContainerName {
+			continue
+		}
+		var found *int64
+		for _, env := range container.Env {
+			if env.Name == "HALT_HEIGHT" {
+				height, err := strconv.ParseInt(env.Value, 10, 64)
+				if err != nil || (found != nil && *found != height) {
+					return 0, false
+				}
+				found = ptr.To(height)
+			}
+		}
+		if found == nil {
+			return 0, false
+		}
+		return *found, true
+	}
+	return 0, false
+}
+
+func matchingPendingUpgrade(chainNode *appsv1.ChainNode, required *nodeutils.RequiredUpgrade) bool {
+	if required == nil {
+		return false
+	}
+	for _, upgrade := range chainNode.Status.Upgrades {
+		if upgrade.Height == required.Height && upgrade.Source == appsv1.UpgradeSource(required.Source) &&
+			(upgrade.Status == appsv1.UpgradeScheduled || upgrade.Status == appsv1.UpgradeOnGoing) {
 			return true
 		}
 	}
-
 	return false
+}
+
+func (r *Reconciler) reconcileHaltHeightHold(ctx context.Context, chainNode *appsv1.ChainNode, pod *corev1.Pod) error {
+	return r.reconcileHaltHeightHoldForAction(ctx, chainNode, terminalPodRecoveryFor(chainNode, pod))
+}
+
+func shouldMigrateLegacyHaltHeightHold(chainNode *appsv1.ChainNode) bool {
+	if chainNode == nil || chainNode.Status.Phase != appsv1.PhaseChainNodeStopped ||
+		chainNode.Spec.Config == nil || chainNode.Spec.Config.HaltHeight == nil ||
+		chainNode.GetAnnotations()[appsv1.AnnotationHaltHeightHold] != "" {
+		return false
+	}
+	haltHeight := *chainNode.Spec.Config.HaltHeight
+	return haltHeight > 0 && chainNode.Status.LatestHeight == haltHeight
+}
+
+func (r *Reconciler) reconcileHaltHeightHoldForAction(ctx context.Context, chainNode *appsv1.ChainNode, action terminalPodRecoveryAction) error {
+	annotations := chainNode.GetAnnotations()
+	existing := annotations[appsv1.AnnotationHaltHeightHold]
+	desired := ""
+	if chainNode.Spec.Config != nil && chainNode.Spec.Config.HaltHeight != nil {
+		configured := strconv.FormatInt(*chainNode.Spec.Config.HaltHeight, 10)
+		if existing == configured || action == terminalPodHold {
+			desired = configured
+		}
+	}
+	if desired == existing {
+		return nil
+	}
+	annotations = maps.Clone(annotations)
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	if desired == "" {
+		delete(annotations, appsv1.AnnotationHaltHeightHold)
+	} else {
+		annotations[appsv1.AnnotationHaltHeightHold] = desired
+	}
+	chainNode.SetAnnotations(annotations)
+	return r.Update(ctx, chainNode)
 }
 
 func (r *Reconciler) stopNodeUtilsContainer(ctx context.Context, chainNode *appsv1.ChainNode) error {

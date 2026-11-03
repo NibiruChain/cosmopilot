@@ -1,8 +1,11 @@
 # Cosmopilot
 
-[![Test](https://github.com/voluzi/cosmopilot/actions/workflows/test.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/test.yaml)
-[![E2E](https://github.com/voluzi/cosmopilot/actions/workflows/e2e.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/e2e.yaml)
-[![Builds](https://github.com/voluzi/cosmopilot/actions/workflows/release.yaml/badge.svg)](https://github.com/voluzi/cosmopilot/actions/workflows/release.yaml)
+Nibiru maintains this distribution of [upstream Cosmopilot](https://github.com/voluzi/cosmopilot).
+See [CHANGELOG.md](CHANGELOG.md) for the upstream baseline and Nibiru-specific changes.
+
+[![Test](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/test.yaml)
+[![E2E](https://github.com/NibiruChain/cosmopilot/actions/workflows/e2e.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/e2e.yaml)
+[![Builds](https://github.com/NibiruChain/cosmopilot/actions/workflows/release.yaml/badge.svg)](https://github.com/NibiruChain/cosmopilot/actions/workflows/release.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/voluzi/cosmopilot/blob/main/LICENSE.md)
 
 **Cosmopilot** is a Kubernetes operator designed to simplify the deployment and management of Cosmos-based blockchain nodes.
@@ -64,5 +67,5 @@ Cosmopilot is open source and available under the [MIT License](LICENSE.md).
 
 ## Contact
 
-Have questions or need help? Feel free to open an issue or reach out to us via [dev@voluzi.com](mailto:dev@voluzi.com).
+Have questions or need help? Feel free to open an issue or reach out to us via [dev@nibiru.org](mailto:dev@nibiru.org).
 

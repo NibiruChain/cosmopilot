@@ -34,19 +34,9 @@ func init() {
 		"the file containing upgrades configuration",
 	)
 
-	flag.StringVar(&traceStore, "trace-store",
-		environ.GetString("TRACE_STORE", "/trace/trace.fifo"),
-		"file or fifo to watch for traces",
-	)
-
 	flag.StringVar(&logLevel, "log-level",
 		environ.GetString("LOG_LEVEL", "info"),
 		"log level",
-	)
-
-	flag.BoolVar(&createFifo, "create-fifo",
-		environ.GetBool("CREATE_FIFO", false),
-		"create FIFO for trace store",
 	)
 
 	flag.BoolVar(&enableTmkmsProxy, "tmkms-proxy",

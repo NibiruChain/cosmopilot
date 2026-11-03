@@ -210,3 +210,5 @@ jobs:
         with:
           body_path: ${{ steps.notes.outputs.body_path }}
           prerelease: ${{ contains(needs.version.outputs.tag, '-rc') || contains(needs.version.outputs.tag, '-beta') || contains(needs.version.outputs.tag, '-alpha') }}
+          # This branch backports fixes onto an older line. Never claim the Latest badge from a newer release.
+          make_latest: false

@@ -45,7 +45,6 @@ This command initializes the chain home directory and generates default configur
 
 Starts the blockchain node. Must support the following flags:
 - `--home` - Specify the home directory path
-- `--trace-store` - Path for trace output (FIFO)
 
 For snapshot integrity verification, the following is also required:
 

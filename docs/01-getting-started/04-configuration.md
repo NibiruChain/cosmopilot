@@ -30,7 +30,7 @@ $ helm show values oci://ghcr.io/voluzi/helm/cosmopilot
 
 ### `nodeUtilsImage`
 - **Description**: The container image of `node-utils` (with version tag included). This is a container deployed by `cosmopilot` as a sidecar with helper methods for calculating data size, handling upgrades, and a few more utilities.
-- **Default**: `ghcr.io/voluzi/node-utils`
+- **Default**: `ghcr.io/voluzi/node-utils:2.9.2`
 
 ### `cosmoGuardImage`
 - **Description**: The container image of [CosmoGuard](https://github.com/voluzi/cosmoguard) (with version tag included).

@@ -84,7 +84,6 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/node-utils
           tags: |
             ${{ needs.version.outputs.version }}-${{ env.ARCH }}
-            latest-${{ env.ARCH }}
 
       - name: Build and push by digest
         id: build
@@ -120,7 +119,6 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/node-utils
           tags: |
             ${{ needs.version.outputs.version }}
-            latest
 
       - name: Create manifest list and push
         run: |

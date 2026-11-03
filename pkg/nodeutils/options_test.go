@@ -20,14 +20,8 @@ func TestDefaultOptions(t *testing.T) {
 	if opts.UpgradesConfig != DefaultUpgradesConfig {
 		t.Errorf("expected UpgradesConfig %s, got %s", DefaultUpgradesConfig, opts.UpgradesConfig)
 	}
-	if opts.TraceStore != DefaultTraceStore {
-		t.Errorf("expected TraceStore %s, got %s", DefaultTraceStore, opts.TraceStore)
-	}
 	if opts.BlockThreshold != 0 {
 		t.Errorf("expected BlockThreshold 0, got %v", opts.BlockThreshold)
-	}
-	if opts.CreateFifo != false {
-		t.Errorf("expected CreateFifo false, got %v", opts.CreateFifo)
 	}
 	if opts.TmkmsProxy != false {
 		t.Errorf("expected TmkmsProxy false, got %v", opts.TmkmsProxy)
@@ -79,24 +73,6 @@ func TestWithBlockThreshold(t *testing.T) {
 
 	if opts.BlockThreshold != 5*time.Minute {
 		t.Errorf("expected BlockThreshold 5m, got %v", opts.BlockThreshold)
-	}
-}
-
-func TestWithTraceStore(t *testing.T) {
-	opts := defaultOptions()
-	WithTraceStore("/custom/trace.fifo")(opts)
-
-	if opts.TraceStore != "/custom/trace.fifo" {
-		t.Errorf("expected TraceStore /custom/trace.fifo, got %s", opts.TraceStore)
-	}
-}
-
-func TestCreateFifo(t *testing.T) {
-	opts := defaultOptions()
-	CreateFifo(true)(opts)
-
-	if opts.CreateFifo != true {
-		t.Errorf("expected CreateFifo true, got %v", opts.CreateFifo)
 	}
 }
 

@@ -1,7 +1,7 @@
 # Nibiru distribution
 
-This repository tracks upstream Cosmopilot. The v2.2.1 baseline is upstream
-commit `fb46820`, including its original history. Keep the Go module path and
+This repository tracks upstream Cosmopilot. Release 2.2.5 uses upstream v2.2.4,
+commit `9b2b43f8`, including its original history. Keep the Go module path and
 `cosmopilot.voluzi.com/v1` Kubernetes API so upstream patches remain portable
 and existing mainnet resources continue to work.
 
@@ -12,8 +12,9 @@ release cycles and are not part of the operator patch.
 
 ## Releases
 
-Use distinct Nibiru release tags, such as `v2.2.1-nibiru.1` and
-`chart/v2.2.1-nibiru.1`, on the same reviewed commit. The first tag builds the
+Use the next available patch tag, `v2.2.5`, for this Nibiru release.
+The [changelog](../../CHANGELOG.md) records its differences from upstream.
+An optional chart tag, such as `chart/v2.2.5`, must reference the same reviewed commit. The first tag builds the
 AMD64 and ARM64 operator images; the second packages the chart with the
 matching image version. Wait for the image publication to succeed before
 publishing a chart that references it. A separate chart release is optional
@@ -38,8 +39,9 @@ If a patch adds CRD fields, deploy the matching updated CRD definitions before
 configuring those fields. An org-owned chart is available when we need to ship
 updated deployment configuration. Retain the existing CRD names and Kubernetes
 API group.
-The snapshot `overrideVersion` remains until a separate patch implements a
-scoped compatible release and a controlled migration of existing overrides.
+The `compatiblePatch` setting is available. Existing snapshot `overrideVersion`
+pins remain until a controlled migration verifies the active upgrade height
+and clears both group and individual overrides.
 
 Keep functional changes in separate PRs from upstream synchronization and
 publishing changes. Submit portable fixes upstream, then remove local patches
