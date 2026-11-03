@@ -143,8 +143,12 @@ func TestDiscoveryRetainsCompletedOngoingManualAndReachedUpgrades(t *testing.T) 
 		t.Run(string(phase), func(t *testing.T) {
 			// A successful upgrade removes CurrentPlan before controller status
 			// necessarily records completion. Keep its reached-height record.
+			height := int64(100)
+			if phase == appsv1.UpgradeScheduled {
+				height = 50
+			}
 			existing := []appsv1.Upgrade{
-				{Height: 50, Image: "example/node:running", Status: phase, Source: appsv1.OnChainUpgrade},
+				{Height: height, Image: "example/node:running", Status: phase, Source: appsv1.OnChainUpgrade},
 				{Height: 300, Image: "example/node:manual", Status: appsv1.UpgradeScheduled, Source: appsv1.ManualUpgrade},
 			}
 			r, node, query := discoveryHarness(t, existing)
