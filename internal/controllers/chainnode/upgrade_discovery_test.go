@@ -138,17 +138,14 @@ func TestDiscoveryQueryFailurePreservesCachedPlan(t *testing.T) {
 	require.Equal(t, before, publishedUpgrades(t, r, node))
 }
 
-func TestDiscoveryRetainsCompletedOngoingManualAndReachedUpgrades(t *testing.T) {
-	for _, phase := range []appsv1.UpgradePhase{appsv1.UpgradeCompleted, appsv1.UpgradeOnGoing, appsv1.UpgradeScheduled} {
+func TestDiscoveryRetainsCompletedOngoingSkippedAndManualUpgrades(t *testing.T) {
+	for _, phase := range []appsv1.UpgradePhase{appsv1.UpgradeCompleted, appsv1.UpgradeOnGoing, appsv1.UpgradeSkipped} {
 		t.Run(string(phase), func(t *testing.T) {
 			// A successful upgrade removes CurrentPlan before controller status
-			// necessarily records completion. Keep its reached-height record.
-			height := int64(100)
-			if phase == appsv1.UpgradeScheduled {
-				height = 50
-			}
+			// necessarily records completion. Ongoing/terminal records also
+			// retain the running image when the cached height is behind.
 			existing := []appsv1.Upgrade{
-				{Height: height, Image: "example/node:running", Status: phase, Source: appsv1.OnChainUpgrade},
+				{Height: 100, Image: "example/node:running", Status: phase, Source: appsv1.OnChainUpgrade},
 				{Height: 300, Image: "example/node:manual", Status: appsv1.UpgradeScheduled, Source: appsv1.ManualUpgrade},
 			}
 			r, node, query := discoveryHarness(t, existing)
@@ -156,6 +153,16 @@ func TestDiscoveryRetainsCompletedOngoingManualAndReachedUpgrades(t *testing.T) 
 			require.Equal(t, existing, publishedUpgrades(t, r, node))
 		})
 	}
+}
+
+func TestDiscoveryRetractsCancellationObservedAfterOldHeight(t *testing.T) {
+	r, node, query := discoveryHarness(t, nil)
+	query.set(upgradePlan(100, "example/node:cancelled"), nil)
+	require.Len(t, publishedUpgrades(t, r, node), 1)
+	// The next successful poll can arrive after the cancelled height.
+	node.Status.LatestHeight = 101
+	query.set(nil, nil)
+	require.Empty(t, publishedUpgrades(t, r, node))
 }
 
 func TestDiscoveryInvalidHeightDoesNotReplaceCachedPlan(t *testing.T) {

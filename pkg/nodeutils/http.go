@@ -141,13 +141,14 @@ func (s *NodeUtils) latestHeight(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
-	log.WithField("must-upgrade", s.requiresUpgrade.Load()).Info("checked if should upgrade")
-	if s.requiresUpgrade.Load() {
+	required := s.upgradeRequired()
+	log.WithField("must-upgrade", required).Info("checked if should upgrade")
+	if required {
 		w.WriteHeader(http.StatusUpgradeRequired)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
-	_, _ = w.Write([]byte(strconv.FormatBool(s.requiresUpgrade.Load())))
+	_, _ = w.Write([]byte(strconv.FormatBool(required)))
 }
 
 func (s *NodeUtils) tmkmsConnectionActive(w http.ResponseWriter, r *http.Request) {

@@ -36,7 +36,7 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 			// CurrentPlan is authoritative for future governance upgrades. A
 			// successful empty response retracts a cancelled plan; a replacement
 			// retracts the previous height before publishing the new one.
-			chainNode.Status.Upgrades = retainCurrentGovUpgrades(chainNode.Status.Upgrades, govUpgrades, chainNode.Status.LatestHeight)
+			chainNode.Status.Upgrades = retainCurrentGovUpgrades(chainNode.Status.Upgrades, govUpgrades)
 			for _, upgrade := range govUpgrades {
 				chainNode.Status.Upgrades = AddOrUpdateUpgrade(chainNode.Status.Upgrades, upgrade, chainNode.Status.LatestHeight)
 			}
@@ -79,7 +79,7 @@ func (r *Reconciler) ensureUpgrades(ctx context.Context, chainNode *appsv1.Chain
 	return nil
 }
 
-func retainCurrentGovUpgrades(cached, current []appsv1.Upgrade, latestHeight int64) []appsv1.Upgrade {
+func retainCurrentGovUpgrades(cached, current []appsv1.Upgrade) []appsv1.Upgrade {
 	heights := make(map[int64]bool, len(current))
 	for _, upgrade := range current {
 		heights[upgrade.Height] = true
@@ -87,9 +87,10 @@ func retainCurrentGovUpgrades(cached, current []appsv1.Upgrade, latestHeight int
 	retained := make([]appsv1.Upgrade, 0, len(cached))
 	for _, upgrade := range cached {
 		pending := upgrade.Status == appsv1.UpgradeScheduled || upgrade.Status == appsv1.UpgradeImageMissing
-		// Keep reached heights and terminal/in-progress records: They also
-		// determine the running image while completion status catches up.
-		if upgrade.Source == appsv1.OnChainUpgrade && pending && upgrade.Height > latestHeight && !heights[upgrade.Height] {
+		// The controller marks an upgrade ongoing before switching its pod.
+		// Merely reaching a scheduled height does not prove it was executed;
+		// cancellation may have happened between discovery polls.
+		if upgrade.Source == appsv1.OnChainUpgrade && pending && !heights[upgrade.Height] {
 			continue
 		}
 		retained = append(retained, upgrade)
