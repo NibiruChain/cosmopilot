@@ -30,11 +30,15 @@ type Client struct {
 	upgradeClient upgradetypes.QueryClient
 }
 
-func NewClient(host string) (*Client, error) {
-	grpcConn, err := grpc.NewClient(
-		fmt.Sprintf("%s:%d", host, GrpcPort),
+func NewClient(host string, grpcOptions ...grpc.DialOption) (*Client, error) {
+	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
+	}
+	options = append(options, grpcOptions...)
+	grpcConn, err := grpc.NewClient(
+		fmt.Sprintf("%s:%d", host, GrpcPort),
+		options...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to grpc server at %s:%d: %w", host, GrpcPort, err)
