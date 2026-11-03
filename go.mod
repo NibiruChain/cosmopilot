@@ -10,7 +10,6 @@ require (
 	github.com/banzaicloud/k8s-objectmatcher v1.8.0
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500
 	github.com/cometbft/cometbft v0.37.4
-	github.com/containerd/fifo v1.1.0
 	github.com/cosmos/cosmos-sdk v0.47.10
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/fsnotify/fsnotify v1.7.0
@@ -20,7 +19,6 @@ require (
 	github.com/klauspost/pgzip v1.2.5
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.2.0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
-	github.com/nxadm/tail v1.4.8
 	github.com/onsi/ginkgo/v2 v2.27.3
 	github.com/onsi/gomega v1.38.2
 	github.com/postfinance/vaultk8s v0.1.1
@@ -34,6 +32,7 @@ require (
 	github.com/voluzi/cosmoseed v0.11.0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
+	golang.org/x/sys v0.38.0
 	google.golang.org/api v0.171.0
 	google.golang.org/grpc v1.71.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -234,7 +233,6 @@ require (
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
@@ -247,7 +245,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.27.2 // indirect
 	k8s.io/component-base v0.27.2 // indirect

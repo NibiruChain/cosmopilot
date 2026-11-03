@@ -15,35 +15,33 @@ const (
 	// DefaultUpgradesConfig is the default path to the upgrades configuration file.
 	DefaultUpgradesConfig = "/config/upgrades.json"
 
-	// DefaultTraceStore is the default path to the trace store FIFO.
-	DefaultTraceStore = "/trace/trace.fifo"
+	// DefaultTerminationMessagePath is captured by kubelet when node-utils exits.
+	DefaultTerminationMessagePath = "/dev/termination-log"
 )
 
 func defaultOptions() *Options {
 	return &Options{
-		DataPath:       DefaultDataPath,
-		Host:           DefaultHost,
-		Port:           DefaultPort,
-		BlockThreshold: 0,
-		UpgradesConfig: DefaultUpgradesConfig,
-		TraceStore:     DefaultTraceStore,
-		CreateFifo:     false,
-		TmkmsProxy:     false,
-		HaltHeight:     0,
+		DataPath:               DefaultDataPath,
+		Host:                   DefaultHost,
+		Port:                   DefaultPort,
+		BlockThreshold:         0,
+		UpgradesConfig:         DefaultUpgradesConfig,
+		TmkmsProxy:             false,
+		HaltHeight:             0,
+		TerminationMessagePath: DefaultTerminationMessagePath,
 	}
 }
 
 type Options struct {
-	Host           string
-	Port           int
-	DataPath       string
-	BlockThreshold time.Duration
-	UpgradesConfig string
-	TraceStore     string
-	CreateFifo     bool
-	TmkmsProxy     bool
-	HaltHeight     int64
-	MockMode       bool
+	Host                   string
+	Port                   int
+	DataPath               string
+	BlockThreshold         time.Duration
+	UpgradesConfig         string
+	TmkmsProxy             bool
+	HaltHeight             int64
+	TerminationMessagePath string
+	MockMode               bool
 }
 
 type Option func(*Options)
@@ -78,18 +76,6 @@ func WithBlockThreshold(n time.Duration) Option {
 	}
 }
 
-func WithTraceStore(path string) Option {
-	return func(opts *Options) {
-		opts.TraceStore = path
-	}
-}
-
-func CreateFifo(create bool) Option {
-	return func(opts *Options) {
-		opts.CreateFifo = create
-	}
-}
-
 func WithTmkmsProxy(enable bool) Option {
 	return func(opts *Options) {
 		opts.TmkmsProxy = enable
@@ -99,6 +85,12 @@ func WithTmkmsProxy(enable bool) Option {
 func WithHaltHeight(height int64) Option {
 	return func(opts *Options) {
 		opts.HaltHeight = height
+	}
+}
+
+func WithTerminationMessagePath(path string) Option {
+	return func(opts *Options) {
+		opts.TerminationMessagePath = path
 	}
 }
 

@@ -134,8 +134,6 @@ github.com/cometbft/cometbft/v2 v2.0.0-rc1 h1:3QyDHTFzH3a1N6c2jt03kFDCxM/hgUvhzD
 github.com/cometbft/cometbft/v2 v2.0.0-rc1/go.mod h1:/ze08eO171CqUqTqAE7FW7ydUJIVkgp6e2svpYvIR3c=
 github.com/confio/ics23/go v0.9.0 h1:cWs+wdbS2KRPZezoaaj+qBleXgUk5WOQFMP3CQFGTr4=
 github.com/confio/ics23/go v0.9.0/go.mod h1:4LPZ2NYqnYIVRklaozjNR1FScgDJ2s5Xrp+e/mYVRak=
-github.com/containerd/fifo v1.1.0 h1:4I2mbh5stb1u6ycIABlBw9zgtlK8viPI9QkQNRQEEmY=
-github.com/containerd/fifo v1.1.0/go.mod h1:bmC4NWMbXlt2EZ0Hc7Fx7QzTFxgPID13eH0Qu+MAb2o=
 github.com/cosmos/btcutil v1.0.5 h1:t+ZFcX77LpKtDBhjucvnOH8C2l2ioGsBNEQ3jef8xFk=
 github.com/cosmos/btcutil v1.0.5/go.mod h1:IyB7iuqZMJlthe2tkIFL33xPyzbFYP0XVdS8P5lUPis=
 github.com/cosmos/cosmos-proto v1.0.0-beta.4 h1:aEL7tU/rLOmxZQ9z4i7mzxcLbSCY48OdY7lIWTLG7oU=

@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	watchapi "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -43,7 +44,26 @@ func (p *PodHelper) Create(ctx context.Context) error {
 }
 
 func (p *PodHelper) Delete(ctx context.Context) error {
-	return p.client.CoreV1().Pods(p.pod.GetNamespace()).Delete(ctx, p.pod.GetName(), metav1.DeleteOptions{})
+	return p.delete(ctx, nil)
+}
+
+// DeleteWithGracePeriod keeps the observed Pod UID as a precondition while
+// bounding how long Kubernetes may spend terminating that exact Pod.
+func (p *PodHelper) DeleteWithGracePeriod(ctx context.Context, gracePeriodSeconds int64) error {
+	if gracePeriodSeconds < 0 {
+		return fmt.Errorf("grace period must not be negative")
+	}
+	return p.delete(ctx, &gracePeriodSeconds)
+}
+
+func (p *PodHelper) delete(ctx context.Context, gracePeriodSeconds *int64) error {
+	options := metav1.DeleteOptions{}
+	if p.pod.UID != "" {
+		expectedUID := types.UID(p.pod.UID)
+		options.Preconditions = &metav1.Preconditions{UID: &expectedUID}
+	}
+	options.GracePeriodSeconds = gracePeriodSeconds
+	return p.client.CoreV1().Pods(p.pod.GetNamespace()).Delete(ctx, p.pod.GetName(), options)
 }
 
 func (p *PodHelper) WaitForPodRunning(ctx context.Context, timeout time.Duration) error {
@@ -52,8 +72,14 @@ func (p *PodHelper) WaitForPodRunning(ctx context.Context, timeout time.Duration
 
 func (p *PodHelper) WaitForPodDeleted(ctx context.Context, timeout time.Duration) error {
 	// Let's check if the pod exists first
-	_, err := p.client.CoreV1().Pods(p.pod.GetNamespace()).Get(ctx, p.pod.GetName(), metav1.GetOptions{})
+	current, err := p.client.CoreV1().Pods(p.pod.GetNamespace()).Get(ctx, p.pod.GetName(), metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if p.pod.UID != "" && current.UID != p.pod.UID {
 		return nil
 	}
 
@@ -85,7 +111,11 @@ func (p *PodHelper) WaitForPodDeleted(ctx context.Context, timeout time.Duration
 			return true, nil
 
 		default:
-			*p.pod = *event.Object.(*corev1.Pod)
+			current := event.Object.(*corev1.Pod)
+			if p.pod.UID != "" && current.UID != p.pod.UID {
+				return true, nil
+			}
+			*p.pod = *current
 			return false, nil
 		}
 	})

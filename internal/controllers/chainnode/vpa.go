@@ -451,7 +451,7 @@ func (r *Reconciler) clearVpaLastAppliedResources(ctx context.Context, chainNode
 	return r.Update(ctx, chainNode)
 }
 
-func (r *Reconciler) resetVpaAfterUpgrade(ctx context.Context, chainNode *appsv1.ChainNode) error {
+func (r *Reconciler) resetVpaAfterUpgradeAt(ctx context.Context, chainNode *appsv1.ChainNode, cooldownAt time.Time) error {
 	logger := log.FromContext(ctx).WithValues("module", "vpa")
 
 	if !chainNode.Spec.VPA.IsEnabled() {
@@ -478,7 +478,7 @@ func (r *Reconciler) resetVpaAfterUpgrade(ctx context.Context, chainNode *appsv1
 	}
 
 	// Set cooldown timestamps to prevent immediate VPA action after upgrade
-	now := time.Now().UTC().Format(timeLayout)
+	now := cooldownAt.UTC().Format(timeLayout)
 	if annotations[controllers.AnnotationVPALastCPUScale] != now {
 		annotations[controllers.AnnotationVPALastCPUScale] = now
 		changed = true

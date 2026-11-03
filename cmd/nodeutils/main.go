@@ -24,9 +24,7 @@ var (
 	dataPath         string
 	upgradesConfig   string
 	blockThreshold   time.Duration
-	traceStore       string
 	logLevel         string
-	createFifo       bool
 	enableTmkmsProxy bool
 	nodeBinaryName   string
 	haltHeight       int64
@@ -61,8 +59,6 @@ func main() {
 		nodeutils.WithBlockThreshold(blockThreshold),
 		nodeutils.WithDataPath(dataPath),
 		nodeutils.WithUpgradesConfig(upgradesConfig),
-		nodeutils.WithTraceStore(traceStore),
-		nodeutils.CreateFifo(createFifo),
 		nodeutils.WithTmkmsProxy(enableTmkmsProxy),
 		nodeutils.WithHaltHeight(haltHeight),
 		nodeutils.WithMockMode(mockMode),
@@ -72,9 +68,7 @@ func main() {
 	}
 
 	go func() {
-		sig := <-sigChan
-		log.Infof("received signal: %v", sig)
-		if err := nodeUtilsServer.Stop(false); err != nil {
+		if err := handleTerminationSignals(sigChan, nodeUtilsServer.StopWithResult, func() { os.Exit(0) }); err != nil {
 			log.Errorf("failed to stop nodeutils server: %v", err)
 		}
 	}()
@@ -82,6 +76,32 @@ func main() {
 	if err := nodeUtilsServer.Start(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func handleTerminationSignals(
+	sigChan <-chan os.Signal,
+	stop func(bool) (nodeutils.StopResult, error),
+	terminate func(),
+) error {
+	var stopErr error
+	stopAttempted := false
+	for sig := range sigChan {
+		log.Infof("received signal: %v", sig)
+		if stopAttempted {
+			terminate()
+			return stopErr
+		}
+		stopAttempted = true
+		result, err := stop(false)
+		if err != nil {
+			stopErr = err
+			continue
+		}
+		if result == nodeutils.StopCompleted {
+			return nil
+		}
+	}
+	return stopErr
 }
 
 func printHelp() {

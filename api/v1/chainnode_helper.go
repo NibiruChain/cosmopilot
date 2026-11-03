@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +15,9 @@ import (
 )
 
 const (
+	// AnnotationHaltHeightHold keeps a verified native halt stopped after its Pod is removed.
+	AnnotationHaltHeightHold = "cosmopilot.voluzi.com/halt-height-hold"
+
 	// DefaultPersistenceSize is the default size of the data PVC.
 	DefaultPersistenceSize = "50Gi"
 
@@ -231,7 +235,12 @@ func (chainNode *ChainNode) GetAppVersion() string {
 	version := chainNode.Spec.App.GetImageVersion()
 	var h int64 = 0
 	for _, u := range chainNode.Status.Upgrades {
-		if (u.Status == UpgradeCompleted || u.Status == UpgradeSkipped || u.Status == UpgradeOnGoing) && u.Height > h && u.Height <= chainNode.Status.LatestHeight {
+		selectedByHeight := (u.Status == UpgradeCompleted || u.Status == UpgradeSkipped || u.Status == UpgradeOnGoing) &&
+			u.Height <= chainNode.Status.LatestHeight
+		selectedByCommittedVersion := chainNode.Status.AppVersion != "" &&
+			(u.Status == UpgradeCompleted || u.Status == UpgradeOnGoing) &&
+			u.GetVersion() == chainNode.Status.AppVersion
+		if (selectedByHeight || selectedByCommittedVersion) && u.Height > h {
 			h = u.Height
 			version = u.GetVersion()
 		}
@@ -296,7 +305,9 @@ func (chainNode *ChainNode) ShouldIgnoreGroupOnDisruption() bool {
 
 func (chainNode *ChainNode) MustStop() (bool, string) {
 	if chainNode.Spec.Config != nil && chainNode.Spec.Config.HaltHeight != nil {
-		return *chainNode.Spec.Config.HaltHeight == chainNode.Status.LatestHeight, fmt.Sprintf("halt height %d", *chainNode.Spec.Config.HaltHeight)
+		haltHeight := *chainNode.Spec.Config.HaltHeight
+		mustStop := chainNode.GetAnnotations()[AnnotationHaltHeightHold] == strconv.FormatInt(haltHeight, 10)
+		return mustStop, fmt.Sprintf("halt height %d", haltHeight)
 	}
 	return false, ""
 }

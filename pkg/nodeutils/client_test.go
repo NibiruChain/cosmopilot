@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewClient(t *testing.T) {
@@ -197,6 +200,21 @@ func TestClient_RequiresUpgrade(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClient_RequiresUpgradeFreshUsesRefreshQuery(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/must_upgrade", r.URL.Path)
+		assert.Equal(t, "true", r.URL.Query().Get("refresh"))
+		w.WriteHeader(http.StatusUpgradeRequired)
+		_, _ = w.Write([]byte("true"))
+	}))
+	defer server.Close()
+
+	client := &Client{url: server.URL}
+	got, err := client.RequiresUpgradeFresh(t.Context())
+	require.NoError(t, err)
+	assert.True(t, got)
 }
 
 func TestClient_ListSnapshots(t *testing.T) {

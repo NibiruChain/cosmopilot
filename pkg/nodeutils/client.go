@@ -103,7 +103,8 @@ func (c *Client) httpGetJSON(ctx context.Context, endpoint string, target interf
 	return json.Unmarshal(body, target)
 }
 
-// GetDataSize returns the current size of the node's data directory in bytes.
+// GetDataSize returns occupied filesystem bytes for a proven whole ext4 root,
+// or the logical sizes of entries beneath the node's data directory.
 func (c *Client) GetDataSize(ctx context.Context) (int64, error) {
 	body, err := c.httpGet(ctx, "/data_size")
 	if err != nil {
@@ -124,7 +125,16 @@ func (c *Client) GetLatestHeight(ctx context.Context) (int64, error) {
 // RequiresUpgrade checks if the node requires an upgrade.
 // Returns true if an upgrade is required, false otherwise.
 func (c *Client) RequiresUpgrade(ctx context.Context) (bool, error) {
-	body, err := c.httpGetWithStatus(ctx, "/must_upgrade", http.StatusOK, http.StatusUpgradeRequired)
+	return c.requiresUpgrade(ctx, "/must_upgrade")
+}
+
+// RequiresUpgradeFresh refreshes upgrade state before returning it.
+func (c *Client) RequiresUpgradeFresh(ctx context.Context) (bool, error) {
+	return c.requiresUpgrade(ctx, "/must_upgrade?refresh=true")
+}
+
+func (c *Client) requiresUpgrade(ctx context.Context, endpoint string) (bool, error) {
+	body, err := c.httpGetWithStatus(ctx, endpoint, http.StatusOK, http.StatusUpgradeRequired)
 	if err != nil {
 		return false, err
 	}

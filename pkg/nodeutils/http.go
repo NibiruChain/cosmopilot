@@ -15,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/voluzi/cosmopilot/v2/pkg/statscollector"
-	"github.com/voluzi/cosmopilot/v2/pkg/utils"
 )
 
 func (s *NodeUtils) registerRoutes() {
@@ -124,7 +123,7 @@ func (s *NodeUtils) health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) dataSize(w http.ResponseWriter, r *http.Request) {
-	size, err := utils.DirSize(s.cfg.DataPath)
+	size, err := s.dataSizeSampler.Size(r.Context())
 	if err != nil {
 		writeError(w, "error getting data size: %v", err)
 		return
@@ -135,20 +134,47 @@ func (s *NodeUtils) dataSize(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *NodeUtils) latestHeight(w http.ResponseWriter, r *http.Request) {
-	log.WithField("height", s.latestBlockHeight.Load()).Info("retrieved latest height")
+	height := int64(0)
+	status := s.upgradeMonitor.Status()
+	if status.LatestHeight != nil {
+		height = *status.LatestHeight
+	}
+	if required := status.RequiredUpgrade; required != nil && s.legacyPendingUpgradeMatches(*required) {
+		height = required.Height
+	}
+	log.WithField("height", height).Info("retrieved latest height")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(strconv.FormatInt(s.latestBlockHeight.Load(), 10)))
+	_, _ = w.Write([]byte(strconv.FormatInt(height, 10)))
+}
+
+func (s *NodeUtils) legacyPendingUpgradeMatches(required RequiredUpgrade) bool {
+	if s.upgradeMonitor == nil || s.upgradeMonitor.checker == nil {
+		return false
+	}
+	for _, upgrade := range s.upgradeMonitor.checker.Snapshot().Upgrades {
+		if upgrade.Height == required.Height && upgrade.Source == required.Source &&
+			(upgrade.Status == UpgradeScheduled || upgrade.Status == UpgradeOnGoing) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *NodeUtils) mustUpgrade(w http.ResponseWriter, r *http.Request) {
-	required := s.upgradeRequired()
-	log.WithField("must-upgrade", required).Info("checked if should upgrade")
-	if required {
+	if r.URL.Query().Get("refresh") == "true" {
+		if err := s.upgradeMonitor.reconcile(r.Context(), false); err != nil {
+			writeError(w, "error refreshing upgrade status: %v", err)
+			return
+		}
+	}
+	requiresUpgrade := s.upgradeMonitor.RequiresUpgrade()
+	log.WithField("must-upgrade", requiresUpgrade).Info("checked if should upgrade")
+	if requiresUpgrade {
 		w.WriteHeader(http.StatusUpgradeRequired)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
-	_, _ = w.Write([]byte(strconv.FormatBool(required)))
+	_, _ = w.Write([]byte(strconv.FormatBool(requiresUpgrade)))
 }
 
 func (s *NodeUtils) tmkmsConnectionActive(w http.ResponseWriter, r *http.Request) {
